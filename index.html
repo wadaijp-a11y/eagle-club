@@ -75,17 +75,19 @@
         <div id="scoreChartContainer">
           <canvas id="myChart"></canvas>
         </div>
-        
-        <div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
+
+
+<div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
           <table class="w-full text-left border-collapse text-sm">
             <thead>
               <tr class="bg-gray-50 border-b text-gray-500 text-xs">
                 <th class="p-2 font-normal">日付</th>
                 <th class="p-2 text-right font-normal">順位</th>
                 <th class="p-2 text-right font-normal">GROSS</th>
-                <th class="p-2 text-right font-normal">NET</th>
-              </tr>
+                <th class="p-2 pr-6 text-right font-normal">NET</th> </tr>
             </thead>
+
+            
             <tbody id="myScoreTableBody">
               <tr><td colspan="4" class="text-center p-4 text-gray-400">データ読み込み中...</td></tr>
             </tbody>
@@ -321,10 +323,13 @@
             return rowDate >= oneYearAgo;
           });
 
+// 日付を「26年6月」形式に変換する関数
           const getMonthLabel = (dateStr) => {
             const dateParts = dateStr.split('/');
             if (dateParts.length >= 2) {
-              return parseInt(dateParts[1], 10) + '月';
+              const year = dateParts[0].slice(-2); // "2026" から "26" を取得
+              const month = parseInt(dateParts[1], 10);
+              return `${year}年${month}月`;
             }
             return dateStr;
           };
@@ -376,7 +381,7 @@
             }
           });
 
-          // 表描画
+// 表描画
           const tbody = document.getElementById('myScoreTableBody');
           let html = '';
           const reversedHistory = [...recentHistory].reverse();
@@ -384,15 +389,22 @@
           reversedHistory.forEach(row => {
             const monthLabel = getMonthLabel(row.date);
 
+            // 1位〜3位の色とアイコンを設定
+            let rankStyle = "text-gray-500";
+            let rankText = `${row.rank}位`;
+            if (row.rank == 1) { rankStyle = "text-yellow-600 font-bold"; rankText = "🥇 1位"; }
+            else if (row.rank == 2) { rankStyle = "text-gray-500 font-bold"; rankText = "🥈 2位"; }
+            else if (row.rank == 3) { rankStyle = "text-amber-700 font-bold"; rankText = "🥉 3位"; }
+
+            // NETスコアの列にも pr-6 (右余白) を追加
             html += `<tr class="border-b hover:bg-gray-50">
               <td class="p-2 text-gray-600 font-bold">${monthLabel}</td>
-              <td class="p-2 text-right text-gray-500">${row.rank}位</td>
+              <td class="p-2 text-right ${rankStyle}">${rankText}</td>
               <td class="p-2 text-right text-gray-800 font-bold">${row.gross}</td>
-              <td class="p-2 text-right text-green-600 font-bold">${row.net}</td>
+              <td class="p-2 pr-6 text-right text-green-600 font-bold">${row.net}</td>
             </tr>`;
           });
           tbody.innerHTML = html;
-
         })
         .catch(function(err) {
           console.error("データ取得エラー:", err);
@@ -455,6 +467,9 @@
           });
 
           tbody.innerHTML = html;
+
+
+          
         })
         .catch(function(err) {
           console.error("ランキング取得エラー:", err);
