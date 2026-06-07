@@ -85,10 +85,12 @@
       </div>
     </div>
 
-    <div>
-      <h3 class="font-bold text-gray-800 mb-3 border-b pb-1 flex items-center">
-        直近のコンペ結果 <span id="latestDateSpan" class="text-green-600 ml-2 text-sm"></span>
-      </h3>
+<div>
+      <div class="flex justify-between items-end border-b pb-1 mb-3">
+        <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
+        <select id="dateSelect" onchange="onChangeDate()" class="text-sm border border-gray-300 rounded p-1 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
+        </select>
+      </div>
       <div id="scoreContainer" class="space-y-2 max-h-60 overflow-y-auto text-sm">
         <p class="text-gray-500">データを読み込んでいます...</p>
       </div>
@@ -193,42 +195,86 @@
       reader.readAsDataURL(file);
     }
 
-    // 3. スプレッドシートからデータを取得して表示
+// 3. スプレッドシートからデータを取得して表示（全履歴対応版）
+    let allScoreHistory = []; // 全データを保持する変数
+
     function loadScores() {
       const container = document.getElementById('scoreContainer');
-      const dateSpan = document.getElementById('latestDateSpan');
+      const dateSelect = document.getElementById('dateSelect');
       
       callGasApi('getScoreHistory')
         .then(function(history) {
           if (!history || history.length === 0) {
             container.innerHTML = '<p class="text-gray-500 p-2">登録されたデータがありません。</p>';
-            dateSpan.innerText = '';
+            dateSelect.classList.add('hidden');
             return;
           }
 
-          const latestDate = history[history.length - 1]['日付'];
-          const latestScores = history.filter(row => row['日付'] === latestDate);
-          latestScores.sort((a, b) => Number(a['順位']) - Number(b['順位']));
-          dateSpan.innerText = `（${latestDate}）`;
+          allScoreHistory = history; // 取得した全データを保存
 
-          let html = '<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 border-b text-gray-600"><th class="p-2 w-16">順位</th><th class="p-2">名前</th><th class="p-2 text-right">GROSS</th><th class="p-2 text-right">NET</th></tr></thead><tbody>';
+          // 履歴から「日付」だけを抽出し、重複をなくす
+          const dates = [...new Set(history.map(row => row['日付']))];
           
-          latestScores.forEach(row => {
-            html += `<tr class="border-b hover:bg-gray-50">
-              <td class="p-2 font-bold text-gray-700">${row['順位']} 位</td>
-              <td class="p-2 font-bold text-gray-800">${row['名前']}</td>
-              <td class="p-2 text-right text-gray-600">${row['GROSS']}</td>
-              <td class="p-2 text-right text-green-600 font-bold">${row['NET']}</td>
-            </tr>`;
+          // 日付を新しい順（降順）に並び替え
+          dates.sort((a, b) => new Date(b) - new Date(a));
+
+          // プルダウンの選択肢（<option>）を作成
+          dateSelect.innerHTML = '';
+          dates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            dateSelect.appendChild(option);
           });
-          html += '</tbody></table>';
-          
-          container.innerHTML = html;
+
+          // プルダウンを表示
+          dateSelect.classList.remove('hidden');
+
+          // 初期表示として、一番新しい（最新の）日付のデータを描画
+          renderScoresByDate(dates[0]);
         })
         .catch(function(err) {
           console.error("スコア取得エラー:", err);
           container.innerHTML = '<p class="text-red-500 p-2">データの読み込みに失敗しました。</p>';
         });
+    }
+
+    // プルダウンの日付が変更されたときに呼ばれる関数
+    function onChangeDate() {
+      const selectedDate = document.getElementById('dateSelect').value;
+      renderScoresByDate(selectedDate);
+    }
+
+    // 指定された日付の成績表を描画する関数
+    function renderScoresByDate(targetDate) {
+      const container = document.getElementById('scoreContainer');
+      
+      // 選択された日付のデータだけを絞り込み
+      const filteredScores = allScoreHistory.filter(row => row['日付'] === targetDate);
+      
+      // 順位順に並び替え
+      filteredScores.sort((a, b) => Number(a['順位']) - Number(b['順位']));
+
+      // テーブルのHTMLを作成
+      let html = '<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 border-b text-gray-600"><th class="p-2 w-16 text-center">順位</th><th class="p-2">名前</th><th class="p-2 text-right">GROSS</th><th class="p-2 text-right">NET</th></tr></thead><tbody>';
+      
+      filteredScores.forEach(row => {
+        // 1位〜3位には色を付ける（おまけの装飾）
+        let rankStyle = "text-gray-700";
+        if (row['順位'] == 1) rankStyle = "text-yellow-600 font-bold";
+        if (row['順位'] == 2) rankStyle = "text-gray-500 font-bold";
+        if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
+
+        html += `<tr class="border-b hover:bg-gray-50">
+          <td class="p-2 font-bold text-center ${rankStyle}">${row['順位']} 位</td>
+          <td class="p-2 font-bold text-gray-800">${row['名前']}</td>
+          <td class="p-2 text-right text-gray-600">${row['GROSS']}</td>
+          <td class="p-2 text-right text-green-600 font-bold">${row['NET']}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      
+      container.innerHTML = html;
     }
 
 
