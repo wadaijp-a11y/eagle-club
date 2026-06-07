@@ -25,10 +25,16 @@
 
   <div id="mainSection" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 mt-4 hidden">
 
-
-<div class="mb-4 bg-green-50 border border-green-300 rounded p-3 text-center">
-      <p class="text-green-800 font-bold">🏌️ 次回イーグル会 ：<span id="nextCompeDateDisplay" class="text-xl ml-2 text-green-600"></span></p>
+<div class="mb-5 bg-white border border-green-500 rounded-xl shadow-sm overflow-hidden w-full">
+      <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
+        <span>🏌️</span> 次回イーグル会 開催予定
+      </div>
+      <div class="p-4 bg-green-50 text-center flex flex-col items-center justify-center">
+        <p id="nextCompeDateDisplay" class="text-lg md:text-xl font-bold text-green-800 leading-relaxed break-keep"></p>
+      </div>
     </div>
+
+    
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-bold text-green-700">こんにちは、<span id="userName"></span> さん</h2>
       <button onclick="location.reload()" class="text-sm text-gray-500 underline">ログアウト</button>
