@@ -96,6 +96,18 @@
       </div>
     </div>
 
+<div>
+      <div class="flex justify-between items-end border-b pb-1 mb-3">
+        <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
+        <select id="dateSelect" onchange="onChangeDate()" class="text-sm border border-gray-300 rounded p-1 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
+        </select>
+      </div>
+      <div id="scoreContainer" class="space-y-2 max-h-60 overflow-y-auto text-sm">
+        <p class="text-gray-500">データを読み込んでいます...</p>
+      </div>
+    </div>
+
+    
     <div class="mb-6">
       <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> 通算平均NETランキング 🏆 </h3>
       <div class="bg-white border rounded-lg p-3 max-h-60 overflow-y-auto">
@@ -117,16 +129,7 @@
       </div>
     </div>
 
-    <div>
-      <div class="flex justify-between items-end border-b pb-1 mb-3">
-        <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
-        <select id="dateSelect" onchange="onChangeDate()" class="text-sm border border-gray-300 rounded p-1 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
-        </select>
-      </div>
-      <div id="scoreContainer" class="space-y-2 max-h-60 overflow-y-auto text-sm">
-        <p class="text-gray-500">データを読み込んでいます...</p>
-      </div>
-    </div>
+    
   </div>
 
   <script>
