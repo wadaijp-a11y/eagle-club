@@ -231,7 +231,8 @@
         });
     }
 
-    // 4. グラフ描画処理
+    
+// 4. グラフ描画処理（スコア推移のみ・直近12回・月表示）
     let myChartInstance = null;
 
     function loadMyChart(userName) {
@@ -239,10 +240,21 @@
         .then(function(history) {
           if (!history || history.length === 0) return;
 
-          const labels = history.map(row => row.date);
-          const grossData = history.map(row => row.gross);
-          const netData = history.map(row => row.net);
-          const hdcpData = history.map(row => row.hdcp);
+          // 直近12回分（約12ヶ月分）のデータに絞り込む
+          const recentHistory = history.slice(-12);
+
+          // 日付から「月」だけを抽出してラベルにする（例: "2026/08/15" → "8月"）
+          const labels = recentHistory.map(row => {
+            const dateParts = row.date.split('/');
+            if (dateParts.length >= 2) {
+              return parseInt(dateParts[1], 10) + '月';
+            }
+            return row.date;
+          });
+
+          // GROSSとNETのデータのみを抽出
+          const grossData = recentHistory.map(row => row.gross);
+          const netData = recentHistory.map(row => row.net);
 
           const ctx = document.getElementById('myChart').getContext('2d');
           
@@ -258,42 +270,43 @@
                 {
                   label: 'GROSS',
                   data: grossData,
-                  borderColor: 'rgb(255, 99, 132)',
-                  backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                  yAxisID: 'y'
+                  borderColor: 'rgb(255, 99, 132)', // 赤系
+                  backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                  borderWidth: 2,
+                  pointRadius: 4,          // 点を少し大きくして見やすく
+                  pointBackgroundColor: 'rgb(255, 99, 132)',
+                  tension: 0.3             // 線を少し滑らかにする
                 },
                 {
                   label: 'NET',
                   data: netData,
-                  borderColor: 'rgb(54, 162, 235)',
-                  backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                  yAxisID: 'y'
-                },
-                {
-                  label: 'HDCP',
-                  data: hdcpData,
-                  borderColor: 'rgb(75, 192, 192)',
-                  backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                  yAxisID: 'y1'
+                  borderColor: 'rgb(54, 162, 235)', // 青系
+                  backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                  borderWidth: 2,
+                  pointRadius: 4,
+                  pointBackgroundColor: 'rgb(54, 162, 235)',
+                  tension: 0.3
                 }
               ]
             },
             options: {
               responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top',
+                },
+                tooltip: {
+                  mode: 'index',
+                  intersect: false,
+                }
+              },
               scales: {
                 y: {
                   type: 'linear',
                   display: true,
                   position: 'left',
                   title: { display: true, text: 'スコア' },
-                  reverse: true
-                },
-                y1: {
-                  type: 'linear',
-                  display: true,
-                  position: 'right',
-                  title: { display: true, text: 'ハンディキャップ' },
-                  grid: { drawOnChartArea: false }
+                  reverse: true // ゴルフなので少ないスコア（良いスコア）を上にする
                 }
               }
             }
@@ -303,7 +316,7 @@
           console.error("グラフデータ取得エラー:", err);
         });
     }
-
+    
     // 5. ランキング描画処理
     function loadRanking() {
       const tbody = document.getElementById('rankingTableBody');
