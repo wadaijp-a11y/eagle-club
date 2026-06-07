@@ -25,7 +25,7 @@
 
   <div id="mainSection" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 mt-4 hidden">
 
-<div class="mb-5 bg-white border border-green-500 rounded-xl shadow-sm overflow-hidden w-full">
+    <div class="mb-5 bg-white border border-green-500 rounded-xl shadow-sm overflow-hidden w-full">
       <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
         <span>🏌️</span> 次回イーグル会 開催予定
       </div>
@@ -34,7 +34,6 @@
       </div>
     </div>
 
-    
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-bold text-green-700">こんにちは、<span id="userName"></span> さん</h2>
       <button onclick="location.reload()" class="text-sm text-gray-500 underline">ログアウト</button>
@@ -64,13 +63,6 @@
     </div>
 
     <div class="mb-6">
-      <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> スコア推移 </h3>
-      <div class="bg-white border rounded-lg p-2">
-        <canvas id="myChart"></canvas>
-      </div>
-    </div>
-
-<div class="mb-6">
       <div class="flex justify-between items-end border-b pb-1 mb-3">
         <h3 class="font-bold text-gray-800">📈 スコア推移</h3>
         <div class="flex space-x-1 bg-gray-200 rounded-md p-1">
@@ -102,11 +94,6 @@
       </div>
     </div>
 
-
-
-
-
-    
     <div class="mb-6">
       <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> 通算平均NETランキング 🏆 </h3>
       <div class="bg-white border rounded-lg p-3 max-h-60 overflow-y-auto">
@@ -128,7 +115,7 @@
       </div>
     </div>
 
-<div>
+    <div>
       <div class="flex justify-between items-end border-b pb-1 mb-3">
         <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
         <select id="dateSelect" onchange="onChangeDate()" class="text-sm border border-gray-300 rounded p-1 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
@@ -141,9 +128,8 @@
   </div>
 
   <script>
+    // GASのAPI URL
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrRsjsyw9u4pSVXWHez1l6ONgSBiKwZx-C9caQQGDiMymBZ1TbX9jFdYXqnI_eiiYcqA/exec";
-                         
-                        
 
     async function callGasApi(action, data = {}) {
       const payload = { action: action, ...data };
@@ -151,7 +137,7 @@
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify(payload),
-        redirect: "follow" // ←【追加】GASのリダイレクトに追従するための必須設定
+        redirect: "follow" 
       });
       return await response.json();
     }
@@ -167,7 +153,6 @@
 
       callGasApi('checkLogin', { id: id, password: pw })
         .then(function(result) {
-
           if (result.success) {
             currentUser = result.name;
             document.getElementById('userName').innerText = currentUser;
@@ -224,7 +209,7 @@
             btn.disabled = false;
             if (res.success) {
               statusText.innerText = "成功！ " + res.count + "件のデータを登録しました。";
-              loadScores(); // 成功したら一覧を再読み込み
+              loadScores(); 
             } else {
               statusText.innerText = "エラーが発生しました: " + res.error;
             }
@@ -238,8 +223,8 @@
       reader.readAsDataURL(file);
     }
 
-// 3. スプレッドシートからデータを取得して表示（全履歴対応版）
-    let allScoreHistory = []; // 全データを保持する変数
+    // 3. コンペ結果・履歴表示
+    let allScoreHistory = []; 
 
     function loadScores() {
       const container = document.getElementById('scoreContainer');
@@ -253,40 +238,27 @@
             return;
           }
 
-          allScoreHistory = history; // 取得した全データを保存
-
-          // 履歴から「日付」だけを抽出し、重複をなくす
+          allScoreHistory = history; 
           const dates = [...new Set(history.map(row => row['日付']))];
-          
-          // 日付を新しい順（降順）に並び替え
           dates.sort((a, b) => new Date(b) - new Date(a));
 
-
-          // プルダウンの選択肢（<option>）を作成
           dateSelect.innerHTML = '';
           dates.forEach(date => {
             const option = document.createElement('option');
-            // 裏側の検索用データは元の「2026/06/11」のまま保持する
             option.value = date; 
 
-            // 表示用のテキストを「〇〇〇〇年〇月」に変換する
             const dateParts = date.split('/');
             if (dateParts.length >= 2) {
               const year = dateParts[0];
-              const month = parseInt(dateParts[1], 10); // 先頭の0を取る（06 → 6）
+              const month = parseInt(dateParts[1], 10); 
               option.textContent = `${year}年${month}月`;
             } else {
-              // 日付形式でない場合はそのまま表示
               option.textContent = date;
             }
-            
             dateSelect.appendChild(option);
           });
 
-          // プルダウンを表示
           dateSelect.classList.remove('hidden');
-
-          // 初期表示として、一番新しい（最新の）日付のデータを描画
           renderScoresByDate(dates[0]);
         })
         .catch(function(err) {
@@ -295,33 +267,24 @@
         });
     }
 
-    // プルダウンの日付が変更されたときに呼ばれる関数
     function onChangeDate() {
       const selectedDate = document.getElementById('dateSelect').value;
       renderScoresByDate(selectedDate);
     }
 
-// 指定された日付の成績表を描画する関数
     function renderScoresByDate(targetDate) {
       const container = document.getElementById('scoreContainer');
-      
-      // 選択された日付のデータだけを絞り込み
       const filteredScores = allScoreHistory.filter(row => row['日付'] === targetDate);
-      
-      // 順位順に並び替え
       filteredScores.sort((a, b) => Number(a['順位']) - Number(b['順位']));
 
-      // テーブルのHTMLを作成
       let html = '<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 border-b text-gray-600"><th class="p-2 w-16 text-center">順位</th><th class="p-2">名前</th><th class="p-2 text-right">GROSS</th><th class="p-2 text-right">NET</th></tr></thead><tbody>';
 
       filteredScores.forEach(row => {
-        // 1位〜3位には色を付ける
         let rankStyle = "text-gray-700";
         if (row['順位'] == 1) rankStyle = "text-yellow-600 font-bold";
         if (row['順位'] == 2) rankStyle = "text-gray-500 font-bold";
         if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
 
-        // ▼▼ 自分をハイライトする判定とデザイン設定 ▼▼
         const isMe = (row['名前'] === currentUser);
         const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
         const nameColor = isMe ? "text-blue-800" : "text-gray-800";
@@ -334,12 +297,10 @@
         </tr>`;
       });
       html += '</tbody></table>';
-      
       container.innerHTML = html;
     }
 
-    
-// 4. グラフおよび表描画処理（直近1年分・月表示）
+    // 4. スコア推移（グラフ・表切り替え）
     let myChartInstance = null;
 
     function loadMyChart(userName) {
@@ -353,14 +314,13 @@
           // === 直近1年分のデータに絞り込む ===
           const today = new Date();
           const oneYearAgo = new Date();
-          oneYearAgo.setFullYear(today.getFullYear() - 1); // 1年前の日付を計算
+          oneYearAgo.setFullYear(today.getFullYear() - 1);
 
           const recentHistory = history.filter(row => {
             const rowDate = new Date(row.date);
             return rowDate >= oneYearAgo;
           });
 
-          // 日付から「月」だけを取り出す関数（例: "2026/08/15" → "8月"）
           const getMonthLabel = (dateStr) => {
             const dateParts = dateStr.split('/');
             if (dateParts.length >= 2) {
@@ -374,13 +334,12 @@
             myChartInstance.destroy();
           }
 
-          // 1年以内のデータがない場合の処理
           if (recentHistory.length === 0) {
             document.getElementById('myScoreTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">直近1年間の参加データがありません。</td></tr>';
-            return; // データがない場合はここで終了（グラフは描画しない）
+            return; 
           }
 
-          // === グラフ用データの処理（古い順） ===
+          // グラフ描画
           const labels = recentHistory.map(row => getMonthLabel(row.date));
           const grossData = recentHistory.map(row => row.gross);
 
@@ -417,7 +376,7 @@
             }
           });
 
-          // === 表用データの処理（新しい順に反転） ===
+          // 表描画
           const tbody = document.getElementById('myScoreTableBody');
           let html = '';
           const reversedHistory = [...recentHistory].reverse();
@@ -440,6 +399,25 @@
         });
     }
 
+    // 表示切り替え用関数
+    function toggleScoreView(view) {
+      const btnChart = document.getElementById('btnChart');
+      const btnTable = document.getElementById('btnTable');
+      const chartContainer = document.getElementById('scoreChartContainer');
+      const tableContainer = document.getElementById('scoreTableContainer');
+
+      if (view === 'chart') {
+        chartContainer.classList.remove('hidden');
+        tableContainer.classList.add('hidden');
+        btnChart.className = "text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all";
+        btnTable.className = "text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
+      } else {
+        chartContainer.classList.add('hidden');
+        tableContainer.classList.remove('hidden');
+        btnTable.className = "text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all";
+        btnChart.className = "text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
+      }
+    }
 
     // 5. ランキング描画処理
     function loadRanking() {
@@ -462,7 +440,6 @@
             if (rank === 2) { rankClass = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
             if (rank === 3) { rankClass = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
 
-            // ▼▼ 自分をハイライトする判定とデザイン設定 ▼▼
             const isMe = (member.name === currentUser);
             const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
             const nameColor = isMe ? "text-blue-800" : "text-gray-800";
@@ -484,8 +461,6 @@
           tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-red-500">データの読み込みに失敗しました。</td></tr>';
         });
     }
-  
-  
   </script>
 </body>
 </html>
