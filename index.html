@@ -218,12 +218,25 @@
           // 日付を新しい順（降順）に並び替え
           dates.sort((a, b) => new Date(b) - new Date(a));
 
+
           // プルダウンの選択肢（<option>）を作成
           dateSelect.innerHTML = '';
           dates.forEach(date => {
             const option = document.createElement('option');
-            option.value = date;
-            option.textContent = date;
+            // 裏側の検索用データは元の「2026/06/11」のまま保持する
+            option.value = date; 
+
+            // 表示用のテキストを「〇〇〇〇年〇月」に変換する
+            const dateParts = date.split('/');
+            if (dateParts.length >= 2) {
+              const year = dateParts[0];
+              const month = parseInt(dateParts[1], 10); // 先頭の0を取る（06 → 6）
+              option.textContent = `${year}年${month}月`;
+            } else {
+              // 日付形式でない場合はそのまま表示
+              option.textContent = date;
+            }
+            
             dateSelect.appendChild(option);
           });
 
