@@ -276,17 +276,23 @@
 
       // テーブルのHTMLを作成
       let html = '<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 border-b text-gray-600"><th class="p-2 w-16 text-center">順位</th><th class="p-2">名前</th><th class="p-2 text-right">GROSS</th><th class="p-2 text-right">NET</th></tr></thead><tbody>';
-      
-      filteredScores.forEach(row => {
-        // 1位〜3位には色を付ける（おまけの装飾）
+
+filteredScores.forEach(row => {
+        // 1位〜3位には色を付ける
         let rankStyle = "text-gray-700";
         if (row['順位'] == 1) rankStyle = "text-yellow-600 font-bold";
         if (row['順位'] == 2) rankStyle = "text-gray-500 font-bold";
         if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
 
-        html += `<tr class="border-b hover:bg-gray-50">
+        // ▼▼ 自分をハイライトする判定とデザイン設定 ▼▼
+        const isMe = (row['名前'] === currentUser);
+        const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
+        const nameColor = isMe ? "text-blue-800" : "text-gray-800";
+        const myBadge = isMe ? `<span class="ml-2 text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full align-middle">あなた</span>` : "";
+
+        html += `<tr class="${rowClass}">
           <td class="p-2 font-bold text-center ${rankStyle}">${row['順位']} 位</td>
-          <td class="p-2 font-bold text-gray-800">${row['名前']}</td>
+          <td class="p-2 font-bold ${nameColor}">${row['名前']} ${myBadge}</td>
           <td class="p-2 text-right text-gray-600">${row['GROSS']}</td>
           <td class="p-2 text-right text-green-600 font-bold">${row['NET']}</td>
         </tr>`;
@@ -391,10 +397,16 @@
             if (rank === 2) { rankClass = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
             if (rank === 3) { rankClass = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
 
+            // ▼▼ 自分をハイライトする判定とデザイン設定 ▼▼
+            const isMe = (member.name === currentUser);
+            const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
+            const nameColor = isMe ? "text-blue-800" : "text-gray-800";
+            const myBadge = isMe ? `<span class="ml-2 text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full align-middle">あなた</span>` : "";
+
             html += `
-              <tr class="border-b hover:bg-gray-50">
+              <tr class="${rowClass}">
                 <td class="p-2 text-center ${rankClass}">${rankBadge}</td>
-                <td class="p-2 font-bold text-gray-800">${member.name}</td>
+                <td class="p-2 font-bold ${nameColor}">${member.name} ${myBadge}</td>
                 <td class="p-2 text-right font-semibold text-green-700">${member.averageNet}</td>
                 <td class="p-2 text-right text-gray-500">${member.playCount} 回</td>
               </tr>
