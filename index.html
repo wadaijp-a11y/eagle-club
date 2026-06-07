@@ -70,6 +70,43 @@
       </div>
     </div>
 
+<div class="mb-6">
+      <div class="flex justify-between items-end border-b pb-1 mb-3">
+        <h3 class="font-bold text-gray-800">📈 スコア推移</h3>
+        <div class="flex space-x-1 bg-gray-200 rounded-md p-1">
+          <button id="btnChart" onclick="toggleScoreView('chart')" class="text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
+          <button id="btnTable" onclick="toggleScoreView('table')" class="text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
+        </div>
+      </div>
+      
+      <div class="bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
+        <div id="scoreChartContainer">
+          <canvas id="myChart"></canvas>
+        </div>
+        
+        <div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+                <th class="p-2 font-normal">日付</th>
+                <th class="p-2 text-right font-normal">順位</th>
+                <th class="p-2 text-right font-normal">GROSS</th>
+                <th class="p-2 text-right font-normal">NET</th>
+              </tr>
+            </thead>
+            <tbody id="myScoreTableBody">
+              <tr><td colspan="4" class="text-center p-4 text-gray-400">データ読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+
+
+
+    
     <div class="mb-6">
       <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> 通算平均NETランキング 🏆 </h3>
       <div class="bg-white border rounded-lg p-3 max-h-60 overflow-y-auto">
@@ -301,81 +338,110 @@
       container.innerHTML = html;
     }
 
-// 4. グラフ描画処理（GROSS推移のみ・直近12回・月表示）
+    
+// 4. グラフおよび表描画処理（直近1年分・月表示）
     let myChartInstance = null;
 
     function loadMyChart(userName) {
       callGasApi('getMyScoreHistory', { userName: userName })
         .then(function(history) {
-          if (!history || history.length === 0) return;
+          if (!history || history.length === 0) {
+            document.getElementById('myScoreTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">データがありません。</td></tr>';
+            return;
+          }
 
-          // 直近12回分（約12ヶ月分）のデータに絞り込む
-          const recentHistory = history.slice(-12);
+          // === 直近1年分のデータに絞り込む ===
+          const today = new Date();
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(today.getFullYear() - 1); // 1年前の日付を計算
 
-          // 日付から「月」だけを抽出してラベルにする（例: "2026/08/15" → "8月"）
-          const labels = recentHistory.map(row => {
-            const dateParts = row.date.split('/');
+          const recentHistory = history.filter(row => {
+            const rowDate = new Date(row.date);
+            return rowDate >= oneYearAgo;
+          });
+
+          // 日付から「月」だけを取り出す関数（例: "2026/08/15" → "8月"）
+          const getMonthLabel = (dateStr) => {
+            const dateParts = dateStr.split('/');
             if (dateParts.length >= 2) {
               return parseInt(dateParts[1], 10) + '月';
             }
-            return row.date;
-          });
-
-          // GROSSのデータのみを抽出
-          const grossData = recentHistory.map(row => row.gross);
+            return dateStr;
+          };
 
           const ctx = document.getElementById('myChart').getContext('2d');
-          
           if (myChartInstance) {
             myChartInstance.destroy();
           }
+
+          // 1年以内のデータがない場合の処理
+          if (recentHistory.length === 0) {
+            document.getElementById('myScoreTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">直近1年間の参加データがありません。</td></tr>';
+            return; // データがない場合はここで終了（グラフは描画しない）
+          }
+
+          // === グラフ用データの処理（古い順） ===
+          const labels = recentHistory.map(row => getMonthLabel(row.date));
+          const grossData = recentHistory.map(row => row.gross);
 
           myChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
               labels: labels,
-              datasets: [
-                {
-                  label: 'GROSS',
-                  data: grossData,
-                  borderColor: 'rgb(255, 99, 132)', // 赤系
-                  backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                  borderWidth: 2,
-                  pointRadius: 4,          // 点を少し大きくして見やすく
-                  pointBackgroundColor: 'rgb(255, 99, 132)',
-                  tension: 0.3             // 線を少し滑らかにする
-                }
-              ]
+              datasets: [{
+                label: 'GROSS',
+                data: grossData,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgb(255, 99, 132)',
+                tension: 0.3
+              }]
             },
             options: {
               responsive: true,
               plugins: {
-                legend: {
-                  position: 'top',
-                },
-                tooltip: {
-                  mode: 'index',
-                  intersect: false,
-                }
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false }
               },
               scales: {
                 y: {
                   type: 'linear',
                   display: true,
                   position: 'left',
-                  title: { display: true, text: 'スコア' },
-                  reverse: true // ゴルフなので少ないスコア（良いスコア）を上にする
+                  title: { display: false }, 
+                  reverse: true
                 }
               }
             }
           });
+
+          // === 表用データの処理（新しい順に反転） ===
+          const tbody = document.getElementById('myScoreTableBody');
+          let html = '';
+          const reversedHistory = [...recentHistory].reverse();
+          
+          reversedHistory.forEach(row => {
+            const monthLabel = getMonthLabel(row.date);
+
+            html += `<tr class="border-b hover:bg-gray-50">
+              <td class="p-2 text-gray-600 font-bold">${monthLabel}</td>
+              <td class="p-2 text-right text-gray-500">${row.rank}位</td>
+              <td class="p-2 text-right text-gray-800 font-bold">${row.gross}</td>
+              <td class="p-2 text-right text-green-600 font-bold">${row.net}</td>
+            </tr>`;
+          });
+          tbody.innerHTML = html;
+
         })
         .catch(function(err) {
-          console.error("グラフデータ取得エラー:", err);
+          console.error("データ取得エラー:", err);
         });
-    }    
+    }
 
-  // 5. ランキング描画処理
+
+    // 5. ランキング描画処理
     function loadRanking() {
       const tbody = document.getElementById('rankingTableBody');
       
