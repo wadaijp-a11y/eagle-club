@@ -231,8 +231,8 @@
         });
     }
 
-    
-// 4. グラフ描画処理（スコア推移のみ・直近12回・月表示）
+
+// 4. グラフ描画処理（GROSS推移のみ・直近12回・月表示）
     let myChartInstance = null;
 
     function loadMyChart(userName) {
@@ -252,9 +252,8 @@
             return row.date;
           });
 
-          // GROSSとNETのデータのみを抽出
+          // GROSSのデータのみを抽出
           const grossData = recentHistory.map(row => row.gross);
-          const netData = recentHistory.map(row => row.net);
 
           const ctx = document.getElementById('myChart').getContext('2d');
           
@@ -276,16 +275,6 @@
                   pointRadius: 4,          // 点を少し大きくして見やすく
                   pointBackgroundColor: 'rgb(255, 99, 132)',
                   tension: 0.3             // 線を少し滑らかにする
-                },
-                {
-                  label: 'NET',
-                  data: netData,
-                  borderColor: 'rgb(54, 162, 235)', // 青系
-                  backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                  borderWidth: 2,
-                  pointRadius: 4,
-                  pointBackgroundColor: 'rgb(54, 162, 235)',
-                  tension: 0.3
                 }
               ]
             },
@@ -315,8 +304,7 @@
         .catch(function(err) {
           console.error("グラフデータ取得エラー:", err);
         });
-    }
-    
+    }    
     // 5. ランキング描画処理
     function loadRanking() {
       const tbody = document.getElementById('rankingTableBody');
