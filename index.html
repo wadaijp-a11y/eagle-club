@@ -288,7 +288,7 @@ filteredScores.forEach(row => {
         const isMe = (row['名前'] === currentUser);
         const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
         const nameColor = isMe ? "text-blue-800" : "text-gray-800";
-        const myBadge = isMe ? `<span class="ml-2 text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full align-middle">あなた</span>` : "";
+        // const myBadge = isMe ? `<span class="ml-2 text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full align-middle">あなた</span>` : "";
 
         html += `<tr class="${rowClass}">
           <td class="p-2 font-bold text-center ${rankStyle}">${row['順位']} 位</td>
