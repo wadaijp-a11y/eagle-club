@@ -74,15 +74,16 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzsxlLL2aht8MwUD4dLQx01wxwQ8Vr4jpwS5HcA7b6nxHZAagwmn8zeE_ud9HbVgbaTtg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxXxloYGDQnfo2Fw5lekLXBXikzmXqir-x6oN943vNWo_Vlp-q4jWzXVsyVCbilsE0nOw/exec";
+                        
 
     async function callGasApi(action, data = {}) {
       const payload = { action: action, ...data };
       const response = await fetch(GAS_API_URL, {
         method: "POST",
-        mode: "cors",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        redirect: "follow" // ←【追加】GASのリダイレクトに追従するための必須設定
       });
       return await response.json();
     }
