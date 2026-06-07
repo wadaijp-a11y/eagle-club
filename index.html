@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>イーグル会</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4">
+
+  <div id="loginSection" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 mt-10">
+    <h2 class="text-2xl font-bold mb-6 text-center text-green-700">イーグル会 ログイン</h2>
+    <div class="mb-4">
+      <label class="block text-gray-700 font-bold mb-2">ログインID (メールアドレス)</label>
+      <input type="text" id="loginId" class="w-full p-2 border rounded">
+    </div>
+    <div class="mb-6">
+      <label class="block text-gray-700 font-bold mb-2">パスワード</label>
+      <input type="password" id="loginPw" class="w-full p-2 border rounded">
+    </div>
+    <button onclick="onLogin()" class="w-full bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700">ログイン</button>
+    <p id="loginError" class="text-red-500 mt-3 text-center hidden">IDまたはパスワードが違います</p>
+  </div>
+
+  <div id="mainSection" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 mt-4 hidden">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-bold text-green-700">こんにちは、<span id="userName"></span> さん</h2>
+      <button onclick="location.reload()" class="text-sm text-gray-500 underline">ログアウト</button>
+    </div>
+
+    <div id="adminUploadSection" class="border-2 border-dashed border-green-300 rounded-lg p-4 mb-6 bg-green-50 text-center hidden">
+      <h3 class="font-bold text-green-800 mb-2">【管理者用】成績表アップロード</h3>
+      <input type="file" id="imageFile" accept="image/*" class="mb-3 text-sm text-gray-600">
+      <button onclick="onUpload()" id="uploadBtn" class="w-full bg-blue-600 text-white font-bold p-2 rounded hover:bg-blue-700">画像を解析して登録</button>
+      <p id="uploadStatus" class="mt-2 text-sm text-gray-700 font-semibold"></p>
+    </div>
+
+    <div class="mb-6">
+      <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> マイページ（スコア・HDCP推移） </h3>
+      <div class="bg-white border rounded-lg p-2">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> 通算平均NETランキング 🏆 </h3>
+      <div class="bg-white border rounded-lg p-3 max-h-60 overflow-y-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-gray-100 border-b text-gray-600 font-bold">
+              <th class="p-2 w-16 text-center">順位</th>
+              <th class="p-2">名前</th>
+              <th class="p-2 text-right">平均NET</th>
+              <th class="p-2 text-right">参戦数</th>
+            </tr>
+          </thead>
+          <tbody id="rankingTableBody">
+            <tr>
+              <td colspan="4" class="text-center p-4 text-gray-400">データ読み込み中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h3 class="font-bold text-gray-800 mb-3 border-b pb-1 flex items-center">
+        直近のコンペ結果 <span id="latestDateSpan" class="text-green-600 ml-2 text-sm"></span>
+      </h3>
+      <div id="scoreContainer" class="space-y-2 max-h-60 overflow-y-auto text-sm">
+        <p class="text-gray-500">データを読み込んでいます...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzsxlLL2aht8MwUD4dLQx01wxwQ8Vr4jpwS5HcA7b6nxHZAagwmn8zeE_ud9HbVgbaTtg/exec";
+
+    async function callGasApi(action, data = {}) {
+      const payload = { action: action, ...data };
+      const response = await fetch(GAS_API_URL, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      });
+      return await response.json();
+    }
+
+    let currentUser = null;
+
+    // 1. ログイン処理
+    function onLogin() {
+      const id = document.getElementById('loginId').value;
+      const pw = document.getElementById('loginPw').value;
+      
+      document.getElementById('loginError').classList.add('hidden');
+
+      callGasApi('checkLogin', { id: id, password: pw })
+        .then(function(result) {
+          if (result.success) {
+            currentUser = result.name;
+            document.getElementById('userName').innerText = currentUser;
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainSection').classList.remove('hidden');
+
+            if (result.role === '管理者') {
+              document.getElementById('adminUploadSection').classList.remove('hidden');
+            } else {
+              document.getElementById('adminUploadSection').classList.add('hidden');
+            }
+
+            loadScores();
+            loadMyChart(currentUser);
+            loadRanking();
+          } else {
+            document.getElementById('loginError').classList.remove('hidden');
+          }
+        })
+        .catch(function(err) {
+          console.error("通信エラー:", err);
+          document.getElementById('loginError').innerText = "通信エラーが発生しました";
+          document.getElementById('loginError').classList.remove('hidden');
+        });
+    }
+
+    // 2. 画像アップロード・OCR処理
+    function onUpload() {
+      const fileInput = document.getElementById('imageFile');
+      if (fileInput.files.length === 0) {
+        alert('画像ファイルを選択してください。');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      const statusText = document.getElementById('uploadStatus');
+      const btn = document.getElementById('uploadBtn');
+
+      statusText.innerText = "Geminiが画像を解析中...（数十秒かかる場合があります）";
+      btn.disabled = true;
+
+      reader.onloadend = function() {
+        const base64Data = reader.result.split(',')[1];
+        const mimeType = file.type;
+
+        callGasApi('uploadAndProcessImage', { base64Data: base64Data, mimeType: mimeType })
+          .then(function(res) {
+            btn.disabled = false;
+            if (res.success) {
+              statusText.innerText = "成功！ " + res.count + "件のデータを登録しました。";
+              loadScores(); // 成功したら一覧を再読み込み
+            } else {
+              statusText.innerText = "エラーが発生しました: " + res.error;
+            }
+          })
+          .catch(function(err) {
+            btn.disabled = false;
+            statusText.innerText = "通信エラーが発生しました。";
+            console.error("アップロードエラー:", err);
+          });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 3. スプレッドシートからデータを取得して表示
+    function loadScores() {
+      const container = document.getElementById('scoreContainer');
+      const dateSpan = document.getElementById('latestDateSpan');
+      
+      callGasApi('getScoreHistory')
+        .then(function(history) {
+          if (!history || history.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 p-2">登録されたデータがありません。</p>';
+            dateSpan.innerText = '';
+            return;
+          }
+
+          const latestDate = history[history.length - 1]['日付'];
+          const latestScores = history.filter(row => row['日付'] === latestDate);
+          latestScores.sort((a, b) => Number(a['順位']) - Number(b['順位']));
+          dateSpan.innerText = `（${latestDate}）`;
+
+          let html = '<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 border-b text-gray-600"><th class="p-2 w-16">順位</th><th class="p-2">名前</th><th class="p-2 text-right">GROSS</th><th class="p-2 text-right">NET</th></tr></thead><tbody>';
+          
+          latestScores.forEach(row => {
+            html += `<tr class="border-b hover:bg-gray-50">
+              <td class="p-2 font-bold text-gray-700">${row['順位']} 位</td>
+              <td class="p-2 font-bold text-gray-800">${row['名前']}</td>
+              <td class="p-2 text-right text-gray-600">${row['GROSS']}</td>
+              <td class="p-2 text-right text-green-600 font-bold">${row['NET']}</td>
+            </tr>`;
+          });
+          html += '</tbody></table>';
+          
+          container.innerHTML = html;
+        })
+        .catch(function(err) {
+          console.error("スコア取得エラー:", err);
+          container.innerHTML = '<p class="text-red-500 p-2">データの読み込みに失敗しました。</p>';
+        });
+    }
+
+    // 4. グラフ描画処理
+    let myChartInstance = null;
+
+    function loadMyChart(userName) {
+      callGasApi('getMyScoreHistory', { userName: userName })
+        .then(function(history) {
+          if (!history || history.length === 0) return;
+
+          const labels = history.map(row => row.date);
+          const grossData = history.map(row => row.gross);
+          const netData = history.map(row => row.net);
+          const hdcpData = history.map(row => row.hdcp);
+
+          const ctx = document.getElementById('myChart').getContext('2d');
+          
+          if (myChartInstance) {
+            myChartInstance.destroy();
+          }
+
+          myChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'GROSS',
+                  data: grossData,
+                  borderColor: 'rgb(255, 99, 132)',
+                  backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                  yAxisID: 'y'
+                },
+                {
+                  label: 'NET',
+                  data: netData,
+                  borderColor: 'rgb(54, 162, 235)',
+                  backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                  yAxisID: 'y'
+                },
+                {
+                  label: 'HDCP',
+                  data: hdcpData,
+                  borderColor: 'rgb(75, 192, 192)',
+                  backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                  yAxisID: 'y1'
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: {
+                  type: 'linear',
+                  display: true,
+                  position: 'left',
+                  title: { display: true, text: 'スコア' },
+                  reverse: true
+                },
+                y1: {
+                  type: 'linear',
+                  display: true,
+                  position: 'right',
+                  title: { display: true, text: 'ハンディキャップ' },
+                  grid: { drawOnChartArea: false }
+                }
+              }
+            }
+          });
+        })
+        .catch(function(err) {
+          console.error("グラフデータ取得エラー:", err);
+        });
+    }
+
+    // 5. ランキング描画処理
+    function loadRanking() {
+      const tbody = document.getElementById('rankingTableBody');
+      
+      callGasApi('getNetRanking')
+        .then(function(rankingList) {
+          if (!rankingList || rankingList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">データがありません。</td></tr>';
+            return;
+          }
+
+          let html = '';
+          rankingList.forEach((member, index) => {
+            const rank = index + 1;
+            let rankClass = "text-gray-700";
+            let rankBadge = `${rank}位`;
+
+            if (rank === 1) { rankClass = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
+            if (rank === 2) { rankClass = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
+            if (rank === 3) { rankClass = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
+
+            html += `
+              <tr class="border-b hover:bg-gray-50">
+                <td class="p-2 text-center ${rankClass}">${rankBadge}</td>
+                <td class="p-2 font-bold text-gray-800">${member.name}</td>
+                <td class="p-2 text-right font-semibold text-green-700">${member.averageNet}</td>
+                <td class="p-2 text-right text-gray-500">${member.playCount} 回</td>
+              </tr>
+            `;
+          });
+
+          tbody.innerHTML = html;
+        })
+        .catch(function(err) {
+          console.error("ランキング取得エラー:", err);
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-red-500">データの読み込みに失敗しました。</td></tr>';
+        });
+    }
+  </script>
+</body>
+</html>
