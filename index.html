@@ -7,477 +7,426 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
 
-  <div id="loginSection" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 mt-10">
-    <h2 class="text-2xl font-bold mb-6 text-center text-green-700">イーグル会 ログイン</h2>
-    <div class="mb-4">
-      <label class="block text-gray-700 font-bold mb-2">ログインID (メールアドレス)</label>
-      <input type="text" id="loginId" class="w-full p-2 border rounded">
+  <div id="loginSection" class="w-full max-w-md bg-white rounded-xl shadow-md p-6 mt-10">
+    <h2 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h2>
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-gray-700 text-sm font-bold mb-1">ログインID</label>
+        <input type="text" id="loginId" class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+      </div>
+      <div>
+        <label class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
+        <input type="password" id="loginPw" class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+      </div>
     </div>
-    <div class="mb-6">
-      <label class="block text-gray-700 font-bold mb-2">パスワード</label>
-      <input type="password" id="loginPw" class="w-full p-2 border rounded">
-    </div>
-    <button onclick="onLogin()" class="w-full bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700">ログイン</button>
-    <p id="loginError" class="text-red-500 mt-3 text-center hidden">IDまたはパスワードが違います</p>
+    <button onclick="onLogin()" class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm">ログイン</button>
+    <p id="loginError" class="text-red-500 mt-4 text-center text-sm font-bold hidden">IDまたはパスワードが違います</p>
   </div>
 
-  <div id="mainSection" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 mt-4 hidden">
+  <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10">
 
-    <div class="mb-5 bg-white border border-green-500 rounded-xl shadow-sm overflow-hidden w-full">
+    <div class="bg-white border-2 border-green-500 rounded-xl shadow-sm overflow-hidden">
       <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
         <span>🏌️</span> 次回イーグル会 開催予定
       </div>
-      <div class="p-4 bg-green-50 text-center flex flex-col items-center justify-center">
+      <div class="p-4 bg-green-50 text-center">
         <p id="nextCompeDateDisplay" class="text-lg md:text-xl font-bold text-green-800 leading-relaxed break-keep"></p>
       </div>
     </div>
 
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex justify-between items-end px-1">
       <h2 class="text-xl font-bold text-green-700">こんにちは、<span id="userName"></span> さん</h2>
-      <button onclick="location.reload()" class="text-sm text-gray-500 underline">ログアウト</button>
+      <button onclick="location.reload()" class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
     </div>
 
-    <div class="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">⛳ あなたの最新ハンディキャップ</h3>
-      <div class="grid grid-cols-2 gap-4 text-center">
-        <div class="bg-blue-50 rounded p-2">
-          <p class="text-xs text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
+      <div class="grid grid-cols-2 gap-3 text-center">
+        <div class="bg-blue-50 rounded-lg p-2.5 border border-blue-100">
+          <p class="text-[11px] text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
           <p id="eagleHdcpDisplay" class="text-3xl font-bold text-blue-700 my-1">-</p>
           <p class="text-[10px] text-gray-500">更新日: <span id="eagleUpdateDisplay"></span></p>
         </div>
-        <div class="bg-purple-50 rounded p-2">
-          <p class="text-xs text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
+        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100">
+          <p class="text-[11px] text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
           <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">-</p>
           <p class="text-[10px] text-gray-500">更新日: <span id="officialUpdateDisplay"></span></p>
         </div>
       </div>
     </div>
 
-    <div id="adminUploadSection" class="border-2 border-dashed border-green-300 rounded-lg p-4 mb-6 bg-green-50 text-center hidden">
-      <h3 class="font-bold text-green-800 mb-2">【管理者用】成績表アップロード</h3>
-      <input type="file" id="imageFile" accept="image/*" class="mb-3 text-sm text-gray-600">
-      <button onclick="onUpload()" id="uploadBtn" class="w-full bg-blue-600 text-white font-bold p-2 rounded hover:bg-blue-700">画像を解析して登録</button>
-      <p id="uploadStatus" class="mt-2 text-sm text-gray-700 font-semibold"></p>
+    <div id="adminUploadSection" class="border-2 border-dashed border-green-300 rounded-xl p-4 bg-green-50 text-center hidden">
+      <h3 class="font-bold text-green-800 mb-2 text-sm">【管理者用】成績表アップロード</h3>
+      <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-gray-600 w-full">
+      <button onclick="onUpload()" id="uploadBtn" class="w-full bg-blue-600 text-white text-sm font-bold p-2 rounded hover:bg-blue-700 transition-colors">画像を解析して登録</button>
+      <p id="uploadStatus" class="mt-2 text-xs text-gray-700 font-semibold"></p>
     </div>
 
-    <div class="mb-6">
-      <div class="flex justify-between items-end border-b pb-1 mb-3">
-        <h3 class="font-bold text-gray-800">📈 Myスコア・順位の推移</h3>
-        <div class="flex space-x-1 bg-gray-200 rounded-md p-1">
-          <button id="btnChart" onclick="toggleScoreView('chart')" class="text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
-          <button id="btnTable" onclick="toggleScoreView('table')" class="text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h3 class="font-bold text-gray-800">📈 スコア推移</h3>
+        <div class="flex space-x-1 bg-gray-100 rounded-md p-1 border border-gray-200">
+          <button id="btnChart" onclick="toggleScoreView('chart')" class="text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
+          <button id="btnTable" onclick="toggleScoreView('table')" class="text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
         </div>
       </div>
       
-      <div class="bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
-        <div id="scoreChartContainer">
-          <canvas id="myChart"></canvas>
-        </div>
-
-
-<div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-                <th class="p-2 font-normal">日付</th>
-                <th class="p-2 text-right font-normal">順位</th>
-                <th class="p-2 text-right font-normal">GROSS</th>
-                <th class="p-2 pr-6 text-right font-normal">NET</th> </tr>
-            </thead>
-
-            
-            <tbody id="myScoreTableBody">
-              <tr><td colspan="4" class="text-center p-4 text-gray-400">データ読み込み中...</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div id="scoreChartContainer" class="py-2">
+        <canvas id="myChart"></canvas>
       </div>
-    </div>
-
-<div>
-      <div class="flex justify-between items-end border-b pb-1 mb-3">
-        <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
-        <select id="dateSelect" onchange="onChangeDate()" class="text-sm border border-gray-300 rounded p-1 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
-        </select>
-      </div>
-      <div id="scoreContainer" class="space-y-2 max-h-60 overflow-y-auto text-sm">
-        <p class="text-gray-500">データを読み込んでいます...</p>
-      </div>
-    </div>
-
-    
-    <div class="mb-6">
-      <h3 class="font-bold text-gray-800 mb-3 border-b pb-1"> 通算平均NETランキング 🏆 </h3>
-      <div class="bg-white border rounded-lg p-3 max-h-60 overflow-y-auto">
+      
+      <div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
-            <tr class="bg-gray-100 border-b text-gray-600 font-bold">
-              <th class="p-2 w-16 text-center">順位</th>
-              <th class="p-2">名前</th>
-              <th class="p-2 text-right">平均NET</th>
-              <th class="p-2 text-right">参戦数</th>
+            <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+              <th class="p-2 font-normal">日付</th>
+              <th class="p-2 text-right font-normal">順位</th>
+              <th class="p-2 text-right font-normal">GROSS</th>
+              <th class="p-2 pr-4 text-right font-normal">NET</th>
             </tr>
           </thead>
-          <tbody id="rankingTableBody">
-            <tr>
-              <td colspan="4" class="text-center p-4 text-gray-400">データ読み込み中...</td>
-            </tr>
+          <tbody id="myScoreTableBody">
+            <tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データ読み込み中...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
+        <select id="dateSelect" onchange="renderScoresByDate()" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
+        </select>
+      </div>
+      <div class="max-h-60 overflow-y-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+              <th class="p-2 w-16 text-center font-normal">順位</th>
+              <th class="p-2 font-normal">名前</th>
+              <th class="p-2 text-right font-normal">GROSS</th>
+              <th class="p-2 pr-4 text-right font-normal">NET</th>
+            </tr>
+          </thead>
+          <tbody id="scoreContainer">
+            <tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データを読み込んでいます...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="flex flex-col border-b pb-2 mb-3 gap-2">
+        <div class="flex justify-between items-center">
+          <h3 id="rankingTitle" class="font-bold text-gray-800 text-sm">通算平均NETランキング</h3>
+          <select id="termSelect" onchange="renderRankingByTerm()" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
+          </select>
+        </div>
+      </div>
+      <div class="max-h-60 overflow-y-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+              <th class="p-2 w-16 text-center font-normal">順位</th>
+              <th class="p-2 font-normal">名前</th>
+              <th class="p-2 text-right font-normal">平均NET</th>
+              <th class="p-2 pr-4 text-right font-normal">参戦数</th>
+            </tr>
+          </thead>
+          <tbody id="rankingTableBody">
+            <tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データを読み込んでいます...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script>
-    // GASのAPI URL
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrRsjsyw9u4pSVXWHez1l6ONgSBiKwZx-C9caQQGDiMymBZ1TbX9jFdYXqnI_eiiYcqA/exec";
 
+    let currentUser = null;
+    let allScoreHistory = []; 
+    let rankingByTerm = {}; 
+
+    // --- 汎用API通信 ---
     async function callGasApi(action, data = {}) {
-      const payload = { action: action, ...data };
       const response = await fetch(GAS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ action: action, ...data }),
         redirect: "follow" 
       });
       return await response.json();
     }
 
-    let currentUser = null;
-
-    // 1. ログイン処理
+    // --- 1. ログイン処理 ---
     function onLogin() {
       const id = document.getElementById('loginId').value;
       const pw = document.getElementById('loginPw').value;
-      
       document.getElementById('loginError').classList.add('hidden');
 
       callGasApi('checkLogin', { id: id, password: pw })
-        .then(function(result) {
-          if (result.success) {
-            currentUser = result.name;
+        .then(res => {
+          if (res.success) {
+            currentUser = res.name;
             document.getElementById('userName').innerText = currentUser;
-            document.getElementById('nextCompeDateDisplay').innerText = result.nextCompeDate;
-            document.getElementById('eagleHdcpDisplay').innerText = result.eagleHdcp !== "" ? result.eagleHdcp : "未設定";
-            document.getElementById('officialHdcpDisplay').innerText = result.officialHdcp !== "" ? result.officialHdcp : "未設定";
-            document.getElementById('eagleUpdateDisplay').innerText = result.eagleUpdateDate;
-            document.getElementById('officialUpdateDisplay').innerText = result.officialUpdateDate;            
+            document.getElementById('nextCompeDateDisplay').innerText = res.nextCompeDate;
+            document.getElementById('eagleHdcpDisplay').innerText = res.eagleHdcp || "未設定";
+            document.getElementById('officialHdcpDisplay').innerText = res.officialHdcp || "未設定";
+            document.getElementById('eagleUpdateDisplay').innerText = res.eagleUpdateDate;
+            document.getElementById('officialUpdateDisplay').innerText = res.officialUpdateDate;            
+            
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
-       
-            if (result.role === '管理者') {
-              document.getElementById('adminUploadSection').classList.remove('hidden');
-            } else {
-              document.getElementById('adminUploadSection').classList.add('hidden');
-            }
+            if (res.role === '管理者') document.getElementById('adminUploadSection').classList.remove('hidden');
 
-            loadScores();
+            // ログイン成功時に全データを一括取得して各UIを描画
+            fetchAllDataAndRender();
             loadMyChart(currentUser);
-            loadRanking();
           } else {
             document.getElementById('loginError').classList.remove('hidden');
           }
         })
-        .catch(function(err) {
-          console.error("通信エラー:", err);
+        .catch(err => {
           document.getElementById('loginError').innerText = "通信エラーが発生しました";
           document.getElementById('loginError').classList.remove('hidden');
         });
     }
 
-    // 2. 画像アップロード・OCR処理
-    function onUpload() {
-      const fileInput = document.getElementById('imageFile');
-      if (fileInput.files.length === 0) {
-        alert('画像ファイルを選択してください。');
-        return;
-      }
+    // --- 2. データ一括取得と画面描画 ---
+    function fetchAllDataAndRender() {
+      callGasApi('getScoreHistory').then(history => {
+        if (!history || history.length === 0) return;
+        allScoreHistory = history;
 
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-      const statusText = document.getElementById('uploadStatus');
-      const btn = document.getElementById('uploadBtn');
-
-      statusText.innerText = "Geminiが画像を解析中...（数十秒かかる場合があります）";
-      btn.disabled = true;
-
-      reader.onloadend = function() {
-        const base64Data = reader.result.split(',')[1];
-        const mimeType = file.type;
-
-        callGasApi('uploadAndProcessImage', { base64Data: base64Data, mimeType: mimeType })
-          .then(function(res) {
-            btn.disabled = false;
-            if (res.success) {
-              statusText.innerText = "成功！ " + res.count + "件のデータを登録しました。";
-              loadScores(); 
-            } else {
-              statusText.innerText = "エラーが発生しました: " + res.error;
-            }
-          })
-          .catch(function(err) {
-            btn.disabled = false;
-            statusText.innerText = "通信エラーが発生しました。";
-            console.error("アップロードエラー:", err);
-          });
-      };
-      reader.readAsDataURL(file);
+        setupCompeResults(); // コンペ結果の設定
+        setupRanking();      // ランキングの設定
+      });
     }
 
-    // 3. コンペ結果・履歴表示
-    let allScoreHistory = []; 
-
-    function loadScores() {
-      const container = document.getElementById('scoreContainer');
+    // --- 3. コンペ結果 ---
+    function setupCompeResults() {
       const dateSelect = document.getElementById('dateSelect');
-      
-      callGasApi('getScoreHistory')
-        .then(function(history) {
-          if (!history || history.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 p-2">登録されたデータがありません。</p>';
-            dateSelect.classList.add('hidden');
-            return;
-          }
+      const dates = [...new Set(allScoreHistory.map(row => row['日付']))];
+      dates.sort((a, b) => new Date(b) - new Date(a)); // 新しい順
 
-          allScoreHistory = history; 
-          const dates = [...new Set(history.map(row => row['日付']))];
-          dates.sort((a, b) => new Date(b) - new Date(a));
-
-          dateSelect.innerHTML = '';
-          dates.forEach(date => {
-            const option = document.createElement('option');
-            option.value = date; 
-
-            const dateParts = date.split('/');
-            if (dateParts.length >= 2) {
-              const year = dateParts[0];
-              const month = parseInt(dateParts[1], 10); 
-              option.textContent = `${year}年${month}月`;
-            } else {
-              option.textContent = date;
-            }
-            dateSelect.appendChild(option);
-          });
-
-          dateSelect.classList.remove('hidden');
-          renderScoresByDate(dates[0]);
-        })
-        .catch(function(err) {
-          console.error("スコア取得エラー:", err);
-          container.innerHTML = '<p class="text-red-500 p-2">データの読み込みに失敗しました。</p>';
-        });
+      dateSelect.innerHTML = '';
+      dates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date; 
+        const parts = date.split('/');
+        option.textContent = parts.length >= 2 ? `${parts[0]}年${parseInt(parts[1], 10)}月` : date;
+        dateSelect.appendChild(option);
+      });
+      dateSelect.classList.remove('hidden');
+      renderScoresByDate(); // 最新日を描画
     }
 
-    function onChangeDate() {
-      const selectedDate = document.getElementById('dateSelect').value;
-      renderScoresByDate(selectedDate);
-    }
+    function renderScoresByDate() {
+      const targetDate = document.getElementById('dateSelect').value;
+      const filtered = allScoreHistory.filter(row => row['日付'] === targetDate);
+      filtered.sort((a, b) => Number(a['順位']) - Number(b['順位']));
 
-    function renderScoresByDate(targetDate) {
-      const container = document.getElementById('scoreContainer');
-      const filteredScores = allScoreHistory.filter(row => row['日付'] === targetDate);
-      filteredScores.sort((a, b) => Number(a['順位']) - Number(b['順位']));
-
-      let html = '<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-gray-100 border-b text-gray-600"><th class="p-2 w-16 text-center">順位</th><th class="p-2">名前</th><th class="p-2 text-right">GROSS</th><th class="p-2 text-right">NET</th></tr></thead><tbody>';
-
-      filteredScores.forEach(row => {
+      let html = '';
+      filtered.forEach(row => {
         let rankStyle = "text-gray-700";
         if (row['順位'] == 1) rankStyle = "text-yellow-600 font-bold";
-        if (row['順位'] == 2) rankStyle = "text-gray-500 font-bold";
-        if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
+        else if (row['順位'] == 2) rankStyle = "text-gray-500 font-bold";
+        else if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
 
         const isMe = (row['名前'] === currentUser);
-        const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
+        const rowClass = isMe ? "bg-blue-50" : "hover:bg-gray-50";
         const nameColor = isMe ? "text-blue-800" : "text-gray-800";
 
-        html += `<tr class="${rowClass}">
+        html += `<tr class="border-b ${rowClass}">
           <td class="p-2 font-bold text-center ${rankStyle}">${row['順位']} 位</td>
           <td class="p-2 font-bold ${nameColor}">${row['名前']}</td>
           <td class="p-2 text-right text-gray-600">${row['GROSS']}</td>
-          <td class="p-2 text-right text-green-600 font-bold">${row['NET']}</td>
+          <td class="p-2 pr-4 text-right text-green-600 font-bold">${row['NET']}</td>
         </tr>`;
       });
-      html += '</tbody></table>';
-      container.innerHTML = html;
+      document.getElementById('scoreContainer').innerHTML = html;
     }
 
-    // 4. スコア推移（グラフ・表切り替え）
-    let myChartInstance = null;
-
-    function loadMyChart(userName) {
-      callGasApi('getMyScoreHistory', { userName: userName })
-        .then(function(history) {
-          if (!history || history.length === 0) {
-            document.getElementById('myScoreTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">データがありません。</td></tr>';
-            return;
-          }
-
-          // === 直近1年分のデータに絞り込む ===
-          const today = new Date();
-          const oneYearAgo = new Date();
-          oneYearAgo.setFullYear(today.getFullYear() - 1);
-
-          const recentHistory = history.filter(row => {
-            const rowDate = new Date(row.date);
-            return rowDate >= oneYearAgo;
-          });
-
-// 日付を「26年6月」形式に変換する関数
-          const getMonthLabel = (dateStr) => {
-            const dateParts = dateStr.split('/');
-            if (dateParts.length >= 2) {
-              const year = dateParts[0].slice(-2); // "2026" から "26" を取得
-              const month = parseInt(dateParts[1], 10);
-              return `${year}年${month}月`;
-            }
-            return dateStr;
-          };
-
-          const ctx = document.getElementById('myChart').getContext('2d');
-          if (myChartInstance) {
-            myChartInstance.destroy();
-          }
-
-          if (recentHistory.length === 0) {
-            document.getElementById('myScoreTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">直近1年間の参加データがありません。</td></tr>';
-            return; 
-          }
-
-          // グラフ描画
-          const labels = recentHistory.map(row => getMonthLabel(row.date));
-          const grossData = recentHistory.map(row => row.gross);
-
-          myChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: 'GROSS',
-                data: grossData,
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointBackgroundColor: 'rgb(255, 99, 132)',
-                tension: 0.3
-              }]
-            },
-            options: {
-              responsive: true,
-              plugins: {
-                legend: { display: false },
-                tooltip: { mode: 'index', intersect: false }
-              },
-              scales: {
-                y: {
-                  type: 'linear',
-                  display: true,
-                  position: 'left',
-                  title: { display: false }, 
-                  reverse: true
-                }
-              }
-            }
-          });
-
-// 表描画
-          const tbody = document.getElementById('myScoreTableBody');
-          let html = '';
-          const reversedHistory = [...recentHistory].reverse();
-          
-          reversedHistory.forEach(row => {
-            const monthLabel = getMonthLabel(row.date);
-
-            // 1位〜3位の色とアイコンを設定
-            let rankStyle = "text-gray-500";
-            let rankText = `${row.rank}位`;
-            if (row.rank == 1) { rankStyle = "text-yellow-600 font-bold"; rankText = "🥇 1位"; }
-            else if (row.rank == 2) { rankStyle = "text-gray-500 font-bold"; rankText = "🥈 2位"; }
-            else if (row.rank == 3) { rankStyle = "text-amber-700 font-bold"; rankText = "🥉 3位"; }
-
-            // NETスコアの列にも pr-6 (右余白) を追加
-            html += `<tr class="border-b hover:bg-gray-50">
-              <td class="p-2 text-gray-600 font-bold">${monthLabel}</td>
-              <td class="p-2 text-right ${rankStyle}">${rankText}</td>
-              <td class="p-2 text-right text-gray-800 font-bold">${row.gross}</td>
-              <td class="p-2 pr-6 text-right text-green-600 font-bold">${row.net}</td>
-            </tr>`;
-          });
-          tbody.innerHTML = html;
-        })
-        .catch(function(err) {
-          console.error("データ取得エラー:", err);
-        });
-    }
-
-    // 表示切り替え用関数
-    function toggleScoreView(view) {
-      const btnChart = document.getElementById('btnChart');
-      const btnTable = document.getElementById('btnTable');
-      const chartContainer = document.getElementById('scoreChartContainer');
-      const tableContainer = document.getElementById('scoreTableContainer');
-
-      if (view === 'chart') {
-        chartContainer.classList.remove('hidden');
-        tableContainer.classList.add('hidden');
-        btnChart.className = "text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all";
-        btnTable.className = "text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
-      } else {
-        chartContainer.classList.add('hidden');
-        tableContainer.classList.remove('hidden');
-        btnTable.className = "text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all";
-        btnChart.className = "text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
-      }
-    }
-
-    // 5. ランキング描画処理
-    function loadRanking() {
-      const tbody = document.getElementById('rankingTableBody');
+    // --- 4. 期ごとのランキング集計 ---
+    function setupRanking() {
+      rankingByTerm = {};
       
-      callGasApi('getNetRanking')
-        .then(function(rankingList) {
-          if (!rankingList || rankingList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">データがありません。</td></tr>';
-            return;
+      // 履歴データを期ごとに分類
+      allScoreHistory.forEach(row => {
+        const parts = row['日付'].split('/');
+        if(parts.length < 2) return;
+        
+        const year = parts[0].slice(-2); // "26"
+        const month = parseInt(parts[1], 10);
+        const term = month >= 7 ? "下期" : "上期";
+        const termKey = `${year}年${term}`; // "26年上期"
+
+        if (!rankingByTerm[termKey]) rankingByTerm[termKey] = {};
+        
+        const name = row['名前'];
+        const net = Number(row['NET']);
+        if (name && !isNaN(net)) {
+          if (!rankingByTerm[termKey][name]) rankingByTerm[termKey][name] = [];
+          rankingByTerm[termKey][name].push(net);
+        }
+      });
+
+      // 期のリストを作成して新しい順にソート
+      const terms = Object.keys(rankingByTerm).sort((a, b) => {
+        const yearA = parseInt(a.slice(0, 2), 10);
+        const isLowerA = a.includes("下期") ? 1 : 0;
+        const yearB = parseInt(b.slice(0, 2), 10);
+        const isLowerB = b.includes("下期") ? 1 : 0;
+        if (yearA !== yearB) return yearB - yearA;
+        return isLowerB - isLowerA;
+      });
+
+      const termSelect = document.getElementById('termSelect');
+      termSelect.innerHTML = '';
+      terms.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t;
+        option.textContent = t;
+        termSelect.appendChild(option);
+      });
+      termSelect.classList.remove('hidden');
+      renderRankingByTerm(); // 最新の期を描画
+    }
+
+    function renderRankingByTerm() {
+      const targetTerm = document.getElementById('termSelect').value;
+      document.getElementById('rankingTitle').innerText = `${targetTerm} 通算平均NETランキング`;
+
+      const scoresObj = rankingByTerm[targetTerm];
+      const rankingList = [];
+      for (const name in scoresObj) {
+        const scores = scoresObj[name];
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        rankingList.push({ name: name, avg: Math.round(avg * 10) / 10, count: scores.length });
+      }
+      rankingList.sort((a, b) => a.avg - b.avg);
+
+      let html = '';
+      rankingList.forEach((member, index) => {
+        const rank = index + 1;
+        let rankStyle = "text-gray-700";
+        let rankBadge = `${rank}位`;
+        if (rank === 1) { rankStyle = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
+        else if (rank === 2) { rankStyle = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
+        else if (rank === 3) { rankStyle = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
+
+        const isMe = (member.name === currentUser);
+        const rowClass = isMe ? "bg-blue-50" : "hover:bg-gray-50";
+        const nameColor = isMe ? "text-blue-800" : "text-gray-800";
+
+        html += `<tr class="border-b ${rowClass}">
+          <td class="p-2 text-center ${rankStyle}">${rankBadge}</td>
+          <td class="p-2 font-bold ${nameColor}">${member.name}</td>
+          <td class="p-2 text-right font-semibold text-green-700">${member.avg}</td>
+          <td class="p-2 pr-4 text-right text-gray-500">${member.count} 回</td>
+        </tr>`;
+      });
+      document.getElementById('rankingTableBody').innerHTML = html;
+    }
+
+    // --- 5. スコア推移（マイページ用） ---
+    let myChartInstance = null;
+    function loadMyChart(userName) {
+      callGasApi('getMyScoreHistory', { userName: userName }).then(history => {
+        if (!history || history.length === 0) return;
+
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const recentHistory = history.filter(row => new Date(row.date) >= oneYearAgo);
+        if (recentHistory.length === 0) return; 
+
+        // グラフ描画
+        const getMonthLabel = (dateStr) => {
+          const parts = dateStr.split('/');
+          return parts.length >= 2 ? `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月` : dateStr;
+        };
+        const labels = recentHistory.map(row => getMonthLabel(row.date));
+        const grossData = recentHistory.map(row => row.gross);
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChartInstance) myChartInstance.destroy();
+        myChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'GROSS', data: grossData,
+              borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.1)',
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(255, 99, 132)', tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: { y: { display: true, position: 'left', title: { display: false }, reverse: true } }
           }
-
-          let html = '';
-          rankingList.forEach((member, index) => {
-            const rank = index + 1;
-            let rankClass = "text-gray-700";
-            let rankBadge = `${rank}位`;
-
-            if (rank === 1) { rankClass = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
-            if (rank === 2) { rankClass = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
-            if (rank === 3) { rankClass = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
-
-            const isMe = (member.name === currentUser);
-            const rowClass = isMe ? "border-b-2 border-blue-200 bg-blue-50" : "border-b hover:bg-gray-50";
-            const nameColor = isMe ? "text-blue-800" : "text-gray-800";
-
-            html += `
-              <tr class="${rowClass}">
-                <td class="p-2 text-center ${rankClass}">${rankBadge}</td>
-                <td class="p-2 font-bold ${nameColor}">${member.name}</td>
-                <td class="p-2 text-right font-semibold text-green-700">${member.averageNet}</td>
-                <td class="p-2 text-right text-gray-500">${member.playCount} 回</td>
-              </tr>
-            `;
-          });
-
-          tbody.innerHTML = html;
-
-
-          
-        })
-        .catch(function(err) {
-          console.error("ランキング取得エラー:", err);
-          tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-red-500">データの読み込みに失敗しました。</td></tr>';
         });
+
+        // 表描画
+        let html = '';
+        [...recentHistory].reverse().forEach(row => {
+          let rankStyle = "text-gray-500";
+          let rankText = `${row.rank}位`;
+          if (row.rank == 1) { rankStyle = "text-yellow-600 font-bold"; rankText = "🥇 1位"; }
+          else if (row.rank == 2) { rankStyle = "text-gray-500 font-bold"; rankText = "🥈 2位"; }
+          else if (row.rank == 3) { rankStyle = "text-amber-700 font-bold"; rankText = "🥉 3位"; }
+
+          html += `<tr class="border-b hover:bg-gray-50">
+            <td class="p-2 text-gray-600 text-[11px] font-bold">${getMonthLabel(row.date)}</td>
+            <td class="p-2 text-right ${rankStyle}">${rankText}</td>
+            <td class="p-2 text-right text-gray-800 font-bold">${row.gross}</td>
+            <td class="p-2 pr-4 text-right text-green-600 font-bold">${row.net}</td>
+          </tr>`;
+        });
+        document.getElementById('myScoreTableBody').innerHTML = html;
+      });
+    }
+
+    function toggleScoreView(view) {
+      const isChart = (view === 'chart');
+      document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
+      document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
+      document.getElementById('btnChart').className = isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
+      document.getElementById('btnTable').className = !isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
+    }
+
+    // --- 6. OCRアップロード処理 ---
+    function onUpload() {
+      const fileInput = document.getElementById('imageFile');
+      if (fileInput.files.length === 0) return alert('画像ファイルを選択してください。');
+
+      const statusText = document.getElementById('uploadStatus');
+      const btn = document.getElementById('uploadBtn');
+      statusText.innerText = "Geminiが画像を解析中...（数十秒かかる場合があります）";
+      btn.disabled = true;
+
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        callGasApi('uploadAndProcessImage', { base64Data: reader.result.split(',')[1], mimeType: fileInput.files[0].type })
+          .then(res => {
+            btn.disabled = false;
+            if (res.success) {
+              statusText.innerText = `成功！ ${res.count}件のデータを登録しました。`;
+              fetchAllDataAndRender(); // 成功したら全データを再取得して画面更新
+            } else {
+              statusText.innerText = "エラー: " + res.error;
+            }
+          })
+          .catch(err => {
+            btn.disabled = false;
+            statusText.innerText = "通信エラーが発生しました。";
+          });
+      };
+      reader.readAsDataURL(fileInput.files[0]);
     }
   </script>
 </body>
