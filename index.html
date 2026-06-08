@@ -145,9 +145,12 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyNNBX5vQ4XeKA39rU1cPrHsfOlHNsXbNQX1y1wSJC1ixWjZZyqjBgDNEtdXdr3K4aOaw/exec";
+    // 指定された新しいGASのURLを設定済
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzyLGmpSYLI2Zsh-rRhtqydqumYFVoT4ueJnpCI0OV0IDAlzYhYVd-kJ1Ic7NlAHSWoGA/exec";
 
     let currentUser = null;
+    let currentId = null;   // 安全対策：認証情報の保持用
+    let currentPw = null;   // 安全対策：認証情報の保持用
     let allScoreHistory = []; 
     let rankingByTerm = {}; 
 
@@ -172,6 +175,9 @@
         .then(res => {
           if (res.success) {
             currentUser = res.name;
+            currentId = id; // 安全対策：セッション代わりの保持
+            currentPw = pw; // 安全対策：セッション代わりの保持
+            
             document.getElementById('userName').innerText = currentUser;
             document.getElementById('nextCompeDateDisplay').innerText = res.nextCompeDate;
             document.getElementById('eagleHdcpDisplay').innerText = res.eagleHdcp || "未設定";
@@ -183,7 +189,6 @@
             document.getElementById('mainSection').classList.remove('hidden');
             if (res.role === '管理者') document.getElementById('adminUploadSection').classList.remove('hidden');
 
-            // ログイン成功時に全データを一括取得して各UIを描画
             fetchAllDataAndRender();
             loadMyChart(currentUser);
           } else {
@@ -202,8 +207,8 @@
         if (!history || history.length === 0) return;
         allScoreHistory = history;
 
-        setupCompeResults(); // コンペ結果の設定
-        setupRanking();      // ランキングの設定
+        setupCompeResults(); 
+        setupRanking();      
       });
     }
 
@@ -211,18 +216,18 @@
     function setupCompeResults() {
       const dateSelect = document.getElementById('dateSelect');
       const dates = [...new Set(allScoreHistory.map(row => row['日付']))];
-      dates.sort((a, b) => new Date(b) - new Date(a)); // 新しい順
+      dates.sort((a, b) => new Date(b) - new Date(a)); 
 
       dateSelect.innerHTML = '';
       dates.forEach(date => {
         const option = document.createElement('option');
         option.value = date; 
         const parts = date.split('/');
-        option.textContent = parts.length >= 2 ? `${parts[0]}年${parseInt(parts[1], 10)}月` : date;
+        option.textContent = parts.length >= 2 ? `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月` : date;
         dateSelect.appendChild(option);
       });
       dateSelect.classList.remove('hidden');
-      renderScoresByDate(); // 最新日を描画
+      renderScoresByDate(); 
     }
 
     function renderScoresByDate() {
@@ -255,15 +260,14 @@
     function setupRanking() {
       rankingByTerm = {};
       
-      // 履歴データを期ごとに分類
       allScoreHistory.forEach(row => {
         const parts = row['日付'].split('/');
         if(parts.length < 2) return;
         
-        const year = parts[0].slice(-2); // "26"
+        const year = parts[0].slice(-2); 
         const month = parseInt(parts[1], 10);
         const term = month >= 7 ? "下期" : "上期";
-        const termKey = `${year}年${term}`; // "26年上期"
+        const termKey = `${year}年${term}`; 
 
         if (!rankingByTerm[termKey]) rankingByTerm[termKey] = {};
         
@@ -275,7 +279,6 @@
         }
       });
 
-      // 期のリストを作成して新しい順にソート
       const terms = Object.keys(rankingByTerm).sort((a, b) => {
         const yearA = parseInt(a.slice(0, 2), 10);
         const isLowerA = a.includes("下期") ? 1 : 0;
@@ -294,7 +297,7 @@
         termSelect.appendChild(option);
       });
       termSelect.classList.remove('hidden');
-      renderRankingByTerm(); // 最新の期を描画
+      renderRankingByTerm(); 
     }
 
     function renderRankingByTerm() {
@@ -344,7 +347,6 @@
         const recentHistory = history.filter(row => new Date(row.date) >= oneYearAgo);
         if (recentHistory.length === 0) return; 
 
-        // グラフ描画
         const getMonthLabel = (dateStr) => {
           const parts = dateStr.split('/');
           return parts.length >= 2 ? `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月` : dateStr;
@@ -371,7 +373,6 @@
           }
         });
 
-        // 表描画
         let html = '';
         [...recentHistory].reverse().forEach(row => {
           let rankStyle = "text-gray-500";
@@ -399,7 +400,7 @@
       document.getElementById('btnTable').className = !isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
     }
 
-    // --- 6. OCRアップロード処理 ---
+    // --- 6. OCRアップロード処理（安全対策版） ---
     function onUpload() {
       const fileInput = document.getElementById('imageFile');
       if (fileInput.files.length === 0) return alert('画像ファイルを選択してください。');
@@ -411,12 +412,18 @@
 
       const reader = new FileReader();
       reader.onloadend = function() {
-        callGasApi('uploadAndProcessImage', { base64Data: reader.result.split(',')[1], mimeType: fileInput.files[0].type })
+        // ★重要：通信時に画像データだけでなく、保持している管理者のid、passwordもセットで送信する
+        callGasApi('uploadAndProcessImage', { 
+          base64Data: reader.result.split(',')[1], 
+          mimeType: fileInput.files[0].type,
+          id: currentId,
+          password: currentPw
+        })
           .then(res => {
             btn.disabled = false;
             if (res.success) {
               statusText.innerText = `成功！ ${res.count}件のデータを登録しました。`;
-              fetchAllDataAndRender(); // 成功したら全データを再取得して画面更新
+              fetchAllDataAndRender(); 
             } else {
               statusText.innerText = "エラー: " + res.error;
             }
