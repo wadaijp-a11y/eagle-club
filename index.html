@@ -41,22 +41,30 @@
       <button onclick="location.reload()" class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
     </div>
 
-    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">⛳ あなたの最新ハンディキャップ</h3>
-      <div class="grid grid-cols-2 gap-3 text-center">
-        <div class="bg-blue-50 rounded-lg p-2.5 border border-blue-100">
-          <p class="text-[11px] text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
-          <p id="eagleHdcpDisplay" class="text-3xl font-bold text-blue-700 my-1">-</p>
-          <p class="text-[10px] text-gray-500">更新日: <span id="eagleUpdateDisplay"></span></p>
+      <div class="grid grid-cols-2 gap-3 text-center items-stretch">
+        
+        <div class="bg-blue-50 rounded-lg p-2.5 border border-blue-100 flex flex-col justify-between">
+          <div>
+            <p class="text-[11px] text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
+            <p id="eagleHdcpDisplay" class="text-3xl font-bold text-blue-700 my-1">-</p>
+            <p class="text-[10px] text-gray-500 mb-2">更新日: <span id="eagleUpdateDisplay"></span></p>
+          </div>
+          <div class="mt-auto">
+            <p class="text-[9px] text-blue-600 font-semibold bg-blue-100/70 inline-block px-2 py-1 rounded-md mx-auto">※1月と7月にHDCPリセット</p>
+          </div>
         </div>
-        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100">
+
+        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-start">
           <p class="text-[11px] text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
           <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">-</p>
           <p class="text-[10px] text-gray-500">更新日: <span id="officialUpdateDisplay"></span></p>
         </div>
+
       </div>
     </div>
-
+    
     <div id="adminUploadSection" class="border-2 border-dashed border-green-300 rounded-xl p-4 bg-green-50 text-center hidden">
       <h3 class="font-bold text-green-800 mb-2 text-sm">【管理者用】成績表アップロード</h3>
       <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-gray-600 w-full">
@@ -145,7 +153,7 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwdTaZtiYl4pD16GM4GbxSMVDyRP-IVz7zp92lF37l5TNbHS4ZjKY4bz_fx2PNuX5ilMQ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyQlAgyDPy2NmBiV_r-z_W6J-6rb8jVivwbinvJzb2sKynccYo6ynK36nWMREp55P2pxg/exec";
 　　　　　　　　　　　
     let currentUser = null;
     let authToken = null;     // セッション用のチケット（パスワードはメモリ保持せず即時破棄）
