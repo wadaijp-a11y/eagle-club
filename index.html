@@ -145,21 +145,23 @@
   </div>
 
   <script>
-    // 指定された新しいGASのURLを設定済
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyR8aCOZw4UWRxAJ6uquFYygsklmtn3W-zRyqxGoIgO1nKQ9gU69z3OyswcYWGovcgvMg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzJZpShTcFP6ferYCnGjOEeTumo_mZohJzSebtjipbJ_q98ZLKs6zaRoV5Saxuyi-3Iyw/exec";
 
     let currentUser = null;
-    let currentId = null;   // 安全対策：認証情報の保持用
-    let currentPw = null;   // 安全対策：認証情報の保持用
+    let authToken = null;     // セッション用のチケット（パスワードはメモリ保持せず即時破棄）
     let allScoreHistory = []; 
     let rankingByTerm = {}; 
 
-    // --- 汎用API通信 ---
+    // --- 汎用API通信（全通信にトークンキーを自動混入） ---
     async function callGasApi(action, data = {}) {
+      const payload = { action: action, ...data };
+      if (authToken) {
+        payload.token = authToken;
+      }
       const response = await fetch(GAS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: action, ...data }),
+        body: JSON.stringify(payload),
         redirect: "follow" 
       });
       return await response.json();
@@ -175,8 +177,10 @@
         .then(res => {
           if (res.success) {
             currentUser = res.name;
-            currentId = id; // 安全対策：セッション代わりの保持
-            currentPw = pw; // 安全対策：セッション代わりの保持
+            authToken = res.token; // チケットを保存
+            
+            // 重要：メモリ平文漏洩対策のためパスワード入力欄を完全にクリア
+            document.getElementById('loginPw').value = ''; 
             
             document.getElementById('userName').innerText = currentUser;
             document.getElementById('nextCompeDateDisplay').innerText = res.nextCompeDate;
@@ -212,7 +216,7 @@
       });
     }
 
-    // --- 3. コンペ結果 ---
+    // --- 3. コンペ結果処理 ---
     function setupCompeResults() {
       const dateSelect = document.getElementById('dateSelect');
       const dates = [...new Set(allScoreHistory.map(row => row['日付']))];
@@ -223,7 +227,7 @@
         const option = document.createElement('option');
         option.value = date; 
         const parts = date.split('/');
-        option.textContent = parts.length >= 2 ? `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月` : date;
+        option.textContent = parts.length >= 2 ? `${parts[0]}年${parseInt(parts[1], 10)}月` : date;
         dateSelect.appendChild(option);
       });
       dateSelect.classList.remove('hidden');
@@ -243,7 +247,7 @@
         else if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
 
         const isMe = (row['名前'] === currentUser);
-        const rowClass = isMe ? "bg-blue-50" : "hover:bg-gray-50";
+        const rowClass = isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50";
         const nameColor = isMe ? "text-blue-800" : "text-gray-800";
 
         html += `<tr class="border-b ${rowClass}">
@@ -256,7 +260,7 @@
       document.getElementById('scoreContainer').innerHTML = html;
     }
 
-    // --- 4. 期ごとのランキング集計 ---
+    // --- 4. 期ごとのランキング集計処理 ---
     function setupRanking() {
       rankingByTerm = {};
       
@@ -323,7 +327,7 @@
         else if (rank === 3) { rankStyle = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
 
         const isMe = (member.name === currentUser);
-        const rowClass = isMe ? "bg-blue-50" : "hover:bg-gray-50";
+        const rowClass = isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50";
         const nameColor = isMe ? "text-blue-800" : "text-gray-800";
 
         html += `<tr class="border-b ${rowClass}">
@@ -336,7 +340,7 @@
       document.getElementById('rankingTableBody').innerHTML = html;
     }
 
-    // --- 5. スコア推移（マイページ用） ---
+    // --- 5. マイページスコア推移（グラフ・表） ---
     let myChartInstance = null;
     function loadMyChart(userName) {
       callGasApi('getMyScoreHistory', { userName: userName }).then(history => {
@@ -400,7 +404,7 @@
       document.getElementById('btnTable').className = !isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
     }
 
-    // --- 6. OCRアップロード処理（安全対策版） ---
+    // --- 6. OCRアップロード処理 ---
     function onUpload() {
       const fileInput = document.getElementById('imageFile');
       if (fileInput.files.length === 0) return alert('画像ファイルを選択してください。');
@@ -412,12 +416,9 @@
 
       const reader = new FileReader();
       reader.onloadend = function() {
-        // ★重要：通信時に画像データだけでなく、保持している管理者のid、passwordもセットで送信する
         callGasApi('uploadAndProcessImage', { 
           base64Data: reader.result.split(',')[1], 
-          mimeType: fileInput.files[0].type,
-          id: currentId,
-          password: currentPw
+          mimeType: fileInput.files[0].type
         })
           .then(res => {
             btn.disabled = false;
