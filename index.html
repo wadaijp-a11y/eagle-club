@@ -41,7 +41,7 @@
       <button onclick="location.reload()" class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
     </div>
 
-<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">⛳ あなたの最新ハンディキャップ</h3>
       <div class="grid grid-cols-2 gap-3 text-center items-stretch">
         
@@ -56,12 +56,36 @@
           </div>
         </div>
 
-        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-start">
-          <p class="text-[11px] text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
-          <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">-</p>
-          <p class="text-[10px] text-gray-500">更新日: <span id="officialUpdateDisplay"></span></p>
+        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-between">
+          <div>
+            <p class="text-[11px] text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
+            <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">-</p>
+            <p class="text-[10px] text-gray-500 mb-2">更新日: <span id="officialUpdateDisplay"></span></p>
+          </div>
+          <div class="mt-auto">
+            <button onclick="toggleOfficialHdcpHistory()" class="text-[10px] text-purple-700 font-bold bg-purple-100 hover:bg-purple-200 transition-colors px-2 py-1 rounded-md w-full text-center block">📊 1年の推移を見る</button>
+          </div>
         </div>
 
+      </div>
+
+      <div id="officialHdcpHistorySection" class="hidden mt-4 pt-4 border-t border-dashed border-gray-200 space-y-4">
+        <div class="py-1">
+          <canvas id="officialHdcpChart"></canvas>
+        </div>
+        <div class="max-h-40 overflow-y-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-gray-50 border-b text-gray-500">
+                <th class="p-2 font-normal">年月</th>
+                <th class="p-2 text-right pr-4 font-normal">倶楽部公式HDCP</th>
+              </tr>
+            </thead>
+            <tbody id="officialHdcpTableBody">
+              <tr><td colspan="2" class="text-center p-2 text-gray-400">履歴データを読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
     
@@ -153,19 +177,31 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxrSye4a3FlKW7JponHOvH9E_Ytq_L9KHN87qHrKDLe5yPto7OVr6IoGe4rUOY7Afqtjg/exec";
-　　　　　　　　　　　
+    // 最新のセキュア版GASデプロイURLに統一済
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwcXnkkdtvwJYxK_6YYuegzZMw_pfKDFHQ7gpr5Ze24kkU6WaeEbur9xFA5COC5-jqtOw/exec";
+                      
     let currentUser = null;
-    let authToken = null;     // セッション用のチケット（パスワードはメモリ保持せず即時破棄）
+    let authToken = null;     
     let allScoreHistory = []; 
     let rankingByTerm = {}; 
+    let isOfficialHistoryLoaded = false; 
+    let officialChartInstance = null;    
+
+    // 日付を「26年6月」形式に美しく変換
+    function formatYearMonth(dateStr) {
+      const parts = dateStr.split('/');
+      if (parts.length >= 2) {
+        const yy = parts[0].slice(-2);
+        const mm = parseInt(parts[1], 10);
+        return `${yy}年${mm}月`;
+      }
+      return dateStr;
+    }
 
     // --- 汎用API通信（全通信にトークンキーを自動混入） ---
     async function callGasApi(action, data = {}) {
       const payload = { action: action, ...data };
-      if (authToken) {
-        payload.token = authToken;
-      }
+      if (authToken) { payload.token = authToken; }
       const response = await fetch(GAS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
@@ -185,9 +221,10 @@
         .then(res => {
           if (res.success) {
             currentUser = res.name;
-            authToken = res.token; // チケットを保存
+            authToken = res.token; 
+            isOfficialHistoryLoaded = false; 
+            document.getElementById('officialHdcpHistorySection').classList.add('hidden'); 
             
-            // 重要：メモリ平文漏洩対策のためパスワード入力欄を完全にクリア
             document.getElementById('loginPw').value = ''; 
             
             document.getElementById('userName').innerText = currentUser;
@@ -213,18 +250,74 @@
         });
     }
 
-    // --- 2. データ一括取得と画面描画 ---
+    // --- 2. 倶楽部公式ハンディ履歴（アコーディオン表示 ＆ グラフ化） ---
+    function toggleOfficialHdcpHistory() {
+      const section = document.getElementById('officialHdcpHistorySection');
+      const isHidden = section.classList.contains('hidden');
+      section.classList.toggle('hidden');
+      
+      if (isHidden && !isOfficialHistoryLoaded) {
+        loadOfficialHdcpHistory();
+      }
+    }
+
+    function loadOfficialHdcpHistory() {
+      callGasApi('getOfficialHdcpHistory').then(history => {
+        isOfficialHistoryLoaded = true;
+        if (!history || history.length === 0) {
+          document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-400 text-xs">直近1年の履歴データがありません</td></tr>`;
+          return;
+        }
+
+        const validHistory = history.filter(row => row.hdcp !== '不明' && !isNaN(Number(row.hdcp)));
+        const labels = validHistory.map(row => formatYearMonth(row.date));
+        const hdcpData = validHistory.map(row => Number(row.hdcp));
+
+        const ctx = document.getElementById('officialHdcpChart').getContext('2d');
+        if (officialChartInstance) officialChartInstance.destroy();
+        
+        if (hdcpData.length > 0) {
+          officialChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: '公式HDCP', data: hdcpData,
+                borderColor: 'rgb(147, 51, 234)', backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147, 51, 234)', tension: 0.3
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+              scales: { y: { display: true, reverse: true } } // 上にいくほど上達を表現するリバース仕様
+            }
+          });
+        }
+
+        let html = '';
+        [...history].reverse().forEach(row => {
+          const displayHdcp = row.hdcp === '不明' ? '<span class="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">不明</span>' : row.hdcp;
+          html += `<tr class="border-b hover:bg-gray-50 text-xs">
+            <td class="p-2 text-gray-600 font-medium">${formatYearMonth(row.date)}</td>
+            <td class="p-2 text-right pr-4 font-bold text-purple-700">${displayHdcp}</td>
+          </tr>`;
+        });
+        document.getElementById('officialHdcpTableBody').innerHTML = html;
+      });
+    }
+
+    // --- 3. データ一括取得と画面描画 ---
     function fetchAllDataAndRender() {
       callGasApi('getScoreHistory').then(history => {
         if (!history || history.length === 0) return;
         allScoreHistory = history;
-
         setupCompeResults(); 
         setupRanking();      
       });
     }
 
-    // --- 3. コンペ結果処理 ---
+    // --- 4. コンペ結果処理 ---
     function setupCompeResults() {
       const dateSelect = document.getElementById('dateSelect');
       const dates = [...new Set(allScoreHistory.map(row => row['日付']))];
@@ -268,10 +361,9 @@
       document.getElementById('scoreContainer').innerHTML = html;
     }
 
-    // --- 4. 期ごとのランキング集計処理 ---
+    // --- 5. 期ごとのランキング集計処理 ---
     function setupRanking() {
       rankingByTerm = {};
-      
       allScoreHistory.forEach(row => {
         const parts = row['日付'].split('/');
         if(parts.length < 2) return;
@@ -282,7 +374,6 @@
         const termKey = `${year}年${term}`; 
 
         if (!rankingByTerm[termKey]) rankingByTerm[termKey] = {};
-        
         const name = row['名前'];
         const net = Number(row['NET']);
         if (name && !isNaN(net)) {
@@ -304,8 +395,7 @@
       termSelect.innerHTML = '';
       terms.forEach(t => {
         const option = document.createElement('option');
-        option.value = t;
-        option.textContent = t;
+        option.value = t; option.textContent = t;
         termSelect.appendChild(option);
       });
       termSelect.classList.remove('hidden');
@@ -348,10 +438,11 @@
       document.getElementById('rankingTableBody').innerHTML = html;
     }
 
-    // --- 5. マイページスコア推移（グラフ・表） ---
+    // --- 6. マイページスコア推移（GROSSグラフ、なりすまし安全化に同期） ---
     let myChartInstance = null;
-    function loadMyChart(userName) {
-      callGasApi('getMyScoreHistory', { userName: userName }).then(history => {
+    function loadMyChart() {
+      // 安全対策：フロントから名前を送るのをやめ、GAS側のセッション名義で呼び出し
+      callGasApi('getMyScoreHistory').then(history => {
         if (!history || history.length === 0) return;
 
         const oneYearAgo = new Date();
@@ -381,7 +472,7 @@
           options: {
             responsive: true,
             plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-            scales: { y: { display: true, position: 'left', title: { display: false }, reverse: true } }
+            scales: { y: { display: true, reverse: true } }
           }
         });
 
@@ -412,7 +503,7 @@
       document.getElementById('btnTable').className = !isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
     }
 
-    // --- 6. OCRアップロード処理 ---
+    // --- 7. OCR成績表アップロード処理 ---
     function onUpload() {
       const fileInput = document.getElementById('imageFile');
       if (fileInput.files.length === 0) return alert('画像ファイルを選択してください。');
