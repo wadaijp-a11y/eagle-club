@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>イーグル会</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* 画面読み込み時の最低限のスタイル崩れ防止（強すぎる非表示設定を削除） */
-    body { background-color: #f3f4f6; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; padding: 1rem; }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
 
@@ -24,7 +21,7 @@
         <input type="password" id="loginPw" autocomplete="current-password" class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
       </div>
     </div>
-    <button id="loginBtn" onclick="onLogin()" onkeydown="handleEnterKey(event, onLogin)" aria-label="ログインする" class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm">ログイン</button>
+    <button id="loginBtn" onclick="onLogin()" aria-label="ログインする" class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm">ログイン</button>
     <p id="loginError" class="text-red-500 mt-4 text-center text-sm font-bold hidden"></p>
   </div>
 
@@ -36,13 +33,15 @@
       </div>
       <div class="p-4 bg-green-50 text-center space-y-2.5">
         <p id="nextCompeDateDisplay" class="text-xl font-bold text-green-800 leading-relaxed break-keep">データ読み込み中...</p>
+        
         <div id="nextClubCompeBadge" class="hidden">
           <span class="inline-block bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm animate-pulse">
             🏆 同時開催: <span id="nextClubCompeName"></span>
           </span>
         </div>
+
         <div id="scheduleToggleBtnContainer" class="hidden pt-2 border-t border-green-200/60 mt-2">
-          <button onclick="toggleFutureSchedules()" onkeydown="handleEnterKey(event, toggleFutureSchedules)" aria-label="今後のスケジュールを表示する" class="text-[10px] text-green-700 font-bold bg-green-100 hover:bg-green-200 transition-colors px-3 py-1 rounded-full mx-auto inline-flex items-center gap-1 shadow-sm">
+          <button onclick="toggleFutureSchedules()" aria-label="今後のスケジュールを表示" class="text-[10px] text-green-700 font-bold bg-green-100 hover:bg-green-200 transition-colors px-3 py-1 rounded-full mx-auto inline-flex items-center gap-1 shadow-sm">
             <span>📅 今後のスケジュール</span> (<span id="futureScheduleCount">0</span>件)
           </button>
         </div>
@@ -54,12 +53,13 @@
 
     <div class="flex justify-between items-end px-1">
       <h2 class="text-xl font-bold text-green-700">こんにちは、<span id="userName"></span> さん</h2>
-      <button onclick="onLogout()" onkeydown="handleEnterKey(event, onLogout)" aria-label="ログアウトする" class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
+      <button onclick="location.reload()" aria-label="ログアウトする" class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
     </div>
 
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">⛳ あなたの最新ハンディキャップ</h3>
       <div class="grid grid-cols-2 gap-3 text-center items-stretch">
+        
         <div class="bg-blue-50 rounded-lg p-2.5 border border-blue-100 flex flex-col justify-between">
           <div>
             <p class="text-[11px] text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
@@ -70,17 +70,28 @@
             <p class="text-[9px] text-blue-600 font-semibold bg-blue-100/70 inline-block px-2 py-1 rounded-md mx-auto">※1月と7月にHDCPリセット</p>
           </div>
         </div>
-        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-between">
+
+        <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-between relative">
+          <button id="genderToggleBtn" onclick="toggleGender()" onkeydown="handleEnterKey(event, toggleGender)" aria-label="性別を切り替える" class="absolute top-2 right-2 text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded shadow-sm font-bold transition-colors hidden cursor-pointer">
+            ♂ 男子
+          </button>
+
           <div>
             <p class="text-[11px] text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
             <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">-</p>
-            <p class="text-[10px] text-gray-500 mb-2">更新日: <span id="officialUpdateDisplay"></span></p>
+            <p class="text-[10px] text-gray-500 mb-1">更新日: <span id="officialUpdateDisplay"></span></p>
           </div>
+
+          <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 mb-3 justify-center min-h-[22px]">
+            </div>
+
           <div class="mt-auto">
-            <button onclick="toggleOfficialHdcpHistory()" onkeydown="handleEnterKey(event, toggleOfficialHdcpHistory)" aria-label="公式ハンディの推移を表示する" class="text-[10px] text-purple-700 font-bold bg-purple-100 hover:bg-purple-200 transition-colors px-2 py-1 rounded-md w-full text-center block">📊 1年の推移を見る</button>
+            <button onclick="toggleOfficialHdcpHistory()" aria-label="推移を表示" class="text-[10px] text-purple-700 font-bold bg-purple-100 hover:bg-purple-200 transition-colors px-2 py-1 rounded-md w-full text-center block">📊 1年の推移を見る</button>
           </div>
         </div>
+
       </div>
+
       <div id="officialHdcpHistorySection" class="hidden mt-4 pt-4 border-t border-dashed border-gray-200 space-y-4">
         <div class="py-1"><canvas id="officialHdcpChart"></canvas></div>
         <div class="max-h-40 overflow-y-auto">
@@ -91,7 +102,9 @@
                 <th scope="col" class="p-2 text-right pr-4 font-normal">公式HDCP</th>
               </tr>
             </thead>
-            <tbody id="officialHdcpTableBody"></tbody>
+            <tbody id="officialHdcpTableBody">
+              <tr><td colspan="2" class="text-center p-2 text-gray-400">履歴データを読み込み中...</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -124,8 +137,8 @@
       <div class="flex justify-between items-center border-b pb-2 mb-3">
         <h3 class="font-bold text-gray-800">📈 スコア推移</h3>
         <div class="flex space-x-1 bg-gray-100 rounded-md p-1 border border-gray-200">
-          <button id="btnChart" onclick="toggleScoreView('chart')" aria-label="グラフ表示に切り替え" class="text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
-          <button id="btnTable" onclick="toggleScoreView('table')" aria-label="表形式に切り替え" class="text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
+          <button id="btnChart" onclick="toggleScoreView('chart')" aria-label="グラフ表示" class="text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
+          <button id="btnTable" onclick="toggleScoreView('table')" aria-label="表表示" class="text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
         </div>
       </div>
       <div id="scoreChartContainer" class="py-2"><canvas id="myChart"></canvas></div>
@@ -147,7 +160,7 @@
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div class="flex justify-between items-center border-b pb-2 mb-3">
         <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
-        <select id="dateSelect" onchange="renderScoresByDate()" aria-label="開催日を選択" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden"></select>
+        <select id="dateSelect" onchange="renderScoresByDate()" aria-label="開催日選択" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden"></select>
       </div>
       <div class="max-h-60 overflow-y-auto">
         <table class="w-full text-left border-collapse text-sm">
@@ -168,7 +181,7 @@
       <div class="flex flex-col border-b pb-2 mb-3 gap-2">
         <div class="flex justify-between items-center">
           <h3 id="rankingTitle" class="font-bold text-gray-800 text-sm">通算平均NETランキング</h3>
-          <select id="termSelect" onchange="renderRankingByTerm()" aria-label="集計期間を選択" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden"></select>
+          <select id="termSelect" onchange="renderRankingByTerm()" aria-label="集計期間選択" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden"></select>
         </div>
       </div>
       <div class="max-h-60 overflow-y-auto">
@@ -189,357 +202,536 @@
   </div>
 
   <script>
-    (function () {
-      'use strict';
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyFYQinKD-hq6rYrtbhWFJKeAkykZr0enBDm3m4rgeYGoQ5uuzxGsbkjR0VezsFDDLCKg/exec";
+    
+    // アプリケーションの状態管理
+    const State = {
+      currentUser: null,
+      authToken: null,     
+      allScoreHistory: [], 
+      rankingByTerm: {}, 
+      isOfficialHistoryLoaded: false, 
+      officialChartInstance: null,    
+      myChartInstance: null,
+      gender: 'male', // ティー計算用の初期性別（男性）
+    };
 
-      // ─────────────────────────────────────
-      // CONFIG
-      // ─────────────────────────────────────
-      const CONFIG = {
-        API_URL: "https://script.google.com/macros/s/AKfycbyFYQinKD-hq6rYrtbhWFJKeAkykZr0enBDm3m4rgeYGoQ5uuzxGsbkjR0VezsFDDLCKg/exec",
-        CHART_COLOR_GROSS: 'rgb(255, 99, 132)',
-        CHART_COLOR_HDCP:  'rgb(147, 51, 234)',
-      };
+    // 日付フォーマット
+    function formatYearMonth(dateStr) {
+      if (!dateStr) return "";
+      const parts = dateStr.split('/');
+      if (parts.length >= 2) {
+        return `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月`;
+      }
+      return dateStr;
+    }
 
-      // ─────────────────────────────────────
-      // STATE
-      // ─────────────────────────────────────
-      const State = {
-        currentUser: null,
-        authToken: null,
-        allScoreHistory: [],
-        rankingByTerm: {},
-        rankingCache: {},
-        isOfficialHistoryLoaded: false,
-        officialChartInstance: null,
-        myChartInstance: null,
-      };
+    // 汎用API通信
+    async function callGasApi(action, data = {}) {
+      const payload = { action: action, ...data };
+      if (State.authToken) { payload.token = State.authToken; }
+      const response = await fetch(GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload),
+        redirect: "follow" 
+      });
+      return await response.json();
+    }
 
-      // ─────────────────────────────────────
-      // API
-      // ─────────────────────────────────────
-      const API = {
-        async call(action, data = {}) {
-          const payload = { action, ...data };
-          if (State.authToken) payload.token = State.authToken;
-          const response = await fetch(CONFIG.API_URL, {
-            method: "POST", headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify(payload), redirect: "follow" 
-          });
-          return await response.json();
-        },
-        async loadChartJs() {
-          if (window.Chart) return Promise.resolve();
-          return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
+    // Enterキー対応
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter' && !document.getElementById('loginSection').classList.contains('hidden')) {
+        onLogin();
+      }
+    });
+
+    // --- コースハンディキャップ計算モジュール ---
+    const CourseHdcp = {
+      // 逆算特定した千刈カンツリー倶楽部の各ティーレーティング（公式PDF完全準拠）
+      RATINGS: {
+        male: [
+          { id: 'black', name: '黒', sr: 135, cr: 72.0, par: 72, bg: 'bg-gray-800 text-white' },
+          { id: 'blue',  name: '青', sr: 133, cr: 70.7, par: 72, bg: 'bg-blue-600 text-white' },
+          { id: 'white', name: '白', sr: 131, cr: 69.4, par: 72, bg: 'bg-white text-gray-800 border border-gray-300' },
+          { id: 'gold',  name: '金', sr: 126, cr: 67.0, par: 72, bg: 'bg-yellow-500 text-gray-900 border border-yellow-600' },
+          { id: 'green', name: '緑', sr: 120, cr: 64.5, par: 72, bg: 'bg-green-600 text-white' }
+        ],
+        female: [
+          { id: 'black', name: '黒', sr: 140, cr: 78.5, par: 72, bg: 'bg-gray-800 text-white' },
+          { id: 'blue',  name: '青', sr: 138, cr: 77.0, par: 72, bg: 'bg-blue-600 text-white' },
+          { id: 'white', name: '白', sr: 135, cr: 75.5, par: 72, bg: 'bg-white text-gray-800 border border-gray-300' },
+          { id: 'gold',  name: '金', sr: 129, cr: 72.5, par: 72, bg: 'bg-yellow-500 text-gray-900 border border-yellow-600' },
+          { id: 'green', name: '緑', sr: 122, cr: 69.5, par: 72, bg: 'bg-green-600 text-white' }
+        ]
+      },
+      // JGA(WHS)標準の計算式：(Index × SR ÷ 113) ＋ (CR - Par) の四捨五入
+      calculate(index, sr, cr, par) {
+        if (isNaN(index)) return '-';
+        const hdcp = (index * sr / 113) + (cr - par);
+        return Math.round(hdcp);
+      },
+      // 計算してカラーバッジを描画
+      render() {
+        const container = document.getElementById('courseHdcpContainer');
+        const indexStr = document.getElementById('officialHdcpDisplay').innerText;
+        const index = parseFloat(indexStr);
+        
+        if (isNaN(index)) {
+          container.innerHTML = '';
+          return;
         }
-      };
 
-      // ─────────────────────────────────────
-      // UI Utility
-      // ─────────────────────────────────────
-      const UI = {
-        showSkeletons() {
-          const skeletonRow = `
-            <tr class="animate-pulse border-b">
-              <td class="p-3"><div class="h-3 bg-gray-200 rounded w-3/4 mx-auto"></div></td>
-              <td class="p-3"><div class="h-3 bg-gray-200 rounded w-full"></div></td>
-              <td class="p-3"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
-              <td class="p-3 pr-4"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
-            </tr>`.repeat(5);
-          document.getElementById('scoreContainer').innerHTML = skeletonRow;
-          document.getElementById('rankingTableBody').innerHTML = skeletonRow;
-          document.getElementById('myScoreTableBody').innerHTML = skeletonRow;
-        },
-        showErrorAndRetry() {
-          const html = `<tr><td colspan="4" class="text-center p-4 text-red-500 text-xs font-bold">通信エラー<button onclick="loadAllData()" class="ml-3 text-blue-600 underline">再試行</button></td></tr>`;
-          ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => document.getElementById(id).innerHTML = html);
-        },
-        formatYearMonth(dateStr) {
-          const p = dateStr.split('/');
-          return p.length >= 2 ? `${p[0].slice(-2)}年${parseInt(p[1], 10)}月` : dateStr;
-        },
-        toggleScoreView(view) {
-          const isChart = (view === 'chart');
-          document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
-          document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
-          document.getElementById('btnChart').className = isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
-          document.getElementById('btnTable').className = !isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
-        },
-        handleEnterKey(event, fn) {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fn(); }
+        const ratings = this.RATINGS[State.gender];
+        let html = '';
+        ratings.forEach(r => {
+          const ch = this.calculate(index, r.sr, r.cr, r.par);
+          html += `<span class="px-1.5 py-0.5 ${r.bg} rounded text-[11px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
+                     <span class="text-[8px] opacity-90">${r.name}</span>
+                     <span>${ch}</span>
+                   </span>`;
+        });
+        container.innerHTML = html;
+        
+        // 性別トグルボタンの表示更新
+        const btn = document.getElementById('genderToggleBtn');
+        if (btn) {
+          btn.innerHTML = State.gender === 'male' ? '♂ 男子' : '♀ 女子';
+          btn.className = State.gender === 'male' 
+            ? 'absolute top-2 right-2 text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded shadow-sm font-bold transition-colors cursor-pointer'
+            : 'absolute top-2 right-2 text-[10px] bg-pink-50 border border-pink-200 text-pink-700 px-1.5 py-0.5 rounded shadow-sm font-bold transition-colors cursor-pointer';
         }
-      };
+      },
+      // 性別の切り替え
+      toggleGender() {
+        State.gender = State.gender === 'male' ? 'female' : 'male';
+        this.render();
+      }
+    };
+    window.toggleGender = () => CourseHdcp.toggleGender();
 
-      // ─────────────────────────────────────
-      // Auth
-      // ─────────────────────────────────────
-      const Auth = {
-        async login() {
-          const id = document.getElementById('loginId').value;
-          const pw = document.getElementById('loginPw').value;
-          const errEl = document.getElementById('loginError');
-          const btn = document.getElementById('loginBtn');
+    // --- スケルトンUI ---
+    function showSkeletons() {
+      const skeletonRow = `
+        <tr class="animate-pulse border-b">
+          <td class="p-3"><div class="h-3 bg-gray-200 rounded w-3/4 mx-auto"></div></td>
+          <td class="p-3"><div class="h-3 bg-gray-200 rounded w-full"></div></td>
+          <td class="p-3"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
+          <td class="p-3 pr-4"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
+        </tr>`.repeat(5);
+      document.getElementById('scoreContainer').innerHTML = skeletonRow;
+      document.getElementById('rankingTableBody').innerHTML = skeletonRow;
+      document.getElementById('myScoreTableBody').innerHTML = skeletonRow;
+    }
+
+    function showErrorAndRetry() {
+      const html = `<tr><td colspan="4" class="text-center p-4 text-red-500 text-xs font-bold">通信エラーが発生しました。<br><button onclick="loadAllData()" class="mt-2 text-blue-600 underline">再読み込み</button></td></tr>`;
+      document.getElementById('scoreContainer').innerHTML = html;
+      document.getElementById('rankingTableBody').innerHTML = html;
+      document.getElementById('myScoreTableBody').innerHTML = html;
+    }
+
+    // --- データ一括取得 ---
+    async function loadAllData() {
+      showSkeletons();
+      try {
+        const [history, myHistory] = await Promise.all([ 
+          callGasApi('getScoreHistory'), 
+          callGasApi('getMyScoreHistory') 
+        ]);
+        
+        if (history && history.length > 0) { 
+          State.allScoreHistory = history; 
+          setupCompeResults(); 
+          setupRanking(); 
+        }
+        if (myHistory && myHistory.length > 0) {
+          loadMyChart(myHistory);
+        }
+      } catch (error) {
+        showErrorAndRetry();
+      }
+    }
+
+    // --- ログイン処理 ---
+    async function onLogin() {
+      const id = document.getElementById('loginId').value;
+      const pw = document.getElementById('loginPw').value;
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginBtn');
+      
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> 認証中...';
+
+      try {
+        const res = await callGasApi('checkLogin', { id: id, password: pw });
+        if (res.success) {
+          State.currentUser = res.name;
+          State.authToken = res.token; 
+          State.isOfficialHistoryLoaded = false; 
+          document.getElementById('officialHdcpHistorySection').classList.add('hidden'); 
+          document.getElementById('futureSchedulesSection').classList.add('hidden'); 
           
-          errEl.classList.add('hidden');
-          btn.disabled = true;
-          btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> 認証中...';
+          document.getElementById('loginPw').value = ''; 
+          document.getElementById('userName').innerText = State.currentUser;
+          document.getElementById('eagleHdcpDisplay').innerText = res.eagleHdcp || "-";
+          document.getElementById('officialHdcpDisplay').innerText = res.officialHdcp || "-";
+          document.getElementById('eagleUpdateDisplay').innerText = res.eagleUpdateDate;
+          document.getElementById('officialUpdateDisplay').innerText = res.officialUpdateDate;            
+          
+          // ★ログイン成功直後にコースハンディキャップを計算・描画
+          document.getElementById('genderToggleBtn').classList.remove('hidden');
+          CourseHdcp.render();
 
-          try {
-            const res = await API.call('checkLogin', { id, password: pw });
-            if (res.success) {
-              State.currentUser = res.name;
-              State.authToken = res.token; 
-              State.isOfficialHistoryLoaded = false; 
-              
-              document.getElementById('officialHdcpHistorySection').classList.add('hidden'); 
-              document.getElementById('futureSchedulesSection').classList.add('hidden'); 
-              document.getElementById('loginPw').value = ''; 
-              
-              document.getElementById('userName').innerText = State.currentUser;
-              document.getElementById('eagleHdcpDisplay').innerText = res.eagleHdcp || "-";
-              document.getElementById('officialHdcpDisplay').innerText = res.officialHdcp || "-";
-              document.getElementById('eagleUpdateDisplay').innerText = res.eagleUpdateDate;
-              document.getElementById('officialUpdateDisplay').innerText = res.officialUpdateDate;            
-              
-              if (res.nextCompe) {
-                document.getElementById('nextCompeDateDisplay').innerText = `${res.nextCompe.dateText} ${res.nextCompe.timeText}`;
-                if (res.nextCompe.clubCompe) {
-                  document.getElementById('nextClubCompeName').innerText = res.nextCompe.clubCompe;
-                  document.getElementById('nextClubCompeBadge').classList.remove('hidden');
-                } else document.getElementById('nextClubCompeBadge').classList.add('hidden');
-              } else {
-                document.getElementById('nextCompeDateDisplay').innerText = "未定";
-                document.getElementById('nextClubCompeBadge').classList.add('hidden');
-              }
-
-              const listContainer = document.getElementById('futureSchedulesList');
-              listContainer.innerHTML = '';
-              if (res.futureSchedules && res.futureSchedules.length > 0) {
-                document.getElementById('futureScheduleCount').innerText = res.futureSchedules.length;
-                document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
-                res.futureSchedules.forEach(sched => {
-                  let html = `<div class="flex flex-col border-b border-gray-100 pb-2.5 last:border-0 last:pb-0"><div class="flex justify-between items-center text-xs"><span class="font-bold text-gray-800">${sched.dateText}</span><span class="text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded shadow-sm">${sched.timeText}</span></div>`;
-                  if (sched.clubCompe) html += `<div class="mt-1 text-[10px] text-amber-700 font-bold flex items-center gap-1"><span>🏆 同時開催:</span> <span>${sched.clubCompe}</span></div>`;
-                  html += `</div>`;
-                  listContainer.innerHTML += html;
-                });
-              } else document.getElementById('scheduleToggleBtnContainer').classList.add('hidden');
-
-              document.getElementById('loginSection').classList.add('hidden');
-              document.getElementById('mainSection').classList.remove('hidden');
-              
-              if (res.role === '管理者') {
-                document.getElementById('adminUploadSection').classList.remove('hidden');
-                document.getElementById('adminPasswordSection').classList.remove('hidden');
-              }
-
-              await API.loadChartJs(); 
-              loadAllData();
+          // 次回コンペ設定
+          if (res.nextCompe) {
+            document.getElementById('nextCompeDateDisplay').innerText = `${res.nextCompe.dateText} ${res.nextCompe.timeText}`;
+            if (res.nextCompe.clubCompe) {
+              document.getElementById('nextClubCompeName').innerText = res.nextCompe.clubCompe;
+              document.getElementById('nextClubCompeBadge').classList.remove('hidden');
             } else {
-              errEl.innerText = "IDまたはパスワードが違います";
-              errEl.classList.remove('hidden');
+              document.getElementById('nextClubCompeBadge').classList.add('hidden');
             }
-          } catch {
-            errEl.innerText = "通信エラーが発生しました";
-            errEl.classList.remove('hidden');
-          } finally {
-            btn.disabled = false;
-            btn.innerText = 'ログイン';
+          } else {
+            document.getElementById('nextCompeDateDisplay').innerText = "未定";
+            document.getElementById('nextClubCompeBadge').classList.add('hidden');
           }
-        },
-        logout() {
-          location.reload(); 
-        }
-      };
 
-      // ─────────────────────────────────────
-      // ChartModule
-      // ─────────────────────────────────────
-      const ChartModule = {
-        createLineChart(canvasId, labels, data, color, existingInstance) {
-          const ctx = document.getElementById(canvasId).getContext('2d');
-          if (existingInstance) existingInstance.destroy();
-          const bgColor = color.replace('rgb(', 'rgba(').replace(')', ', 0.1)');
-          return new Chart(ctx, {
+          // 今後のスケジュール設定
+          const listContainer = document.getElementById('futureSchedulesList');
+          listContainer.innerHTML = '';
+          if (res.futureSchedules && res.futureSchedules.length > 0) {
+            document.getElementById('futureScheduleCount').innerText = res.futureSchedules.length;
+            document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
+            res.futureSchedules.forEach(sched => {
+              let itemHtml = `<div class="flex flex-col border-b border-gray-100 pb-2.5 last:border-0 last:pb-0"><div class="flex justify-between items-center text-xs"><span class="font-bold text-gray-800">${sched.dateText}</span><span class="text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded shadow-sm">${sched.timeText}</span></div>`;
+              if (sched.clubCompe) itemHtml += `<div class="mt-1 text-[10px] text-amber-700 font-bold flex items-center gap-1"><span>🏆 同時開催:</span> <span>${sched.clubCompe}</span></div>`;
+              itemHtml += `</div>`;
+              listContainer.innerHTML += itemHtml;
+            });
+          } else {
+            document.getElementById('scheduleToggleBtnContainer').classList.add('hidden');
+          }
+
+          document.getElementById('loginSection').classList.add('hidden');
+          document.getElementById('mainSection').classList.remove('hidden');
+          
+          if (res.role === '管理者') {
+            document.getElementById('adminUploadSection').classList.remove('hidden');
+            document.getElementById('adminPasswordSection').classList.remove('hidden');
+          }
+
+          loadAllData();
+        } else {
+          errEl.innerText = "IDまたはパスワードが違います";
+          errEl.classList.remove('hidden');
+        }
+      } catch (error) {
+        errEl.innerText = "通信エラーが発生しました";
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'ログイン';
+      }
+    }
+
+    function toggleFutureSchedules() {
+      document.getElementById('futureSchedulesSection').classList.toggle('hidden');
+    }
+
+    function toggleOfficialHdcpHistory() {
+      const section = document.getElementById('officialHdcpHistorySection');
+      const isHidden = section.classList.contains('hidden');
+      section.classList.toggle('hidden');
+      
+      if (isHidden && !State.isOfficialHistoryLoaded) {
+        loadOfficialHdcpHistory();
+      }
+    }
+
+    async function loadOfficialHdcpHistory() {
+      try {
+        const history = await callGasApi('getOfficialHdcpHistory');
+        State.isOfficialHistoryLoaded = true;
+        if (!history || history.length === 0) {
+          document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-400 text-xs">直近1年の履歴データがありません</td></tr>`;
+          return;
+        }
+
+        const validHistory = history.filter(row => row.hdcp !== '不明' && !isNaN(Number(row.hdcp)));
+        const labels = validHistory.map(row => formatYearMonth(row.date));
+        const hdcpData = validHistory.map(row => Number(row.hdcp));
+
+        const ctx = document.getElementById('officialHdcpChart').getContext('2d');
+        if (State.officialChartInstance) State.officialChartInstance.destroy();
+        
+        if (hdcpData.length > 0) {
+          State.officialChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
-              labels,
-              datasets: [{ data, borderColor: color, backgroundColor: bgColor, borderWidth: 2, pointRadius: 4, pointBackgroundColor: color, tension: 0.3 }]
+              labels: labels,
+              datasets: [{
+                label: '公式HDCP', data: hdcpData,
+                borderColor: 'rgb(147, 51, 234)', backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147, 51, 234)', tension: 0.3
+              }]
             },
             options: {
               responsive: true,
               plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-              scales: { y: { display: true, reverse: true } }
+              scales: { y: { display: true, reverse: true } } 
             }
           });
-        },
-        loadMyChart(history) {
-          const recent = history.filter(r => new Date(r.date) >= new Date(new Date().setFullYear(new Date().getFullYear() - 1)));
-          if (recent.length > 0) {
-            const labels = recent.map(r => UI.formatYearMonth(r.date));
-            const data = recent.map(r => r.gross);
-            State.myChartInstance = this.createLineChart('myChart', labels, data, CONFIG.CHART_COLOR_GROSS, State.myChartInstance);
-            
-            let html = '';
-            [...recent].reverse().forEach(r => {
-              let rs = "text-gray-500", rt = `${r.rank}位`;
-              if (r.rank == 1) { rs = "text-yellow-600 font-bold"; rt = "🥇 1位"; }
-              else if (r.rank == 2) { rs = "text-gray-500 font-bold"; rt = "🥈 2位"; }
-              else if (r.rank == 3) { rs = "text-amber-700 font-bold"; rt = "🥉 3位"; }
-              html += `<tr class="border-b hover:bg-gray-50"><td class="p-2 text-gray-600 text-[11px] font-bold">${UI.formatYearMonth(r.date)}</td><td class="p-2 text-right ${rs}">${rt}</td><td class="p-2 text-right text-gray-800 font-bold">${r.gross}</td><td class="p-2 pr-4 text-right text-green-600 font-bold">${r.net}</td></tr>`;
-            });
-            document.getElementById('myScoreTableBody').innerHTML = html;
-          }
-        },
-        async loadOfficialHdcpHistory() {
-          const section = document.getElementById('officialHdcpHistorySection');
-          const isHidden = section.classList.contains('hidden');
-          section.classList.toggle('hidden');
-          if (!isHidden || State.isOfficialHistoryLoaded) return;
-
-          const history = await API.call('getOfficialHdcpHistory');
-          State.isOfficialHistoryLoaded = true;
-          if (!history || history.length === 0) {
-            document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-400 text-xs">履歴データがありません</td></tr>`;
-            return;
-          }
-
-          const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
-          if (valid.length > 0) {
-            State.officialChartInstance = this.createLineChart('officialHdcpChart', valid.map(r => UI.formatYearMonth(r.date)), valid.map(r => Number(r.hdcp)), CONFIG.CHART_COLOR_HDCP, State.officialChartInstance);
-          }
-          
-          let html = '';
-          [...history].reverse().forEach(r => {
-            const hdcp = r.hdcp === '不明' ? '<span class="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">不明</span>' : r.hdcp;
-            html += `<tr class="border-b hover:bg-gray-50 text-xs"><td class="p-2 text-gray-600 font-medium">${UI.formatYearMonth(r.date)}</td><td class="p-2 text-right pr-4 font-bold text-purple-700">${hdcp}</td></tr>`;
-          });
-          document.getElementById('officialHdcpTableBody').innerHTML = html;
         }
-      };
 
-      // ─────────────────────────────────────
-      // Score / Ranking
-      // ─────────────────────────────────────
-      const Score = {
-        setup() {
-          const sel = document.getElementById('dateSelect');
-          const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort((a, b) => new Date(b) - new Date(a));
-          sel.innerHTML = '';
-          dates.forEach(d => sel.appendChild(new Option(UI.formatYearMonth(d), d)));
-          sel.classList.remove('hidden');
-          this.renderByDate();
-        },
-        renderByDate() {
-          const d = document.getElementById('dateSelect').value;
-          const filtered = State.allScoreHistory.filter(r => r['日付'] === d).sort((a, b) => Number(a['順位']) - Number(b['順位']));
-          let html = '';
-          filtered.forEach(r => {
-            let rs = "text-gray-700";
-            if (r['順位'] == 1) rs = "text-yellow-600 font-bold"; else if (r['順位'] == 2) rs = "text-gray-500 font-bold"; else if (r['順位'] == 3) rs = "text-amber-700 font-bold";
-            const isMe = (r['名前'] === State.currentUser);
-            html += `<tr class="border-b ${isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50"}"><td class="p-2 font-bold text-center ${rs}">${r['順位']} 位</td><td class="p-2 font-bold ${isMe ? "text-blue-800" : "text-gray-800"}">${r['名前']}</td><td class="p-2 text-right text-gray-600">${r['GROSS']}</td><td class="p-2 pr-4 text-right text-green-600 font-bold">${r['NET']}</td></tr>`;
-          });
-          document.getElementById('scoreContainer').innerHTML = html;
-        }
-      };
-
-      const Ranking = {
-        setup() {
-          State.rankingByTerm = {}; State.rankingCache = {};
-          State.allScoreHistory.forEach(r => {
-            const p = r['日付'].split('/'); if(p.length < 2) return;
-            const termKey = `${p[0].slice(-2)}年${parseInt(p[1], 10) >= 7 ? "下期" : "上期"}`;
-            if (!State.rankingByTerm[termKey]) State.rankingByTerm[termKey] = {};
-            if (r['名前'] && !isNaN(Number(r['NET']))) {
-              if (!State.rankingByTerm[termKey][r['名前']]) State.rankingByTerm[termKey][r['名前']] = [];
-              State.rankingByTerm[termKey][r['名前']].push(Number(r['NET']));
-            }
-          });
-          const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
-            if (parseInt(a.slice(0, 2)) !== parseInt(b.slice(0, 2))) return parseInt(b.slice(0, 2)) - parseInt(a.slice(0, 2));
-            return (b.includes("下期") ? 1 : 0) - (a.includes("下期") ? 1 : 0);
-          });
-          const sel = document.getElementById('termSelect');
-          sel.innerHTML = '';
-          terms.forEach(t => sel.appendChild(new Option(t, t)));
-          sel.classList.remove('hidden');
-          this.renderByTerm();
-        },
-        renderByTerm() {
-          const t = document.getElementById('termSelect').value;
-          document.getElementById('rankingTitle').innerText = `${t} 平均NET`;
-          if (!State.rankingCache[t]) {
-            const obj = State.rankingByTerm[t], list = [];
-            for (const n in obj) list.push({ name: n, avg: Math.round((obj[n].reduce((a,b)=>a+b,0)/obj[n].length)*10)/10, count: obj[n].length });
-            State.rankingCache[t] = list.sort((a, b) => a.avg - b.avg);
-          }
-          let html = '';
-          State.rankingCache[t].forEach((m, i) => {
-            let rs = "text-gray-700", rb = `${i+1}位`;
-            if (i===0) { rs = "text-yellow-600 font-bold"; rb = "🥇 1位"; } else if (i===1) { rs = "text-gray-500 font-bold"; rb = "🥈 2位"; } else if (i===2) { rs = "text-amber-700 font-bold"; rb = "🥉 3位"; }
-            const isMe = (m.name === State.currentUser);
-            html += `<tr class="border-b ${isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50"}"><td class="p-2 text-center ${rs}">${rb}</td><td class="p-2 font-bold ${isMe ? "text-blue-800" : "text-gray-800"}">${m.name}</td><td class="p-2 text-right font-semibold text-green-700">${m.avg}</td><td class="p-2 pr-4 text-right text-gray-500">${m.count} 回</td></tr>`;
-          });
-          document.getElementById('rankingTableBody').innerHTML = html;
-        }
-      };
-
-      // ─────────────────────────────────────
-      // Main Actions (Upload, Reset, loadAll)
-      // ─────────────────────────────────────
-      async function loadAllData() {
-        UI.showSkeletons();
-        try {
-          const [history, myHistory] = await Promise.all([ API.call('getScoreHistory'), API.call('getMyScoreHistory') ]);
-          if (history && history.length > 0) { State.allScoreHistory = history; Score.setup(); Ranking.setup(); }
-          if (myHistory && myHistory.length > 0) ChartModule.loadMyChart(myHistory);
-        } catch { UI.showErrorAndRetry(); }
+        let html = '';
+        [...history].reverse().forEach(row => {
+          const displayHdcp = row.hdcp === '不明' ? '<span class="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">不明</span>' : row.hdcp;
+          html += `<tr class="border-b hover:bg-gray-50 text-xs">
+            <td class="p-2 text-gray-600 font-medium">${formatYearMonth(row.date)}</td>
+            <td class="p-2 text-right pr-4 font-bold text-purple-700">${displayHdcp}</td>
+          </tr>`;
+        });
+        document.getElementById('officialHdcpTableBody').innerHTML = html;
+      } catch(error) {
+        document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー</td></tr>`;
       }
+    }
 
-      window.onLogin = () => Auth.login();
-      window.onLogout = () => Auth.logout();
-      window.handleEnterKey = (e, fn) => UI.handleEnterKey(e, fn);
-      window.loadAllData = () => loadAllData();
-      window.toggleFutureSchedules = () => document.getElementById('futureSchedulesSection').classList.toggle('hidden');
-      window.toggleOfficialHdcpHistory = () => ChartModule.loadOfficialHdcpHistory();
-      window.toggleScoreView = (v) => UI.toggleScoreView(v);
-      window.renderScoresByDate = () => Score.renderByDate();
-      window.renderRankingByTerm = () => Ranking.renderByTerm();
+    function setupCompeResults() {
+      const dateSelect = document.getElementById('dateSelect');
+      const dates = [...new Set(State.allScoreHistory.map(row => row['日付']))];
+      dates.sort((a, b) => new Date(b) - new Date(a)); 
 
-      window.onUpload = async () => {
-        const fileInput = document.getElementById('imageFile'), btn = document.getElementById('uploadBtn'), st = document.getElementById('uploadStatus');
-        if (fileInput.files.length === 0) return alert('画像を選択してください。');
-        st.innerText = "画像を解析中...（最大数分）"; btn.disabled = true;
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          try {
-            const res = await API.call('uploadAndProcessImage', { base64Data: reader.result.split(',')[1], mimeType: fileInput.files[0].type });
-            if (res.success) { st.innerText = `成功！${res.count}件登録しました。`; loadAllData(); } else st.innerText = "エラー: " + res.error;
-          } catch { st.innerText = "通信エラーが発生しました。"; } finally { btn.disabled = false; }
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-      };
+      dateSelect.innerHTML = '';
+      dates.forEach(date => {
+        dateSelect.appendChild(new Option(formatYearMonth(date), date));
+      });
+      dateSelect.classList.remove('hidden');
+      renderScoresByDate(); 
+    }
 
-      window.onResetPassword = async () => {
-        const targetId = document.getElementById('resetTargetId').value.trim(), newPassword = document.getElementById('resetNewPassword').value.trim();
-        const st = document.getElementById('resetPasswordStatus'), btn = document.getElementById('resetPasswordBtn');
-        if (!targetId || !newPassword) { st.innerText = '入力してください。'; st.className = 'mt-2 text-xs font-semibold text-red-600'; return; }
-        btn.disabled = true; btn.innerText = '処理中...'; st.innerText = '';
+    function renderScoresByDate() {
+      const targetDate = document.getElementById('dateSelect').value;
+      const filtered = State.allScoreHistory.filter(row => row['日付'] === targetDate);
+      filtered.sort((a, b) => Number(a['順位']) - Number(b['順位']));
+
+      let html = '';
+      filtered.forEach(row => {
+        let rankStyle = "text-gray-700";
+        if (row['順位'] == 1) rankStyle = "text-yellow-600 font-bold";
+        else if (row['順位'] == 2) rankStyle = "text-gray-500 font-bold";
+        else if (row['順位'] == 3) rankStyle = "text-amber-700 font-bold";
+
+        const isMe = (row['名前'] === State.currentUser);
+        const rowClass = isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50";
+        const nameColor = isMe ? "text-blue-800" : "text-gray-800";
+
+        html += `<tr class="border-b ${rowClass}">
+          <td class="p-2 font-bold text-center ${rankStyle}">${row['順位']} 位</td>
+          <td class="p-2 font-bold ${nameColor}">${row['名前']}</td>
+          <td class="p-2 text-right text-gray-600">${row['GROSS']}</td>
+          <td class="p-2 pr-4 text-right text-green-600 font-bold">${row['NET']}</td>
+        </tr>`;
+      });
+      document.getElementById('scoreContainer').innerHTML = html;
+    }
+
+    function setupRanking() {
+      State.rankingByTerm = {};
+      State.allScoreHistory.forEach(row => {
+        const parts = row['日付'].split('/');
+        if(parts.length < 2) return;
+        
+        const year = parts[0].slice(-2); 
+        const month = parseInt(parts[1], 10);
+        const term = month >= 7 ? "下期" : "上期";
+        const termKey = `${year}年${term}`; 
+
+        if (!State.rankingByTerm[termKey]) State.rankingByTerm[termKey] = {};
+        const name = row['名前'];
+        const net = Number(row['NET']);
+        if (name && !isNaN(net)) {
+          if (!State.rankingByTerm[termKey][name]) State.rankingByTerm[termKey][name] = [];
+          State.rankingByTerm[termKey][name].push(net);
+        }
+      });
+
+      const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
+        const yearA = parseInt(a.slice(0, 2), 10);
+        const isLowerA = a.includes("下期") ? 1 : 0;
+        const yearB = parseInt(b.slice(0, 2), 10);
+        const isLowerB = b.includes("下期") ? 1 : 0;
+        if (yearA !== yearB) return yearB - yearA;
+        return isLowerB - isLowerA;
+      });
+
+      const termSelect = document.getElementById('termSelect');
+      termSelect.innerHTML = '';
+      terms.forEach(t => {
+        termSelect.appendChild(new Option(t, t));
+      });
+      termSelect.classList.remove('hidden');
+      renderRankingByTerm(); 
+    }
+
+    function renderRankingByTerm() {
+      const targetTerm = document.getElementById('termSelect').value;
+      document.getElementById('rankingTitle').innerText = `${targetTerm} 通算平均NETランキング`;
+
+      const scoresObj = State.rankingByTerm[targetTerm];
+      const rankingList = [];
+      for (const name in scoresObj) {
+        const scores = scoresObj[name];
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        rankingList.push({ name: name, avg: Math.round(avg * 10) / 10, count: scores.length });
+      }
+      rankingList.sort((a, b) => a.avg - b.avg);
+
+      let html = '';
+      rankingList.forEach((member, index) => {
+        const rank = index + 1;
+        let rankStyle = "text-gray-700";
+        let rankBadge = `${rank}位`;
+        if (rank === 1) { rankStyle = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
+        else if (rank === 2) { rankStyle = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
+        else if (rank === 3) { rankStyle = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
+
+        const isMe = (member.name === State.currentUser);
+        const rowClass = isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50";
+        const nameColor = isMe ? "text-blue-800" : "text-gray-800";
+
+        html += `<tr class="border-b ${rowClass}">
+          <td class="p-2 text-center ${rankStyle}">${rankBadge}</td>
+          <td class="p-2 font-bold ${nameColor}">${member.name}</td>
+          <td class="p-2 text-right font-semibold text-green-700">${member.avg}</td>
+          <td class="p-2 pr-4 text-right text-gray-500">${member.count} 回</td>
+        </tr>`;
+      });
+      document.getElementById('rankingTableBody').innerHTML = html;
+    }
+
+    function loadMyChart(recentHistory) {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const recent = recentHistory.filter(row => new Date(row.date) >= oneYearAgo);
+      if (recent.length === 0) return; 
+
+      const labels = recent.map(row => formatYearMonth(row.date));
+      const grossData = recent.map(row => row.gross);
+
+      const ctx = document.getElementById('myChart').getContext('2d');
+      if (State.myChartInstance) State.myChartInstance.destroy();
+      State.myChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'GROSS', data: grossData,
+            borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(255, 99, 132)', tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+          scales: { y: { display: true, position: 'left', title: { display: false }, reverse: true } }
+        }
+      });
+
+      let html = '';
+      [...recent].reverse().forEach(row => {
+        let rankStyle = "text-gray-500";
+        let rankText = `${row.rank}位`;
+        if (row.rank == 1) { rankStyle = "text-yellow-600 font-bold"; rankText = "🥇 1位"; }
+        else if (row.rank == 2) { rankStyle = "text-gray-500 font-bold"; rankText = "🥈 2位"; }
+        else if (row.rank == 3) { rankStyle = "text-amber-700 font-bold"; rankText = "🥉 3位"; }
+
+        html += `<tr class="border-b hover:bg-gray-50">
+          <td class="p-2 text-gray-600 text-[11px] font-bold">${formatYearMonth(row.date)}</td>
+          <td class="p-2 text-right ${rankStyle}">${rankText}</td>
+          <td class="p-2 text-right text-gray-800 font-bold">${row.gross}</td>
+          <td class="p-2 pr-4 text-right text-green-600 font-bold">${row.net}</td>
+        </tr>`;
+      });
+      document.getElementById('myScoreTableBody').innerHTML = html;
+    }
+
+    function toggleScoreView(view) {
+      const isChart = (view === 'chart');
+      document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
+      document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
+      document.getElementById('btnChart').className = isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
+      document.getElementById('btnTable').className = !isChart ? "text-[10px] px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all" : "text-[10px] px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all";
+    }
+
+    async function onUpload() {
+      const fileInput = document.getElementById('imageFile');
+      if (fileInput.files.length === 0) return alert('画像ファイルを選択してください。');
+
+      const statusText = document.getElementById('uploadStatus');
+      const btn = document.getElementById('uploadBtn');
+      statusText.innerText = "Geminiが画像を解析中...（最大数分）";
+      btn.disabled = true;
+
+      const reader = new FileReader();
+      reader.onloadend = async function() {
         try {
-          const res = await API.call('resetMemberPassword', { targetId, newPassword });
-          if (res.success) { st.innerText = res.message; st.className = 'mt-2 text-xs font-semibold text-green-700'; document.getElementById('resetTargetId').value = ''; document.getElementById('resetNewPassword').value = ''; }
-          else { st.innerText = 'エラー: ' + res.error; st.className = 'mt-2 text-xs font-semibold text-red-600'; }
-        } catch { st.innerText = '通信エラーが発生しました。'; st.className = 'mt-2 text-xs font-semibold text-red-600'; } finally { btn.disabled = false; btn.innerText = 'パスワードをリセット'; }
+          const res = await callGasApi('uploadAndProcessImage', { 
+            base64Data: reader.result.split(',')[1], 
+            mimeType: fileInput.files[0].type
+          });
+          if (res.success) {
+            statusText.innerText = `成功！ ${res.count}件のデータを登録しました。`;
+            loadAllData(); 
+          } else {
+            statusText.innerText = "エラー: " + res.error;
+          }
+        } catch(error) {
+          statusText.innerText = "通信エラーが発生しました。";
+        } finally {
+          btn.disabled = false;
+        }
       };
+      reader.readAsDataURL(fileInput.files[0]);
+    }
 
-    })();
+    async function onResetPassword() {
+      const targetId = document.getElementById('resetTargetId').value.trim();
+      const newPassword = document.getElementById('resetNewPassword').value.trim();
+      const statusText = document.getElementById('resetPasswordStatus');
+      const btn = document.getElementById('resetPasswordBtn');
+      
+      if (!targetId || !newPassword) { 
+        statusText.innerText = '入力してください。'; 
+        statusText.className = 'mt-2 text-xs font-semibold text-red-600'; 
+        return; 
+      }
+      
+      btn.disabled = true; 
+      btn.innerText = '処理中...'; 
+      statusText.innerText = '';
+      
+      try {
+        const res = await callGasApi('resetMemberPassword', { targetId, newPassword });
+        if (res.success) { 
+          statusText.innerText = res.message; 
+          statusText.className = 'mt-2 text-xs font-semibold text-green-700'; 
+          document.getElementById('resetTargetId').value = ''; 
+          document.getElementById('resetNewPassword').value = ''; 
+        } else { 
+          statusText.innerText = 'エラー: ' + res.error; 
+          statusText.className = 'mt-2 text-xs font-semibold text-red-600'; 
+        }
+      } catch (error) { 
+        statusText.innerText = '通信エラーが発生しました。'; 
+        statusText.className = 'mt-2 text-xs font-semibold text-red-600'; 
+      } finally { 
+        btn.disabled = false; 
+        btn.innerText = 'パスワードをリセット'; 
+      }
+    }
   </script>
 </body>
 </html>
