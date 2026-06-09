@@ -308,7 +308,7 @@
         State.memberList.forEach(m => {
           if (m.name !== State.currentUser) {
             const dispHdcp = m.hdcp === 999 ? '-' : m.hdcp;
-            const option = new Option(`${m.name} (公式HDCP: ${dispHdcp})`, m.name);
+            const option = new Option(`${m.name} (HDCP: ${dispHdcp})`, m.name);
             sel.appendChild(option);
             hasOpponent = true;
 
