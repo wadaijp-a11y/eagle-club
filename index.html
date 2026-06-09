@@ -187,24 +187,21 @@
       </div>
     </div>
 
-    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-      <div class="flex flex-col border-b pb-2 mb-3 gap-2">
-        <div class="flex justify-between items-center">
-          <h3 id="rankingTitle" class="font-bold text-gray-800 text-sm">通算平均NETランキング</h3>
-          <select id="termSelect" onchange="renderRankingByTerm()" aria-label="集計期間選択" class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden"></select>
-        </div>
+<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-bold text-gray-800">🏆 メンバーランキング</h3>
       </div>
+      
+      <div class="flex space-x-1 bg-gray-100 rounded-md p-1 border border-gray-200 mb-3" id="rankingTabsContainer">
+        </div>
+
       <div class="max-h-60 overflow-y-auto">
         <table class="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-              <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
-              <th scope="col" class="p-2 font-normal">名前</th>
-              <th scope="col" class="p-2 text-right font-normal">平均NET</th>
-              <th scope="col" class="p-2 pr-4 text-right font-normal">参戦数</th>
-            </tr>
-          </thead>
-          <tbody id="rankingTableBody"></tbody>
+          <thead id="rankingTableHeader">
+            </thead>
+          <tbody id="rankingTableBody">
+            <tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データを読み込んでいます...</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -678,6 +675,11 @@
       document.getElementById('scoreContainer').innerHTML = html;
     }
 
+
+// --- ★変更：ランキングモジュール（タブ切り替え対応） ---
+    let currentRankingTab = 'official'; 
+    let availableRankingTerms = []; 
+
     function setupRanking() {
       State.rankingByTerm = {};
       State.allScoreHistory.forEach(row => {
@@ -698,6 +700,7 @@
         }
       });
 
+      // 最新の期が先頭に来るように降順ソート
       const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
         const yearA = parseInt(a.slice(0, 2), 10);
         const isLowerA = a.includes("下期") ? 1 : 0;
@@ -707,51 +710,121 @@
         return isLowerB - isLowerA;
       });
 
-      const termSelect = document.getElementById('termSelect');
-      termSelect.innerHTML = '';
-      terms.forEach(t => {
-        termSelect.appendChild(new Option(t, t));
-      });
-      termSelect.classList.remove('hidden');
-      renderRankingByTerm(); 
+      // 最新の2期分（今期と前期）だけを抽出
+      availableRankingTerms = terms.slice(0, 2);
+
+      // タブの生成と初期描画
+      renderRankingTabs();
+      changeRankingTab('official'); // デフォルトは公式HDCP
     }
 
-    function renderRankingByTerm() {
-      const targetTerm = document.getElementById('termSelect').value;
-      document.getElementById('rankingTitle').innerText = `${targetTerm} 通算平均NETランキング`;
+    function renderRankingTabs() {
+      const container = document.getElementById('rankingTabsContainer');
+      let html = `<button onclick="changeRankingTab('official')" id="tab_official" class="flex-1 text-[11px] px-2 py-1.5 rounded font-bold transition-all text-gray-500 hover:text-gray-800">公式HDCP</button>`;
+      
+      availableRankingTerms.forEach((term, index) => {
+        const label = index === 0 ? `今期 NET<br><span class="text-[9px] font-normal">(${term})</span>` : `前期 NET<br><span class="text-[9px] font-normal">(${term})</span>`;
+        html += `<button onclick="changeRankingTab('${term}')" id="tab_${term}" class="flex-1 text-[11px] px-1 py-1 rounded font-bold transition-all text-gray-500 hover:text-gray-800 leading-tight">${label}</button>`;
+      });
+      container.innerHTML = html;
+    }
 
-      const scoresObj = State.rankingByTerm[targetTerm];
-      const rankingList = [];
-      for (const name in scoresObj) {
-        const scores = scoresObj[name];
-        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-        rankingList.push({ name: name, avg: Math.round(avg * 10) / 10, count: scores.length });
+    function changeRankingTab(tabId) {
+      currentRankingTab = tabId;
+      
+      // タブのデザイン切り替え
+      const tabs = document.getElementById('rankingTabsContainer').children;
+      for (let i = 0; i < tabs.length; i++) {
+        tabs[i].className = "flex-1 text-[11px] px-1 py-1 rounded font-bold transition-all text-gray-500 hover:text-gray-800 leading-tight";
       }
-      rankingList.sort((a, b) => a.avg - b.avg);
+      const activeTab = document.getElementById(tabId === 'official' ? 'tab_official' : `tab_${tabId}`);
+      if (activeTab) {
+        // 選択されたタブは白背景＋影＋文字色（HDCPは紫、NETは緑）でハイライト
+        const textColor = tabId === 'official' ? 'text-purple-700' : 'text-green-700';
+        activeTab.className = `flex-1 text-[11px] px-1 py-1 rounded bg-white shadow-sm ${textColor} font-bold transition-all leading-tight border border-gray-200/50`;
+      }
 
-      let html = '';
-      rankingList.forEach((member, index) => {
-        const rank = index + 1;
-        let rankStyle = "text-gray-700";
-        let rankBadge = `${rank}位`;
-        if (rank === 1) { rankStyle = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
-        else if (rank === 2) { rankStyle = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
-        else if (rank === 3) { rankStyle = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
-
-        const isMe = (member.name === State.currentUser);
-        const rowClass = isMe ? "bg-blue-50 font-semibold" : "hover:bg-gray-50";
-        const nameColor = isMe ? "text-blue-800" : "text-gray-800";
-
-        html += `<tr class="border-b ${rowClass}">
-          <td class="p-2 text-center ${rankStyle}">${rankBadge}</td>
-          <td class="p-2 font-bold ${nameColor}">${member.name}</td>
-          <td class="p-2 text-right font-semibold text-green-700">${member.avg}</td>
-          <td class="p-2 pr-4 text-right text-gray-500">${member.count} 回</td>
-        </tr>`;
-      });
-      document.getElementById('rankingTableBody').innerHTML = html;
+      renderRankingContent();
     }
 
+    function renderRankingContent() {
+      const header = document.getElementById('rankingTableHeader');
+      const tbody = document.getElementById('rankingTableBody');
+      let html = '';
+
+      if (currentRankingTab === 'official') {
+        // 【公式HDCPランキングの描画】
+        header.innerHTML = `
+          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
+            <th scope="col" class="p-2 font-normal">名前</th>
+            <th scope="col" class="p-2 text-right pr-4 font-normal">公式HDCP</th>
+          </tr>
+        `;
+        
+        // 未設定（999）を除外して上位から描画
+        const validMembers = State.memberList.filter(m => m.hdcp !== 999);
+        validMembers.forEach((member, index) => {
+          const rank = index + 1;
+          let rankStyle = "text-gray-700"; let rankBadge = `${rank}位`;
+          if (rank === 1) { rankStyle = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
+          else if (rank === 2) { rankStyle = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
+          else if (rank === 3) { rankStyle = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
+
+          const isMe = (member.name === State.currentUser);
+          const rowClass = isMe ? "bg-purple-50 font-semibold" : "hover:bg-gray-50";
+          const nameColor = isMe ? "text-purple-800" : "text-gray-800";
+
+          html += `<tr class="border-b ${rowClass}">
+            <td class="p-2 text-center ${rankStyle}">${rankBadge}</td>
+            <td class="p-2 font-bold ${nameColor}">${member.name}</td>
+            <td class="p-2 text-right pr-4 font-bold text-purple-700">${member.hdcp}</td>
+          </tr>`;
+        });
+      } else {
+        // 【平均NETランキングの描画】
+        header.innerHTML = `
+          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
+            <th scope="col" class="p-2 font-normal">名前</th>
+            <th scope="col" class="p-2 text-right font-normal">平均NET</th>
+            <th scope="col" class="p-2 pr-4 text-right font-normal">参戦</th>
+          </tr>
+        `;
+
+        const scoresObj = State.rankingByTerm[currentRankingTab];
+        const rankingList = [];
+        for (const name in scoresObj) {
+          const scores = scoresObj[name];
+          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+          rankingList.push({ name: name, avg: Math.round(avg * 10) / 10, count: scores.length });
+        }
+        rankingList.sort((a, b) => a.avg - b.avg);
+
+        rankingList.forEach((member, index) => {
+          const rank = index + 1;
+          let rankStyle = "text-gray-700"; let rankBadge = `${rank}位`;
+          if (rank === 1) { rankStyle = "text-yellow-600 font-bold"; rankBadge = "🥇 1位"; }
+          else if (rank === 2) { rankStyle = "text-gray-500 font-bold"; rankBadge = "🥈 2位"; }
+          else if (rank === 3) { rankStyle = "text-amber-700 font-bold"; rankBadge = "🥉 3位"; }
+
+          const isMe = (member.name === State.currentUser);
+          const rowClass = isMe ? "bg-green-50 font-semibold" : "hover:bg-gray-50";
+          const nameColor = isMe ? "text-green-800" : "text-gray-800";
+
+          html += `<tr class="border-b ${rowClass}">
+            <td class="p-2 text-center ${rankStyle}">${rankBadge}</td>
+            <td class="p-2 font-bold ${nameColor}">${member.name}</td>
+            <td class="p-2 text-right font-semibold text-green-700">${member.avg}</td>
+            <td class="p-2 pr-4 text-right text-gray-500">${member.count}回</td>
+          </tr>`;
+        });
+      }
+      tbody.innerHTML = html || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+    }
+
+
+    
     function loadMyChart(recentHistory) {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
