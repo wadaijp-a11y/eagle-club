@@ -64,6 +64,13 @@
           <div>
             <p class="text-[11px] text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
             <p id="eagleHdcpDisplay" class="text-3xl font-bold text-blue-700 my-1">-</p>
+            
+            <div class="mb-1.5">
+              <span class="inline-block bg-white border border-blue-200 text-blue-700 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                ⛳ 使用ティー: <span id="eagleTeeDisplay">-</span>
+              </span>
+            </div>
+
             <p class="text-[10px] text-gray-500 mb-2">更新日: <span id="eagleUpdateDisplay"></span></p>
           </div>
           <div class="mt-auto">
@@ -72,10 +79,6 @@
         </div>
 
         <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-between relative">
-          <button id="genderToggleBtn" onclick="toggleGender()" onkeydown="handleEnterKey(event, toggleGender)" aria-label="性別を切り替える" class="absolute top-2 right-2 text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded shadow-sm font-bold transition-colors hidden cursor-pointer">
-            ♂ 男子
-          </button>
-
           <div>
             <p class="text-[11px] text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
             <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">-</p>
@@ -202,9 +205,8 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyFYQinKD-hq6rYrtbhWFJKeAkykZr0enBDm3m4rgeYGoQ5uuzxGsbkjR0VezsFDDLCKg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwRKfycBQVGiLqeXKWjQeAKWfODGUeJUSWb4Xf1ThzMubUSRccaKvjmLCi2a4S5l6u-ww/exec";
     
-    // アプリケーションの状態管理
     const State = {
       currentUser: null,
       authToken: null,     
@@ -213,20 +215,16 @@
       isOfficialHistoryLoaded: false, 
       officialChartInstance: null,    
       myChartInstance: null,
-      gender: 'male', // ティー計算用の初期性別（男性）
+      gender: 'male', // GASから受け取った性別を保持
     };
 
-    // 日付フォーマット
     function formatYearMonth(dateStr) {
       if (!dateStr) return "";
       const parts = dateStr.split('/');
-      if (parts.length >= 2) {
-        return `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月`;
-      }
+      if (parts.length >= 2) return `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月`;
       return dateStr;
     }
 
-    // 汎用API通信
     async function callGasApi(action, data = {}) {
       const payload = { action: action, ...data };
       if (State.authToken) { payload.token = State.authToken; }
@@ -239,7 +237,6 @@
       return await response.json();
     }
 
-    // Enterキー対応
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Enter' && !document.getElementById('loginSection').classList.contains('hidden')) {
         onLogin();
@@ -248,7 +245,6 @@
 
     // --- コースハンディキャップ計算モジュール ---
     const CourseHdcp = {
-      // 逆算特定した千刈カンツリー倶楽部の各ティーレーティング（公式PDF完全準拠）
       RATINGS: {
         male: [
           { id: 'black', name: '黒', sr: 135, cr: 72.0, par: 72, bg: 'bg-gray-800 text-white' },
@@ -265,13 +261,11 @@
           { id: 'green', name: '緑', sr: 122, cr: 69.5, par: 72, bg: 'bg-green-600 text-white' }
         ]
       },
-      // JGA(WHS)標準の計算式：(Index × SR ÷ 113) ＋ (CR - Par) の四捨五入
       calculate(index, sr, cr, par) {
         if (isNaN(index)) return '-';
         const hdcp = (index * sr / 113) + (cr - par);
         return Math.round(hdcp);
       },
-      // 計算してカラーバッジを描画
       render() {
         const container = document.getElementById('courseHdcpContainer');
         const indexStr = document.getElementById('officialHdcpDisplay').innerText;
@@ -292,25 +286,9 @@
                    </span>`;
         });
         container.innerHTML = html;
-        
-        // 性別トグルボタンの表示更新
-        const btn = document.getElementById('genderToggleBtn');
-        if (btn) {
-          btn.innerHTML = State.gender === 'male' ? '♂ 男子' : '♀ 女子';
-          btn.className = State.gender === 'male' 
-            ? 'absolute top-2 right-2 text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded shadow-sm font-bold transition-colors cursor-pointer'
-            : 'absolute top-2 right-2 text-[10px] bg-pink-50 border border-pink-200 text-pink-700 px-1.5 py-0.5 rounded shadow-sm font-bold transition-colors cursor-pointer';
-        }
-      },
-      // 性別の切り替え
-      toggleGender() {
-        State.gender = State.gender === 'male' ? 'female' : 'male';
-        this.render();
       }
     };
-    window.toggleGender = () => CourseHdcp.toggleGender();
 
-    // --- スケルトンUI ---
     function showSkeletons() {
       const skeletonRow = `
         <tr class="animate-pulse border-b">
@@ -331,7 +309,6 @@
       document.getElementById('myScoreTableBody').innerHTML = html;
     }
 
-    // --- データ一括取得 ---
     async function loadAllData() {
       showSkeletons();
       try {
@@ -370,21 +347,27 @@
           State.currentUser = res.name;
           State.authToken = res.token; 
           State.isOfficialHistoryLoaded = false; 
+          
+          // GASから受け取った性別情報をセット
+          State.gender = res.gender || 'male';
+
           document.getElementById('officialHdcpHistorySection').classList.add('hidden'); 
           document.getElementById('futureSchedulesSection').classList.add('hidden'); 
           
           document.getElementById('loginPw').value = ''; 
           document.getElementById('userName').innerText = State.currentUser;
           document.getElementById('eagleHdcpDisplay').innerText = res.eagleHdcp || "-";
+          
+          // ★ イーグル会使用ティーの表示
+          document.getElementById('eagleTeeDisplay').innerText = res.eagleTee || "未設定";
+
           document.getElementById('officialHdcpDisplay').innerText = res.officialHdcp || "-";
           document.getElementById('eagleUpdateDisplay').innerText = res.eagleUpdateDate;
           document.getElementById('officialUpdateDisplay').innerText = res.officialUpdateDate;            
           
-          // ★ログイン成功直後にコースハンディキャップを計算・描画
-          document.getElementById('genderToggleBtn').classList.remove('hidden');
+          // コースハンディキャップを自動描画
           CourseHdcp.render();
 
-          // 次回コンペ設定
           if (res.nextCompe) {
             document.getElementById('nextCompeDateDisplay').innerText = `${res.nextCompe.dateText} ${res.nextCompe.timeText}`;
             if (res.nextCompe.clubCompe) {
@@ -398,7 +381,6 @@
             document.getElementById('nextClubCompeBadge').classList.add('hidden');
           }
 
-          // 今後のスケジュール設定
           const listContainer = document.getElementById('futureSchedulesList');
           listContainer.innerHTML = '';
           if (res.futureSchedules && res.futureSchedules.length > 0) {
