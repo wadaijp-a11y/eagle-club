@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>イーグル会</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Tailwindロード前の一瞬のスタイル崩れ(FOUC)防止 */
+    /* 画面読み込み時の最低限のスタイル崩れ防止（強すぎる非表示設定を削除） */
     body { background-color: #f3f4f6; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; padding: 1rem; }
-    #mainSection { display: none; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
@@ -188,8 +188,6 @@
 
   </div>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-
   <script>
     (function () {
       'use strict';
@@ -301,7 +299,7 @@
               
               document.getElementById('officialHdcpHistorySection').classList.add('hidden'); 
               document.getElementById('futureSchedulesSection').classList.add('hidden'); 
-              document.getElementById('loginPw').value = ''; // メモリ保護
+              document.getElementById('loginPw').value = ''; 
               
               document.getElementById('userName').innerText = State.currentUser;
               document.getElementById('eagleHdcpDisplay').innerText = res.eagleHdcp || "-";
@@ -341,7 +339,7 @@
                 document.getElementById('adminPasswordSection').classList.remove('hidden');
               }
 
-              await API.loadChartJs(); // グラフライブラリ遅延ロード
+              await API.loadChartJs(); 
               loadAllData();
             } else {
               errEl.innerText = "IDまたはパスワードが違います";
@@ -356,7 +354,6 @@
           }
         },
         logout() {
-          // 最も確実なセキュリティ担保のため画面完全リロード
           location.reload(); 
         }
       };
