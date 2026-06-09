@@ -9,7 +9,6 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
 
-  <!-- ログインセクション（既存と同じ） -->
   <div id="loginSection" class="w-full max-w-md bg-white rounded-xl shadow-md p-6 mt-10">
     <h2 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h2>
     <div class="space-y-4 mb-6">
@@ -28,7 +27,6 @@
 
   <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10">
 
-    <!-- 次回開催（既存と同じ） -->
     <div class="bg-white border-2 border-green-500 rounded-xl shadow-sm overflow-hidden">
       <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
         <span>🏌️</span> 次回イーグル会 開催予定
@@ -56,7 +54,6 @@
       <button onclick="location.reload()" class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
     </div>
 
-    <!-- ハンディキャップ（既存と同じ） -->
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">⛳ あなたの最新ハンディキャップ</h3>
       <div class="grid grid-cols-2 gap-3 text-center items-stretch">
@@ -64,15 +61,13 @@
           <div>
             <p class="text-[11px] text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
             <p id="eagleHdcpDisplay" class="text-3xl font-bold text-blue-700 my-1">-</p>
-      
-      <p class="text-[10px] text-gray-500 mb-2">更新日: <span id="eagleUpdateDisplay"></span></p>
-
-<div class="mb-1.5">
+            <div class="mb-1.5">
               <span class="inline-block bg-white border border-blue-200 text-blue-700 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                 ⛳ 使用ティー: <span id="eagleTeeDisplay">-</span>
               </span>
             </div>
-            </div>
+            <p class="text-[10px] text-gray-500 mb-2">更新日: <span id="eagleUpdateDisplay"></span></p>
+          </div>
           <div class="mt-auto">
             <p class="text-[9px] text-blue-600 font-semibold bg-blue-100/70 inline-block px-2 py-1 rounded-md mx-auto">※1月と7月にHDCPリセット</p>
           </div>
@@ -107,7 +102,6 @@
       </div>
     </div>
 
-    <!-- 管理者セクション（既存と同じ） -->
     <div id="adminUploadSection" class="border-2 border-dashed border-green-300 rounded-xl p-4 bg-green-50 text-center hidden">
       <h3 class="font-bold text-green-800 mb-2 text-sm">【管理者用】成績表アップロード</h3>
       <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-gray-600 w-full">
@@ -130,7 +124,6 @@
       <p id="resetPasswordStatus" class="mt-2 text-xs font-semibold text-gray-700"></p>
     </div>
 
-    <!-- スコア推移（既存と同じ） -->
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div class="flex justify-between items-center border-b pb-2 mb-3">
         <h3 class="font-bold text-gray-800">📈 スコア推移</h3>
@@ -155,36 +148,23 @@
       </div>
     </div>
 
-    <!-- ===== ここから新規追加: 一騎打ち対戦記録 ===== -->
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-
-      <!-- ヘッダー -->
       <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">⚔️ 一騎打ち対戦記録</h3>
 
-      <!-- 相手選択エリア -->
       <div id="vsOpponentSelector">
-
-        <!-- よく対戦する相手（サジェスト） -->
         <div id="vsSuggestedArea" class="hidden mb-3">
-          <p class="text-[10px] text-gray-400 font-bold mb-2 tracking-wider uppercase">よく対戦する相手</p>
+          <p id="vsSuggestLabel" class="text-[10px] text-gray-400 font-bold mb-2 tracking-wider uppercase">HDCPが近い相手</p>
           <div id="vsSuggestedButtons" class="flex gap-2 flex-wrap"></div>
         </div>
-
-        <!-- 全メンバー選択 -->
         <div>
           <p class="text-[10px] text-gray-400 font-bold mb-2 tracking-wider uppercase">メンバーを選ぶ</p>
-          <select id="vsOpponentSelect"
-            onchange="onVsOpponentChange()"
-            class="w-full text-sm border border-gray-200 rounded-lg p-2.5 text-gray-700 bg-white focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100 transition-all">
+          <select id="vsOpponentSelect" onchange="onVsOpponentChange()" class="w-full text-sm border border-gray-200 rounded-lg p-2.5 text-gray-700 bg-white focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100 transition-all">
             <option value="">-- 対戦相手を選択 --</option>
           </select>
         </div>
       </div>
 
-      <!-- 対戦結果エリア（選択後に表示） -->
       <div id="vsResultArea" class="hidden mt-5">
-
-        <!-- vs ヘッダー -->
         <div class="flex items-center justify-between mb-4">
           <div class="text-center flex-1">
             <p class="text-[10px] text-gray-400 mb-0.5">あなた</p>
@@ -197,14 +177,9 @@
           </div>
         </div>
 
-        <!-- 勝敗サマリー -->
-        <div id="vsNoDataMsg" class="hidden text-center py-6 text-gray-400 text-sm">
-          まだ対戦データがありません
-        </div>
+        <div id="vsNoDataMsg" class="hidden text-center py-6 text-gray-400 text-sm">まだ対戦データがありません</div>
 
         <div id="vsStats" class="hidden">
-
-          <!-- 勝敗カウント -->
           <div class="grid grid-cols-3 gap-2 mb-4 text-center">
             <div class="bg-green-50 border border-green-100 rounded-lg py-2.5">
               <p id="vsWinCount" class="text-2xl font-black text-green-600">0</p>
@@ -220,22 +195,21 @@
             </div>
           </div>
 
-          <!-- 勝率バー -->
           <div class="mb-1 flex justify-between items-baseline">
             <span class="text-[10px] text-gray-400 font-bold">勝率</span>
             <span id="vsWinRateLabel" class="text-xs font-bold text-gray-700"></span>
           </div>
-          <div class="w-full bg-gray-100 rounded-full h-2 mb-4 overflow-hidden">
-            <div id="vsWinRateBar" class="h-2 rounded-full bg-green-500 transition-all duration-500" style="width:0%"></div>
+          <div class="w-full bg-gray-100 rounded-full h-2 mb-4 flex overflow-hidden">
+            <div id="vsBarWin" class="h-full bg-green-500 transition-all duration-500" style="width:0%"></div>
+            <div id="vsBarDraw" class="h-full bg-gray-300 transition-all duration-500" style="width:0%"></div>
+            <div id="vsBarLose" class="h-full bg-rose-500 transition-all duration-500" style="width:0%"></div>
           </div>
 
-          <!-- 平均スコア差 -->
           <div class="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2.5 mb-4 border border-gray-100">
             <span class="text-[11px] text-gray-500 font-bold">平均グロス差（自分−相手）</span>
             <span id="vsAvgDiff" class="text-sm font-black text-gray-700"></span>
           </div>
 
-          <!-- 対戦履歴テーブル（最新12回） -->
           <div>
             <div class="flex justify-between items-baseline mb-2">
               <p class="text-[10px] text-gray-400 font-bold tracking-wider uppercase">対戦履歴</p>
@@ -257,12 +231,8 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>
-    <!-- ===== 一騎打ち対戦記録 ここまで ===== -->
-
-    <!-- コンペ結果（既存と同じ） -->
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div class="flex justify-between items-center border-b pb-2 mb-3">
         <h3 class="font-bold text-gray-800">🏆 コンペ結果</h3>
@@ -283,7 +253,6 @@
       </div>
     </div>
 
-    <!-- ランキング（既存と同じ） -->
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div class="flex flex-col border-b pb-2 mb-3 gap-2">
         <div class="flex justify-between items-center">
@@ -309,7 +278,7 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwRKfycBQVGiLqeXKWjQeAKWfODGUeJUSWb4Xf1ThzMubUSRccaKvjmLCi2a4S5l6u-ww/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbygEQv3frY777-1_ATobYvOy6mTl_jSJ9tUss9g-i7NJOJHnU83r_O8wVDEVhgUTUqGNA/exec";
 
     const State = {
       currentUser: null,
@@ -320,6 +289,7 @@
       officialChartInstance: null,
       myChartInstance: null,
       gender: 'male',
+      memberList: [], // GASから受け取った全メンバー情報
     };
 
     function formatYearMonth(dateStr) {
@@ -333,10 +303,7 @@
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
       const response = await fetch(GAS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload),
-        redirect: "follow"
+        method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow"
       });
       return await response.json();
     }
@@ -347,7 +314,6 @@
       }
     });
 
-    // --- コースハンディキャップ ---
     const CourseHdcp = {
       RATINGS: {
         male: [
@@ -376,122 +342,78 @@
         const ratings = this.RATINGS[State.gender];
         container.innerHTML = ratings.map(r => {
           const ch = this.calculate(index, r.sr, r.cr, r.par);
-          return `<span class="px-1.5 py-0.5 ${r.bg} rounded text-[11px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
-                    <span class="text-[8px] opacity-90">${r.name}</span><span>${ch}</span>
-                  </span>`;
+          return `<span class="px-1.5 py-0.5 ${r.bg} rounded text-[11px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none"><span class="text-[8px] opacity-90">${r.name}</span><span>${ch}</span></span>`;
         }).join('');
       }
     };
 
     function showSkeletons() {
-      const row = `<tr class="animate-pulse border-b">
-        <td class="p-3"><div class="h-3 bg-gray-200 rounded w-3/4 mx-auto"></div></td>
-        <td class="p-3"><div class="h-3 bg-gray-200 rounded w-full"></div></td>
-        <td class="p-3"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
-        <td class="p-3 pr-4"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
-      </tr>`.repeat(5);
-      ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => {
-        document.getElementById(id).innerHTML = row;
-      });
+      const row = `<tr class="animate-pulse border-b"><td class="p-3"><div class="h-3 bg-gray-200 rounded w-3/4 mx-auto"></div></td><td class="p-3"><div class="h-3 bg-gray-200 rounded w-full"></div></td><td class="p-3"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td><td class="p-3 pr-4"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td></tr>`.repeat(5);
+      ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => { document.getElementById(id).innerHTML = row; });
     }
 
     function showErrorAndRetry() {
       const html = `<tr><td colspan="4" class="text-center p-4 text-red-500 text-xs font-bold">通信エラーが発生しました。<br><button onclick="loadAllData()" class="mt-2 text-blue-600 underline">再読み込み</button></td></tr>`;
-      ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => {
-        document.getElementById(id).innerHTML = html;
-      });
+      ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => { document.getElementById(id).innerHTML = html; });
     }
 
     async function loadAllData() {
       showSkeletons();
       try {
-        const [history, myHistory] = await Promise.all([
-          callGasApi('getScoreHistory'),
-          callGasApi('getMyScoreHistory')
-        ]);
+        const [history, myHistory] = await Promise.all([ callGasApi('getScoreHistory'), callGasApi('getMyScoreHistory') ]);
         if (history && history.length > 0) {
           State.allScoreHistory = history;
           setupCompeResults();
           setupRanking();
-          setupVsSection(); // ★ 対戦機能の初期化
+          setupVsSection();
         }
-        if (myHistory && myHistory.length > 0) {
-          loadMyChart(myHistory);
-        }
-      } catch (error) {
-        showErrorAndRetry();
-      }
+        if (myHistory && myHistory.length > 0) loadMyChart(myHistory);
+      } catch (error) { showErrorAndRetry(); }
     }
 
     // ============================================================
-    // ★ 一騎打ち対戦記録 機能
+    // ★ 改善版：一騎打ち対戦記録（公式ハンディ近似順・あいうえお順・3色バー）
     // ============================================================
-
-    /**
-     * 対戦セクションの初期化
-     * - 同じ日付に参加しているメンバーを「対戦相手候補」とする
-     * - 共演回数上位3名をサジェスト表示
-     * - 全候補をドロップダウンに設定
-     */
     function setupVsSection() {
       const myName = State.currentUser;
+      const myData = State.memberList.find(m => m.name === myName);
+      const myHdcp = myData ? myData.officialHdcp : 999;
 
-      // 日付ごとに参加者をグループ化
-      const byDate = {};
-      State.allScoreHistory.forEach(row => {
-        const d = row['日付'];
-        if (!byDate[d]) byDate[d] = [];
-        byDate[d].push(row['名前']);
-      });
+      // 自分以外の全メンバー
+      const opponents = State.memberList.filter(m => m.name !== myName);
 
-      // 自分が参加した日だけ絞り込み、共演回数を集計
-      const coplayCount = {};
-      Object.values(byDate).forEach(names => {
-        if (!names.includes(myName)) return;
-        names.forEach(n => {
-          if (n === myName) return;
-          coplayCount[n] = (coplayCount[n] || 0) + 1;
-        });
-      });
+      // 1. サジェスト用：公式HDCPが近い上位3人を抽出
+      const validOpponents = opponents.filter(m => m.officialHdcp !== 999);
+      validOpponents.sort((a, b) => Math.abs(a.officialHdcp - myHdcp) - Math.abs(b.officialHdcp - myHdcp));
+      const top3 = validOpponents.slice(0, 3).map(m => m.name);
 
-      // 共演回数順に並べた全候補リスト
-      const allOpponents = Object.entries(coplayCount)
-        .sort((a, b) => b[1] - a[1])
-        .map(([name]) => name);
+      // 2. セレクトボックス用：あいうえお順（日本語ロケール）でソート
+      const sortedOpponents = [...opponents].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-      if (allOpponents.length === 0) return; // 対戦相手がいなければ非表示のまま
+      if (sortedOpponents.length === 0) return;
 
-      // ── サジェストボタン（上位3名）──
-      const top3 = allOpponents.slice(0, 3);
       const suggestedArea = document.getElementById('vsSuggestedArea');
       const suggestedButtons = document.getElementById('vsSuggestedButtons');
       suggestedArea.classList.remove('hidden');
 
       suggestedButtons.innerHTML = top3.map(name => `
-        <button
-          onclick="selectVsOpponent('${name}')"
+        <button onclick="selectVsOpponent('${name}')"
           class="vs-suggest-btn text-xs font-bold px-4 py-1.5 rounded-full border border-gray-200 bg-gray-50 text-gray-700 hover:border-green-400 hover:bg-green-50 hover:text-green-700 transition-all"
-          data-name="${name}">
-          ${name}
-        </button>`).join('');
+          data-name="${name}">${name}</button>`).join('');
 
-      // ── ドロップダウン（全候補）──
       const select = document.getElementById('vsOpponentSelect');
       select.innerHTML = '<option value="">-- 対戦相手を選択 --</option>';
-      allOpponents.forEach(name => {
-        select.appendChild(new Option(name, name));
+      sortedOpponents.forEach(member => {
+        select.appendChild(new Option(member.name, member.name));
       });
     }
 
-    /** ドロップダウン変更時 */
     function onVsOpponentChange() {
       const name = document.getElementById('vsOpponentSelect').value;
       if (name) selectVsOpponent(name);
     }
 
-    /** 相手を選択して対戦結果を描画 */
     function selectVsOpponent(opponentName) {
-      // サジェストボタンのアクティブ状態を更新
       document.querySelectorAll('.vs-suggest-btn').forEach(btn => {
         const isActive = btn.dataset.name === opponentName;
         btn.className = isActive
@@ -499,28 +421,18 @@
           : 'vs-suggest-btn text-xs font-bold px-4 py-1.5 rounded-full border border-gray-200 bg-gray-50 text-gray-700 hover:border-green-400 hover:bg-green-50 hover:text-green-700 transition-all';
       });
 
-      // ドロップダウンの値も同期
       const select = document.getElementById('vsOpponentSelect');
       if (select.value !== opponentName) select.value = opponentName;
 
-      // 対戦データを計算して描画
       renderVsResult(opponentName);
     }
 
-    /**
-     * 対戦結果を計算して描画
-     * - 同じ日付に両者のデータが存在する回 = 対戦とみなす
-     * - 最新12回分を表示
-     */
     function renderVsResult(opponentName) {
       const myName = State.currentUser;
-      const SHOW_RECENT = 12; // 表示する最大対戦数
-
       document.getElementById('vsMyName').innerText = myName;
       document.getElementById('vsOpponentName').innerText = opponentName;
       document.getElementById('vsResultArea').classList.remove('hidden');
 
-      // 日付ごとに両者のスコアを突き合わせ
       const byDate = {};
       State.allScoreHistory.forEach(row => {
         const d = row['日付'];
@@ -528,11 +440,10 @@
         byDate[d][row['名前']] = Number(row['GROSS']);
       });
 
-      // 両者が参加した日を抽出（新しい順）
       const matches = Object.entries(byDate)
         .filter(([, scores]) => scores[myName] !== undefined && scores[opponentName] !== undefined)
-        .sort((a, b) => new Date(b[0]) - new Date(a[0])) // 新しい順
-        .slice(0, SHOW_RECENT); // 最新12回
+        .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+        .slice(0, 12);
 
       if (matches.length === 0) {
         document.getElementById('vsNoDataMsg').classList.remove('hidden');
@@ -543,71 +454,61 @@
       document.getElementById('vsNoDataMsg').classList.add('hidden');
       document.getElementById('vsStats').classList.remove('hidden');
 
-      // 勝敗集計
       let win = 0, lose = 0, draw = 0, totalDiff = 0;
       matches.forEach(([, scores]) => {
         const diff = scores[myName] - scores[opponentName];
         totalDiff += diff;
-        if (diff < 0) win++;       // グロスが低い方が勝ち
-        else if (diff > 0) lose++;
-        else draw++;
+        if (diff < 0) win++; else if (diff > 0) lose++; else draw++;
       });
 
       const total = win + lose + draw;
-      const winRate = total > 0 ? Math.round((win / (win + lose || 1)) * 100) : 0;
-      const avgDiff = total > 0 ? (totalDiff / total).toFixed(1) : 0;
+      const winRate = total > 0 ? Math.round((win / total) * 100) : 0;
+      
+      // ★ 3色プログレスバーの計算（勝＝緑、分＝灰、負＝赤）
+      const winPct  = total > 0 ? (win / total) * 100 : 0;
+      const drawPct = total > 0 ? (draw / total) * 100 : 0;
+      const losePct = total > 0 ? (lose / total) * 100 : 0;
 
-      // サマリー更新
       document.getElementById('vsWinCount').innerText = win;
       document.getElementById('vsDrawCount').innerText = draw;
       document.getElementById('vsLoseCount').innerText = lose;
       document.getElementById('vsWinRateLabel').innerText = `${winRate}%`;
-      document.getElementById('vsWinRateBar').style.width = `${winRate}%`;
+      
+      document.getElementById('vsBarWin').style.width  = `${winPct}%`;
+      document.getElementById('vsBarDraw').style.width = `${drawPct}%`;
+      document.getElementById('vsBarLose').style.width = `${losePct}%`;
 
-      // 勝率バーの色（50%以上: 緑, 未満: ローズ）
-      const bar = document.getElementById('vsWinRateBar');
-      bar.className = `h-2 rounded-full transition-all duration-500 ${winRate >= 50 ? 'bg-green-500' : 'bg-rose-400'}`;
-
-      // 平均スコア差
+      const avgDiff = total > 0 ? (totalDiff / total).toFixed(1) : 0;
       const diffNum = parseFloat(avgDiff);
       const diffSign = diffNum < 0 ? '▲' : diffNum > 0 ? '▼' : '';
       const diffColor = diffNum < 0 ? 'text-green-600' : diffNum > 0 ? 'text-rose-500' : 'text-gray-500';
-      document.getElementById('vsAvgDiff').innerHTML =
-        `<span class="${diffColor} font-black">${diffSign}${Math.abs(diffNum)} 打</span>`;
+      document.getElementById('vsAvgDiff').innerHTML = `<span class="${diffColor} font-black">${diffSign}${Math.abs(diffNum)} 打</span>`;
 
-      // 履歴テーブル（新しい順）
       let html = '';
       matches.forEach(([date, scores]) => {
         const myGross = scores[myName];
         const oppGross = scores[opponentName];
         const diff = myGross - oppGross;
-        const isWin  = diff < 0;
-        const isLose = diff > 0;
-        const isDraw = diff === 0;
+        const isWin = diff < 0, isLose = diff > 0, isDraw = diff === 0;
 
-        const resultBadge = isWin
-          ? `<span class="text-[10px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded">勝</span>`
-          : isLose
-          ? `<span class="text-[10px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded">負</span>`
-          : `<span class="text-[10px] font-black text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">分</span>`;
-
+        const resultBadge = isWin ? `<span class="text-[10px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded">勝</span>`
+                          : isLose ? `<span class="text-[10px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded">負</span>`
+                          : `<span class="text-[10px] font-black text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">分</span>`;
         const diffText = diff === 0 ? '±0' : diff < 0 ? `▲${Math.abs(diff)}` : `▼${diff}`;
-        const diffColor = diff < 0 ? 'text-green-600' : diff > 0 ? 'text-rose-500' : 'text-gray-400';
+        const color = diff < 0 ? 'text-green-600' : diff > 0 ? 'text-rose-500' : 'text-gray-400';
         const rowBg = isWin ? 'bg-green-50/40' : isLose ? 'bg-rose-50/40' : '';
 
         html += `<tr class="border-b border-gray-50 ${rowBg}">
           <td class="px-2.5 py-2 text-[11px] text-gray-500 font-medium">${formatYearMonth(date)}</td>
           <td class="px-2.5 py-2 text-[12px] text-right font-bold text-gray-700">${myGross}</td>
           <td class="px-2.5 py-2 text-[12px] text-right font-bold text-gray-500">${oppGross}</td>
-          <td class="px-2.5 py-2 text-[11px] text-right font-bold ${diffColor} pr-3">${diffText}</td>
+          <td class="px-2.5 py-2 text-[11px] text-right font-bold ${color} pr-3">${diffText}</td>
           <td class="px-2.5 py-2 text-center">${resultBadge}</td>
         </tr>`;
       });
       document.getElementById('vsHistoryTableBody').innerHTML = html;
     }
 
-    // ============================================================
-    // 以下は既存コードと同じ
     // ============================================================
 
     async function onLogin() {
@@ -627,6 +528,7 @@
           State.authToken = res.token;
           State.isOfficialHistoryLoaded = false;
           State.gender = res.gender || 'male';
+          State.memberList = res.memberList || []; // ★リストを受け取る
 
           document.getElementById('officialHdcpHistorySection').classList.add('hidden');
           document.getElementById('futureSchedulesSection').classList.add('hidden');
@@ -644,9 +546,7 @@
             if (res.nextCompe.clubCompe) {
               document.getElementById('nextClubCompeName').innerText = res.nextCompe.clubCompe;
               document.getElementById('nextClubCompeBadge').classList.remove('hidden');
-            } else {
-              document.getElementById('nextClubCompeBadge').classList.add('hidden');
-            }
+            } else document.getElementById('nextClubCompeBadge').classList.add('hidden');
           } else {
             document.getElementById('nextCompeDateDisplay').innerText = "未定";
             document.getElementById('nextClubCompeBadge').classList.add('hidden');
@@ -663,9 +563,7 @@
               itemHtml += `</div>`;
               listContainer.innerHTML += itemHtml;
             });
-          } else {
-            document.getElementById('scheduleToggleBtnContainer').classList.add('hidden');
-          }
+          } else document.getElementById('scheduleToggleBtnContainer').classList.add('hidden');
 
           document.getElementById('loginSection').classList.add('hidden');
           document.getElementById('mainSection').classList.remove('hidden');
@@ -689,9 +587,7 @@
       }
     }
 
-    function toggleFutureSchedules() {
-      document.getElementById('futureSchedulesSection').classList.toggle('hidden');
-    }
+    function toggleFutureSchedules() { document.getElementById('futureSchedulesSection').classList.toggle('hidden'); }
 
     function toggleOfficialHdcpHistory() {
       const section = document.getElementById('officialHdcpHistorySection');
@@ -726,9 +622,7 @@
           html += `<tr class="border-b hover:bg-gray-50 text-xs"><td class="p-2 text-gray-600 font-medium">${formatYearMonth(row.date)}</td><td class="p-2 text-right pr-4 font-bold text-purple-700">${displayHdcp}</td></tr>`;
         });
         document.getElementById('officialHdcpTableBody').innerHTML = html;
-      } catch(error) {
-        document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー</td></tr>`;
-      }
+      } catch(error) { document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー</td></tr>`; }
     }
 
     function setupCompeResults() {
