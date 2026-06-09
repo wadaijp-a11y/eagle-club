@@ -287,27 +287,60 @@
 
     // --- 直接対決（Versus）モジュール ---
     const Versus = {
-      setup() {
+            setup() {
         const sel = document.getElementById('vsOpponentSelect');
         sel.innerHTML = '';
         let hasOpponent = false;
         
-        // ★公式HDCPの昇順でプルダウンを構成
+        const myHdcp = parseFloat(State.myOfficialHdcp);
+
+        let closestOpponent = null;
+        let minDiff = Infinity;
+        let maxGames = -1; // 直接対決回数
+
+        // 過去の対戦履歴（全履歴から抽出）
+        const dateMap = {};
+        State.allScoreHistory.forEach(r => {
+          if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
+          dateMap[r['日付']][r['名前']] = true;
+        });
+
         State.memberList.forEach(m => {
           if (m.name !== State.currentUser) {
             const dispHdcp = m.hdcp === 999 ? '-' : m.hdcp;
-            sel.appendChild(new Option(`${m.name} (HDCP: ${dispHdcp})`, m.name));
+            const option = new Option(`${m.name} (公式HDCP: ${dispHdcp})`, m.name);
+            sel.appendChild(option);
             hasOpponent = true;
+
+            // 差分と対戦回数を計算
+            if (!isNaN(myHdcp) && m.hdcp !== 999) {
+              const diff = Math.abs(myHdcp - m.hdcp);
+              
+              // 直接対決回数をカウント
+              let games = 0;
+              for (const date in dateMap) {
+                if (dateMap[date][State.currentUser] && dateMap[date][m.name]) games++;
+              }
+
+              // 差分が小さい、または同じ差分なら対戦回数が多い方を優先
+              if (diff < minDiff || (diff === minDiff && games > maxGames)) {
+                minDiff = diff;
+                maxGames = games;
+                closestOpponent = m.name;
+              }
+            }
           }
         });
 
         if (hasOpponent) {
           sel.classList.remove('hidden');
+          if (closestOpponent) sel.value = closestOpponent;
           this.render(); 
         } else {
           document.getElementById('versusContainer').innerHTML = `<div class="text-center p-4 text-gray-400 text-xs">対戦可能なメンバーがいません</div>`;
         }
       },
+
       
       render() {
         const opName = document.getElementById('vsOpponentSelect').value;
