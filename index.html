@@ -9,7 +9,6 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
 
-  <!-- ログインセクション -->
   <div id="loginSection" class="w-full max-w-md bg-white rounded-xl shadow-md p-6 mt-10">
     <h1 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h1>
     <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-4 mb-6">
@@ -31,16 +30,16 @@
     <p id="loginError" class="text-red-500 mt-2 text-center text-sm font-bold hidden" role="alert"></p>
   </div>
 
-  <!-- メインセクション（ログイン後に動的生成） -->
   <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10"></div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzGILGQczHvmOCy-fgGjyb-Pozx8ngjk6nj2y47iHcmRCmK65kidUPVVsM3pOWhqC5bjg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxDzOUd5JpHP1xYc6AkE-QtfsUOXvFMbMBPT8-jRdIlLMYFy-ncl0t68vsnNwIGjGcrDQ/exec";
 
     // ==========================================
     // STATE
     // ==========================================
     const State = {
+      authRes:               null, // 要確認①: 再構築用に保持
       currentUser:           null,
       authToken:             null,
       allScoreHistory:       [],
@@ -65,12 +64,12 @@
       );
     }
 
+    // 修正⑤: Dateオブジェクト経由での堅牢なフォーマット
     function formatYearMonth(dateStr) {
       if (!dateStr) return '';
-      const parts = dateStr.split('/');
-      return parts.length >= 2
-        ? `${parts[0].slice(-2)}年${parseInt(parts[1], 10)}月`
-        : dateStr;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr);
+      return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
     async function callGasApi(action, data = {}) {
@@ -114,6 +113,7 @@
       try {
         const hashedPw = await hashPassword(pw);
         const res = await callGasApi('checkLogin', { id, password: hashedPw });
+
         if (res.success) {
           document.getElementById('loginPw').value = '';
           initSession(res);
@@ -134,6 +134,7 @@
       await callGasApi('logout').catch(() => {});
       State.authToken = null;
       State.currentUser = null;
+      State.authRes = null;
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
@@ -144,6 +145,7 @@
     // セッション初期化・DOM構築
     // ==========================================
     function initSession(res) {
+      State.authRes           = res;
       State.currentUser       = res.name;
       State.authToken         = res.token;
       State.gender            = res.gender || 'male';
@@ -158,7 +160,6 @@
       loadAllData();
     }
 
-    // メインUIをまるごと動的生成（管理者UIも含む）
     function buildMainUI(res) {
       const isAdmin = res.role === '管理者';
       const main    = document.getElementById('mainSection');
@@ -174,21 +175,20 @@
         ${buildCompeResultCard()}
         ${buildRankingCard()}
       `;
-
-      // イベント設定（動的生成後）
       CourseHdcp.render();
       setupScheduleDisplay(res);
     }
 
     // ---- カードビルダー群 ----
     function buildScheduleCard(res) {
+      // 修正④: 初期表示のテキストを「未定」にしてチラつき防止
       return `
         <div class="bg-white border-2 border-green-500 rounded-xl shadow-sm overflow-hidden">
           <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
             <span>🏌️</span> 次回イーグル会 開催予定
           </div>
           <div class="p-4 bg-green-50 text-center space-y-2.5">
-            <p id="nextCompeDateDisplay" class="text-xl font-bold text-green-800 leading-relaxed break-keep">データ読み込み中...</p>
+            <p id="nextCompeDateDisplay" class="text-xl font-bold text-green-800 leading-relaxed break-keep">未定</p>
             <div id="nextClubCompeBadge" class="hidden">
               <span class="inline-block bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm animate-pulse">
                 🏆 公式競技: <span id="nextClubCompeName"></span>
@@ -309,6 +309,7 @@
     }
 
     function buildMyScoreCard() {
+      // 修正③: プレースホルダー用HTML追加
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
@@ -320,6 +321,7 @@
                 class="text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
             </div>
           </div>
+          <div id="myScoreEmpty" class="hidden text-center text-sm text-gray-500 py-6">スコアデータがまだありません</div>
           <div id="scoreChartContainer" class="py-2"><canvas id="myChart"></canvas></div>
           <div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
             <table class="w-full text-left border-collapse text-sm">
@@ -408,8 +410,6 @@
           document.getElementById('nextClubCompeName').textContent = res.nextCompe.clubCompe;
           document.getElementById('nextClubCompeBadge').classList.remove('hidden');
         }
-      } else {
-        document.getElementById('nextCompeDateDisplay').textContent = '未定';
       }
 
       const listContainer = document.getElementById('futureSchedulesList');
@@ -448,21 +448,31 @@
       });
     }
 
+    // 要確認①: エラー時に全体を覆うUIへ変更
     function showErrorAndRetry() {
-      const html = `<tr><td colspan="4" class="text-center p-4 text-red-500 text-xs font-bold">
-        通信エラーが発生しました。<br>
-        <button onclick="loadAllData()" class="mt-2 text-blue-600 underline">再読み込み</button>
-      </td></tr>`;
-      ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = html;
-      });
+      const main = document.getElementById('mainSection');
+      if(main) {
+        main.innerHTML = `
+          <div class="bg-white border border-red-200 rounded-xl p-6 text-center shadow-sm">
+            <p class="text-red-500 font-bold mb-4">データの取得に失敗しました。<br>通信環境をご確認ください。</p>
+            <button onclick="retryLoadAllData()" 
+                    class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-lg font-bold shadow-sm">
+              再読み込み
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // 再読み込みヘルパー
+    function retryLoadAllData() {
+      if(State.authRes) buildMainUI(State.authRes);
+      loadAllData();
     }
 
     async function loadAllData() {
       showSkeletons();
       try {
-        // getMyScoreHistoryを廃止 → クライアント側でフィルタ
         const [history, members] = await Promise.all([
           callGasApi('getScoreHistory'),
           callGasApi('getMemberList'),
@@ -472,7 +482,6 @@
 
         if (history && history.length > 0) {
           State.allScoreHistory = history;
-          // 自分のスコアはクライアント側でフィルタ（API呼び出し削減）
           const myHistory = history
             .filter(r => r['名前'] === State.currentUser)
             .map(r => ({ date: r['日付'], rank: r['順位'], gross: r['GROSS'], hdcp: r['HDCP'], net: r['NET'] }));
@@ -480,7 +489,7 @@
           setupCompeResults();
           setupRanking();
           Versus.setup();
-          if (myHistory.length > 0) loadMyChart(myHistory);
+          loadMyChart(myHistory);
         }
       } catch {
         showErrorAndRetry();
@@ -601,7 +610,6 @@
       const filtered = State.allScoreHistory
         .filter(r => r['日付'] === target)
         .sort((a, b) => Number(a['順位']) - Number(b['順位']));
-
       document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
         const rank     = Number(row['順位']);
         const rankStyle = rank === 1 ? 'text-yellow-600 font-bold'
@@ -636,7 +644,6 @@
           State.rankingByTerm[termKey][row['名前']].push(net);
         }
       });
-
       const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
         const [ya, la] = [parseInt(a), a.includes('下期') ? 1 : 0];
         const [yb, lb] = [parseInt(b), b.includes('下期') ? 1 : 0];
@@ -680,11 +687,8 @@
       const header = document.getElementById('rankingTableHeader');
       const tbody  = document.getElementById('rankingTableBody');
 
-      const rankBadge = (r) =>
-        r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
-      const rankStyle = (r) =>
-        r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
-
+      const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
+      const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
       if (State.currentRankingTab === 'official') {
         header.innerHTML = `
           <tr class="bg-gray-50 border-b text-gray-500 text-xs">
@@ -719,7 +723,6 @@
             avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10,
           }))
           .sort((a, b) => a.avg - b.avg);
-
         tbody.innerHTML = list.map((m, i) => {
           const rank = i + 1;
           const isMe = m.name === State.currentUser;
@@ -741,13 +744,11 @@
         const sel    = document.getElementById('vsOpponentSelect');
         const myHdcp = parseFloat(State.myOfficialHdcp);
 
-        // 同日参加マップ
         const dateMap = {};
         State.allScoreHistory.forEach(r => {
           if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
           dateMap[r['日付']][r['名前']] = true;
         });
-
         let closest = null, minDiff = Infinity, maxGames = -1;
         const options = State.memberList
           .filter(m => m.name !== State.currentUser)
@@ -761,7 +762,6 @@
             }
             return m;
           });
-
         if (options.length === 0) {
           document.getElementById('versusContainer').innerHTML =
             `<div class="text-center p-4 text-gray-400 text-xs">対戦可能なメンバーがいません</div>`;
@@ -787,7 +787,6 @@
           if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
           dateMap[r['日付']][r['名前']] = r;
         });
-
         let win = 0, lose = 0, draw = 0;
         const versusData = Object.entries(dateMap)
           .filter(([, d]) => d[myName] && d[opName])
@@ -802,7 +801,6 @@
           })
           .filter(Boolean)
           .sort((a, b) => new Date(a.date) - new Date(b.date));
-
         const container = document.getElementById('versusContainer');
         const vsHeader  = `
           <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-3">
@@ -825,7 +823,6 @@
               <p class="text-xs text-gray-500">公式HDCP: ${escapeHtml(String(opHdcp))}</p>
             </div>
           </div>`;
-
         if (versusData.length === 0) { container.innerHTML = vsHeader; return; }
 
         const tableRows = [...versusData].reverse().map(r => {
@@ -860,7 +857,6 @@
               <tbody>${tableRows}</tbody>
             </table>
           </div>`;
-
         const recent = versusData.slice(-10);
         const ctx    = document.getElementById('versusChart').getContext('2d');
         if (State.versusChartInstance) State.versusChartInstance.destroy();
@@ -886,20 +882,36 @@
     // ==========================================
     // 自分のスコア推移
     // ==========================================
+    // 修正③: 最大10件表示＆プレースホルダー対応
     function loadMyChart(history) {
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      const recent = history.filter(r => new Date(r.date) >= oneYearAgo);
-      if (recent.length === 0) return;
+      const sorted = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const recentMax10 = sorted.slice(0, 10); 
+
+      // Chart.js用に昇順（古い順）に戻す
+      const chartData = [...recentMax10].reverse();
+
+      const emptyEl = document.getElementById('myScoreEmpty');
+      const chartEl = document.getElementById('scoreChartContainer');
+      
+      if (chartData.length === 0) {
+        emptyEl.classList.remove('hidden');
+        chartEl.classList.add('hidden');
+        document.getElementById('myScoreTableBody').innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+        return;
+      } else {
+        emptyEl.classList.add('hidden');
+        chartEl.classList.remove('hidden');
+      }
 
       const ctx = document.getElementById('myChart').getContext('2d');
       if (State.myChartInstance) State.myChartInstance.destroy();
+      
       State.myChartInstance = new Chart(ctx, {
-        type: 'line',
+        type: chartData.length === 1 ? 'bar' : 'line',
         data: {
-          labels: recent.map(r => formatYearMonth(r.date)),
+          labels: chartData.map(r => formatYearMonth(r.date)),
           datasets: [{
-            label: 'GROSS', data: recent.map(r => r.gross),
+            label: 'GROSS', data: chartData.map(r => r.gross),
             borderColor: 'rgb(255,99,132)', backgroundColor: 'rgba(255,99,132,0.1)',
             borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(255,99,132)', tension: 0.3,
           }],
@@ -911,7 +923,7 @@
         },
       });
 
-      document.getElementById('myScoreTableBody').innerHTML = [...recent].reverse().map(row => {
+      document.getElementById('myScoreTableBody').innerHTML = recentMax10.map(row => {
         const rank = Number(row.rank);
         const rankText  = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
         const rankStyle = rank === 1 ? 'text-yellow-600 font-bold' : rank === 2 ? 'text-gray-500 font-bold' : rank === 3 ? 'text-amber-700 font-bold' : 'text-gray-500';
