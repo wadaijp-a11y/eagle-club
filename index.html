@@ -341,7 +341,7 @@
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
-            <h3 class="font-bold text-gray-800">⚔️ グロス対決 <span class="text-xs text-gray-500 font-normal ml-1">(GROSS)</span></h3>
+            <h3 class="font-bold text-gray-800">⚔️ ライバル対決 <span class="text-xs text-gray-500 font-normal ml-1">(GROSS/HD)</span></h3>
           </div>
           <div class="mb-3">
             <select id="vsOpponentSelect" onchange="Versus.render()" aria-label="対戦相手を選択"
@@ -422,7 +422,7 @@
               <span class="font-bold text-gray-800">${escapeHtml(s.dateText)}</span>
               <span class="text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded shadow-sm">${escapeHtml(s.timeText)}</span>
             </div>
-            ${s.clubCompe ? `<div class="mt-1 text-xs text-amber-700 font-bold flex items-center gap-1"><span>🏆 同時開催:</span><span>${escapeHtml(s.clubCompe)}</span></div>` : ''}
+            ${s.clubCompe ? `<div class="mt-1 text-xs text-amber-700 font-bold flex items-center gap-1"><span>🏆 公式競技:</span><span>${escapeHtml(s.clubCompe)}</span></div>` : ''}
           </div>`).join('');
       }
     }
@@ -734,7 +734,7 @@
     }
 
     // ==========================================
-    // グロス対決
+    // ライバル対決
     // ==========================================
     const Versus = {
       setup() {
@@ -795,8 +795,8 @@
             const myG = Number(d[myName]['GROSS']), opG = Number(d[opName]['GROSS']);
             if (isNaN(myG) || isNaN(opG)) return null;
             let result = '引分';
-            if (myG < opG) { result = '勝利'; win++; }
-            else if (myG > opG) { result = '敗北'; lose++; }
+            if (myG < opG) { result = '勝ち'; win++; }
+            else if (myG > opG) { result = '敗け'; lose++; }
             else draw++;
             return { date, myGross: myG, opGross: opG, result };
           })
@@ -829,13 +829,13 @@
         if (versusData.length === 0) { container.innerHTML = vsHeader; return; }
 
         const tableRows = [...versusData].reverse().map(r => {
-          const badge    = r.result === '勝利'
+          const badge    = r.result === '勝ち'
             ? `<span class="bg-blue-500 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">勝利</span>`
             : r.result === '敗北'
             ? `<span class="bg-red-400 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">敗北</span>`
             : `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">引分</span>`;
-          const myColor  = r.result === '勝利' ? 'text-blue-700 font-black' : 'text-gray-700 font-semibold';
-          const opColor  = r.result === '敗北' ? 'text-red-500 font-black' : 'text-gray-500 font-semibold';
+          const myColor  = r.result === '勝ち' ? 'text-blue-700 font-black' : 'text-gray-700 font-semibold';
+          const opColor  = r.result === '敗け' ? 'text-red-500 font-black' : 'text-gray-500 font-semibold';
           return `<tr class="border-b hover:bg-gray-50">
             <td class="p-2 text-gray-600 text-xs font-bold">${escapeHtml(formatYearMonth(r.date))}</td>
             <td class="p-2 text-center ${myColor}">${r.myGross}</td>
