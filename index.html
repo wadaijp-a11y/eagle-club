@@ -33,13 +33,13 @@
   <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10"></div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxDzOUd5JpHP1xYc6AkE-QtfsUOXvFMbMBPT8-jRdIlLMYFy-ncl0t68vsnNwIGjGcrDQ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxCJVXqWdaWewEggPJ4t8VYZUK_aR3zYG1ytSqmvzx2VN-_QR8HuLRp4Jic5Z-D-7PUaQ/exec";
 
     // ==========================================
     // STATE
     // ==========================================
     const State = {
-      authRes:               null, // 要確認①: 再構築用に保持
+      authRes:               null,
       currentUser:           null,
       authToken:             null,
       allScoreHistory:       [],
@@ -53,6 +53,8 @@
       gender:                'male',
       myOfficialHdcp:        '-',
       memberList:            [],
+      allOfficialHdcpHistory: [],      // 追加
+      memberHdcpChartInstance: null,   // 追加
     };
 
     // ==========================================
@@ -64,7 +66,7 @@
       );
     }
 
-    // 修正⑤: Dateオブジェクト経由での堅牢なフォーマット
+    // 【修正⑤】Date経由の堅牢なフォーマット
     function formatYearMonth(dateStr) {
       if (!dateStr) return '';
       const d = new Date(dateStr);
@@ -87,10 +89,20 @@
     // ==========================================
     // ログイン
     // ==========================================
+    /**
+     * フロントエンドでSHA-256ハッシュ化する設計意図：
+     * GAS＋スプレッドシートは管理者が Logger.log() を1行追加するだけで
+     * 生パスワードを盗み見できる透明性の高すぎるインフラ。
+     * ユーザーのスマホ内（Web Crypto API）でハッシュ化することで、
+     * ネットワーク上にも GAS 上にも生パスワードが存在しない設計とする。
+     * ※ Pass-the-Hash リスクは HTTPS 強制により経路傍受の可能性が極めて低く許容。
+     * ※ GAS の CPU リソース節約（無料枠の保護）にも寄与。
+     */
     async function hashPassword(plainText) {
-      const msgBuffer = new TextEncoder().encode(plainText);
+      const msgBuffer  = new TextEncoder().encode(plainText);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     async function onLogin(event) {
@@ -111,6 +123,7 @@
       btn.textContent = '認証中...';
 
       try {
+        // フロントでハッシュ化してから送信（生パスワードはネットワーク・GAS上に存在しない）
         const hashedPw = await hashPassword(pw);
         const res = await callGasApi('checkLogin', { id, password: hashedPw });
 
@@ -132,9 +145,9 @@
 
     async function onLogout() {
       await callGasApi('logout').catch(() => {});
-      State.authToken = null;
+      State.authToken   = null;
       State.currentUser = null;
-      State.authRes = null;
+      State.authRes     = null;
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
@@ -145,11 +158,11 @@
     // セッション初期化・DOM構築
     // ==========================================
     function initSession(res) {
-      State.authRes           = res;
-      State.currentUser       = res.name;
-      State.authToken         = res.token;
-      State.gender            = res.gender || 'male';
-      State.myOfficialHdcp    = res.officialHdcp || '-';
+      State.authRes               = res;
+      State.currentUser           = res.name;
+      State.authToken             = res.token;
+      State.gender                = res.gender || 'male';
+      State.myOfficialHdcp        = res.officialHdcp || '-';
       State.isOfficialHistoryLoaded = false;
 
       buildMainUI(res);
@@ -181,7 +194,7 @@
 
     // ---- カードビルダー群 ----
     function buildScheduleCard(res) {
-      // 修正④: 初期表示のテキストを「未定」にしてチラつき防止
+      // 【修正④】初期値を「未定」にしてチラつき防止
       return `
         <div class="bg-white border-2 border-green-500 rounded-xl shadow-sm overflow-hidden">
           <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
@@ -309,7 +322,6 @@
     }
 
     function buildMyScoreCard() {
-      // 修正③: プレースホルダー用HTML追加
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
@@ -343,7 +355,7 @@
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
-            <h3 class="font-bold text-gray-800">⚔️ ライバル対決 <span class="text-xs text-gray-500 font-normal ml-1">(GROSS/HD)</span></h3>
+            <h3 class="font-bold text-gray-800">⚔️ ライバル対決 <span class="text-xs text-gray-500 font-normal ml-1">(GROSS)</span></h3>
           </div>
           <div class="mb-3">
             <select id="vsOpponentSelect" onchange="Versus.render()" aria-label="対戦相手を選択"
@@ -411,6 +423,7 @@
           document.getElementById('nextClubCompeBadge').classList.remove('hidden');
         }
       }
+      // nextCompeがnullの場合は初期値「未定」のまま（チラつきなし）
 
       const listContainer = document.getElementById('futureSchedulesList');
       if (res.futureSchedules && res.futureSchedules.length > 0) {
@@ -448,37 +461,37 @@
       });
     }
 
-    // 要確認①: エラー時に全体を覆うUIへ変更
+    // 【要確認①対応】エラー時にmainSection全体を差し替えてUI崩れを防止
     function showErrorAndRetry() {
       const main = document.getElementById('mainSection');
-      if(main) {
+      if (main) {
         main.innerHTML = `
           <div class="bg-white border border-red-200 rounded-xl p-6 text-center shadow-sm">
             <p class="text-red-500 font-bold mb-4">データの取得に失敗しました。<br>通信環境をご確認ください。</p>
-            <button onclick="retryLoadAllData()" 
-                    class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-lg font-bold shadow-sm">
+            <button onclick="retryLoadAllData()"
+              class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-lg font-bold shadow-sm">
               再読み込み
             </button>
-          </div>
-        `;
+          </div>`;
       }
     }
 
-    // 再読み込みヘルパー
     function retryLoadAllData() {
-      if(State.authRes) buildMainUI(State.authRes);
+      if (State.authRes) buildMainUI(State.authRes);
       loadAllData();
     }
 
-    async function loadAllData() {
+async function loadAllData() {
       showSkeletons();
       try {
-        const [history, members] = await Promise.all([
+        const [history, members, hdcpHistory] = await Promise.all([
           callGasApi('getScoreHistory'),
           callGasApi('getMemberList'),
+          callGasApi('getAllOfficialHdcpHistory') // 追加
         ]);
 
         if (members && members.length > 0) State.memberList = members;
+        if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory; // 追加
 
         if (history && history.length > 0) {
           State.allScoreHistory = history;
@@ -542,11 +555,14 @@
       }
     }
 
-    async function loadOfficialHdcpHistory() {
+async function loadOfficialHdcpHistory() {
       try {
-        const history = await callGasApi('getOfficialHdcpHistory');
         State.isOfficialHistoryLoaded = true;
         const tbody = document.getElementById('officialHdcpTableBody');
+
+        // 通信を削除し、Stateから自分用のデータを抽出してソート
+        const myNameNorm = State.currentUser.replace(/\s+/g, '');
+        const history = State.allOfficialHdcpHistory.filter(r => r.name === myNameNorm);
 
         if (!history || history.length === 0) {
           tbody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-400 text-xs">直近1年の履歴データがありません</td></tr>`;
@@ -611,12 +627,12 @@
         .filter(r => r['日付'] === target)
         .sort((a, b) => Number(a['順位']) - Number(b['順位']));
       document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
-        const rank     = Number(row['順位']);
+        const rank      = Number(row['順位']);
         const rankStyle = rank === 1 ? 'text-yellow-600 font-bold'
                         : rank === 2 ? 'text-gray-500 font-bold'
                         : rank === 3 ? 'text-amber-700 font-bold'
                         : 'text-gray-700';
-        const isMe     = row['名前'] === State.currentUser;
+        const isMe      = row['名前'] === State.currentUser;
         return `<tr class="border-b ${isMe ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'}">
           <td class="p-2 font-bold text-center ${rankStyle}">${escapeHtml(String(rank))} 位</td>
           <td class="p-2 font-bold ${isMe ? 'text-blue-800' : 'text-gray-800'}">${escapeHtml(row['名前'])}</td>
@@ -632,10 +648,11 @@
     function setupRanking() {
       State.rankingByTerm = {};
       State.allScoreHistory.forEach(row => {
-        const parts = row['日付'].split('/');
-        if (parts.length < 2) return;
-        const year    = parts[0].slice(-2);
-        const month   = parseInt(parts[1], 10);
+        // 【修正】Date経由で年・月を取得（スラッシュ分割廃止）
+        const d = new Date(row['日付']);
+        if (isNaN(d.getTime())) return;
+        const year    = String(d.getFullYear()).slice(-2);
+        const month   = d.getMonth() + 1;
         const termKey = `${year}年${month >= 7 ? '下期' : '上期'}`;
         if (!State.rankingByTerm[termKey]) State.rankingByTerm[termKey] = {};
         const net = Number(row['NET']);
@@ -644,9 +661,10 @@
           State.rankingByTerm[termKey][row['名前']].push(net);
         }
       });
+
       const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
-        const [ya, la] = [parseInt(a), a.includes('下期') ? 1 : 0];
-        const [yb, lb] = [parseInt(b), b.includes('下期') ? 1 : 0];
+        const ya = parseInt(a), la = a.includes('下期') ? 1 : 0;
+        const yb = parseInt(b), lb = b.includes('下期') ? 1 : 0;
         return ya !== yb ? yb - ya : lb - la;
       });
       State.availableRankingTerms = terms.slice(0, 2);
@@ -670,12 +688,12 @@
 
     function changeRankingTab(tabId) {
       State.currentRankingTab = tabId;
-      const tabClass     = 'flex-1 text-xs px-1 py-1 rounded font-bold transition-all leading-tight';
-      const tabs         = document.getElementById('rankingTabsContainer').children;
+      const tabClass = 'flex-1 text-xs px-1 py-1 rounded font-bold transition-all leading-tight';
+      const tabs     = document.getElementById('rankingTabsContainer').children;
       for (const tab of tabs) tab.className = `${tabClass} text-gray-500 hover:text-gray-800`;
 
-      const activeId  = tabId === 'official' ? 'tab_official' : `tab_${tabId}`;
-      const activeEl  = document.getElementById(activeId);
+      const activeId = tabId === 'official' ? 'tab_official' : `tab_${tabId}`;
+      const activeEl = document.getElementById(activeId);
       if (activeEl) {
         const color = tabId === 'official' ? 'text-purple-700' : 'text-green-700';
         activeEl.className = `${tabClass} bg-white shadow-sm ${color} border border-gray-200/50`;
@@ -684,17 +702,18 @@
     }
 
     function renderRankingContent() {
-      const header = document.getElementById('rankingTableHeader');
-      const tbody  = document.getElementById('rankingTableBody');
-
+      const header    = document.getElementById('rankingTableHeader');
+      const tbody     = document.getElementById('rankingTableBody');
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
       const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
-      if (State.currentRankingTab === 'official') {
+
+     if (State.currentRankingTab === 'official') {
         header.innerHTML = `
           <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
+            <th scope="col" class="p-2 w-10 text-center font-normal">順位</th>
             <th scope="col" class="p-2 font-normal">名前</th>
-            <th scope="col" class="p-2 text-right pr-4 font-normal">公式HDCP</th>
+            <th scope="col" class="p-2 text-right font-normal whitespace-nowrap">公式HD</th>
+            <th scope="col" class="p-2 pr-4 text-right font-normal whitespace-nowrap">(イ会HD)</th>
           </tr>`;
         tbody.innerHTML = State.memberList
           .filter(m => m.hdcp !== 999)
@@ -703,19 +722,23 @@
             const isMe = m.name === State.currentUser;
             return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'}">
               <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
-              <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">${escapeHtml(m.name)}</td>
-              <td class="p-2 text-right pr-4 font-bold text-purple-700">${escapeHtml(String(m.hdcp))}</td>
+              <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
+                <button onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none flex items-center gap-1 text-left">
+                  ${escapeHtml(m.name)} <span class="text-gray-400 text-[10px]">📊</span>
+                </button>
+              </td>
+              <td class="p-2 text-right font-bold text-purple-700">${escapeHtml(String(m.hdcp))}</td>
+              <td class="p-2 pr-4 text-right text-xs text-blue-600 font-semibold">(${escapeHtml(String(m.eagleHdcp))})</td>
             </tr>`;
-          }).join('') || `<tr><td colspan="3" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+          }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
       } else {
-        header.innerHTML = `
+       header.innerHTML = `
           <tr class="bg-gray-50 border-b text-gray-500 text-xs">
             <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
             <th scope="col" class="p-2 font-normal">名前</th>
             <th scope="col" class="p-2 text-right font-normal">平均NET</th>
             <th scope="col" class="p-2 pr-4 text-right font-normal">参戦</th>
           </tr>`;
-
         const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
         const list = Object.entries(scoresObj)
           .map(([name, scores]) => ({
@@ -749,6 +772,7 @@
           if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
           dateMap[r['日付']][r['名前']] = true;
         });
+
         let closest = null, minDiff = Infinity, maxGames = -1;
         const options = State.memberList
           .filter(m => m.name !== State.currentUser)
@@ -762,6 +786,7 @@
             }
             return m;
           });
+
         if (options.length === 0) {
           document.getElementById('versusContainer').innerHTML =
             `<div class="text-center p-4 text-gray-400 text-xs">対戦可能なメンバーがいません</div>`;
@@ -777,8 +802,8 @@
       },
 
       render() {
-        const opName = document.getElementById('vsOpponentSelect').value;
-        const myName = State.currentUser;
+        const opName   = document.getElementById('vsOpponentSelect').value;
+        const myName   = State.currentUser;
         const opMember = State.memberList.find(m => m.name === opName);
         const opHdcp   = opMember && opMember.hdcp !== 999 ? opMember.hdcp : '-';
 
@@ -787,20 +812,23 @@
           if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
           dateMap[r['日付']][r['名前']] = r;
         });
+
         let win = 0, lose = 0, draw = 0;
         const versusData = Object.entries(dateMap)
           .filter(([, d]) => d[myName] && d[opName])
           .map(([date, d]) => {
             const myG = Number(d[myName]['GROSS']), opG = Number(d[opName]['GROSS']);
             if (isNaN(myG) || isNaN(opG)) return null;
+            // 【修正】勝敗文字列を '勝利'/'敗北'/'引分' で統一
             let result = '引分';
-            if (myG < opG) { result = '勝ち'; win++; }
-            else if (myG > opG) { result = '敗け'; lose++; }
+            if (myG < opG) { result = '勝利'; win++; }
+            else if (myG > opG) { result = '敗北'; lose++; }
             else draw++;
             return { date, myGross: myG, opGross: opG, result };
           })
           .filter(Boolean)
           .sort((a, b) => new Date(a.date) - new Date(b.date));
+
         const container = document.getElementById('versusContainer');
         const vsHeader  = `
           <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-3">
@@ -823,16 +851,18 @@
               <p class="text-xs text-gray-500">公式HDCP: ${escapeHtml(String(opHdcp))}</p>
             </div>
           </div>`;
+
         if (versusData.length === 0) { container.innerHTML = vsHeader; return; }
 
         const tableRows = [...versusData].reverse().map(r => {
-          const badge    = r.result === '勝ち'
+          // 【修正】'勝利'/'敗北'/'引分' で統一しているためバッジも正しく表示される
+          const badge   = r.result === '勝利'
             ? `<span class="bg-blue-500 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">勝利</span>`
             : r.result === '敗北'
             ? `<span class="bg-red-400 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">敗北</span>`
             : `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">引分</span>`;
-          const myColor  = r.result === '勝ち' ? 'text-blue-700 font-black' : 'text-gray-700 font-semibold';
-          const opColor  = r.result === '敗け' ? 'text-red-500 font-black' : 'text-gray-500 font-semibold';
+          const myColor = r.result === '勝利' ? 'text-blue-700 font-black' : 'text-gray-700 font-semibold';
+          const opColor = r.result === '敗北' ? 'text-red-500 font-black' : 'text-gray-500 font-semibold';
           return `<tr class="border-b hover:bg-gray-50">
             <td class="p-2 text-gray-600 text-xs font-bold">${escapeHtml(formatYearMonth(r.date))}</td>
             <td class="p-2 text-center ${myColor}">${r.myGross}</td>
@@ -857,6 +887,7 @@
               <tbody>${tableRows}</tbody>
             </table>
           </div>`;
+
         const recent = versusData.slice(-10);
         const ctx    = document.getElementById('versusChart').getContext('2d');
         if (State.versusChartInstance) State.versusChartInstance.destroy();
@@ -866,7 +897,7 @@
             labels: recent.map(r => formatYearMonth(r.date)),
             datasets: [
               { label: 'あなた', data: recent.map(r => r.myGross), borderColor: 'rgb(59,130,246)', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3 },
-              { label: '相手',   data: recent.map(r => r.opGross), borderColor: 'rgb(156,163,175)', backgroundColor: 'rgba(156,163,175,0.1)', borderWidth: 2, pointRadius: 4, borderDash: [5,5], pointBackgroundColor: 'rgb(156,163,175)', tension: 0.3 },
+              { label: '相手',   data: recent.map(r => r.opGross), borderColor: 'rgb(156,163,175)', backgroundColor: 'rgba(156,163,175,0.1)', borderWidth: 2, pointRadius: 4, borderDash: [5, 5], pointBackgroundColor: 'rgb(156,163,175)', tension: 0.3 },
             ],
           },
           options: {
@@ -882,30 +913,27 @@
     // ==========================================
     // 自分のスコア推移
     // ==========================================
-    // 修正③: 最大10件表示＆プレースホルダー対応
     function loadMyChart(history) {
-      const sorted = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
-      const recentMax10 = sorted.slice(0, 10); 
-
-      // Chart.js用に昇順（古い順）に戻す
-      const chartData = [...recentMax10].reverse();
+      const sorted     = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const recentMax10 = sorted.slice(0, 10);
+      const chartData  = [...recentMax10].reverse(); // グラフ用に昇順
 
       const emptyEl = document.getElementById('myScoreEmpty');
       const chartEl = document.getElementById('scoreChartContainer');
-      
+
       if (chartData.length === 0) {
         emptyEl.classList.remove('hidden');
         chartEl.classList.add('hidden');
-        document.getElementById('myScoreTableBody').innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+        document.getElementById('myScoreTableBody').innerHTML =
+          `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
         return;
-      } else {
-        emptyEl.classList.add('hidden');
-        chartEl.classList.remove('hidden');
       }
+
+      emptyEl.classList.add('hidden');
+      chartEl.classList.remove('hidden');
 
       const ctx = document.getElementById('myChart').getContext('2d');
       if (State.myChartInstance) State.myChartInstance.destroy();
-      
       State.myChartInstance = new Chart(ctx, {
         type: chartData.length === 1 ? 'bar' : 'line',
         data: {
@@ -924,7 +952,7 @@
       });
 
       document.getElementById('myScoreTableBody').innerHTML = recentMax10.map(row => {
-        const rank = Number(row.rank);
+        const rank      = Number(row.rank);
         const rankText  = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
         const rankStyle = rank === 1 ? 'text-yellow-600 font-bold' : rank === 2 ? 'text-gray-500 font-bold' : rank === 3 ? 'text-amber-700 font-bold' : 'text-gray-500';
         return `<tr class="border-b hover:bg-gray-50">
@@ -995,16 +1023,18 @@
         return;
       }
 
-      btn.disabled     = true;
-      btn.textContent  = '処理中...';
+      btn.disabled    = true;
+      btn.textContent = '処理中...';
       statusText.textContent = '';
 
       try {
-        const res = await callGasApi('resetMemberPassword', { targetId, newPassword: newPw });
+        // 新パスワードもフロントでハッシュ化して送信（生パスワードをGASに渡さない設計と統一）
+        const hashedNewPw = await hashPassword(newPw);
+        const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
         statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
         statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-green-700' : 'text-red-600'}`;
         if (res.success) {
-          document.getElementById('resetTargetId').value  = '';
+          document.getElementById('resetTargetId').value   = '';
           document.getElementById('resetNewPassword').value = '';
         }
       } catch {
@@ -1015,6 +1045,70 @@
         btn.textContent = 'パスワードをリセット';
       }
     }
+
+// ==========================================
+    // メンバーHDCP推移モーダル
+    // ==========================================
+    function openMemberHdcpModal(memberName) {
+      document.getElementById('memberHdcpModalTitle').textContent = `${memberName} さんの公式HDCP推移`;
+      const noDataEl = document.getElementById('memberHdcpNoData');
+      const canvasEl = document.getElementById('memberHdcpChart');
+      
+      const targetNameNorm = memberName.replace(/\s+/g, '');
+      const history = State.allOfficialHdcpHistory.filter(r => r.name === targetNameNorm);
+      const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
+
+      if (State.memberHdcpChartInstance) {
+        State.memberHdcpChartInstance.destroy();
+      }
+
+      if (valid.length === 0) {
+        canvasEl.classList.add('hidden');
+        noDataEl.classList.remove('hidden');
+      } else {
+        canvasEl.classList.remove('hidden');
+        noDataEl.classList.add('hidden');
+        
+        const ctx = canvasEl.getContext('2d');
+        State.memberHdcpChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: valid.map(r => formatYearMonth(r.date)),
+            datasets: [{
+              label: '公式HDCP', data: valid.map(r => Number(r.hdcp)),
+              borderColor: 'rgb(147,51,234)', backgroundColor: 'rgba(147,51,234,0.1)',
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147,51,234)', tension: 0.3,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: { y: { reverse: true } },
+          },
+        });
+      }
+      document.getElementById('memberHdcpModal').classList.remove('hidden');
+    }
+
+    function closeMemberHdcpModal() {
+      document.getElementById('memberHdcpModal').classList.add('hidden');
+    }
+
+    
   </script>
+  <!-- メンバーHDCP推移モーダル -->
+  <div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberHdcpModal()">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h3 id="memberHdcpModalTitle" class="font-bold text-gray-800 text-sm"></h3>
+        <button onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+      </div>
+      <div class="py-1 min-h-[150px] relative">
+        <canvas id="memberHdcpChart"></canvas>
+        <p id="memberHdcpNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
