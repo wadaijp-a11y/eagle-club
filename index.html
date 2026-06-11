@@ -707,28 +707,30 @@ async function loadOfficialHdcpHistory() {
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
       const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
 
-     if (State.currentRankingTab === 'official') {
+      if (State.currentRankingTab === 'official') {
         header.innerHTML = `
-          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-            <th scope="col" class="p-2 w-10 text-center font-normal">順位</th>
-            <th scope="col" class="p-2 font-normal">名前</th>
-            <th scope="col" class="p-2 text-right font-normal whitespace-nowrap">公式HD</th>
-            <th scope="col" class="p-2 pr-4 text-right font-normal whitespace-nowrap">(イ会HD)</th>
+          <tr class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs">
+            <th scope="col" class="px-1 py-2 text-center font-normal whitespace-nowrap w-10 sm:w-12">順位</th>
+            <th scope="col" class="px-1 py-2 text-left font-normal whitespace-nowrap">名前</th>
+            <th scope="col" class="px-1 py-2 text-right font-normal whitespace-nowrap">公式HD</th>
+            <th scope="col" class="px-2 py-2 text-right font-normal whitespace-nowrap">ｲ会HD</th>
           </tr>`;
+          
         tbody.innerHTML = State.memberList
           .filter(m => m.hdcp !== 999)
           .map((m, i) => {
             const rank = i + 1;
             const isMe = m.name === State.currentUser;
-            return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'}">
-              <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
-              <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
-                <button onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none flex items-center gap-1 text-left">
-                  ${escapeHtml(m.name)} <span class="text-gray-400 text-[10px]">📊</span>
+            return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
+              <td class="px-1 py-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
+              <td class="px-1 py-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
+                <button onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none flex items-center gap-1 text-left w-full overflow-hidden">
+                  <span class="truncate max-w-[85px] sm:max-w-[150px] inline-block align-bottom">${escapeHtml(m.name)}</span>
+                  <span class="text-gray-400 text-[10px] flex-shrink-0">📊</span>
                 </button>
               </td>
-              <td class="p-2 text-right font-bold text-purple-700">${escapeHtml(String(m.hdcp))}</td>
-              <td class="p-2 pr-4 text-right text-xs text-blue-600 font-semibold">(${escapeHtml(String(m.eagleHdcp))})</td>
+              <td class="px-1 py-2 text-right font-bold text-purple-700 whitespace-nowrap text-[15px]">${escapeHtml(String(m.hdcp))}</td>
+              <td class="px-2 py-2 text-right font-bold text-sky-600 whitespace-nowrap text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
             </tr>`;
           }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
       } else {
