@@ -678,7 +678,7 @@ async function loadOfficialHdcpHistory() {
       const tabClass  = 'flex-1 text-xs px-1 py-1 rounded font-bold transition-all leading-tight';
       container.innerHTML = `
         <button onclick="changeRankingTab('official')" id="tab_official"
-          class="${tabClass} text-gray-500 hover:text-gray-800">公式HDCP</button>
+          class="${tabClass} text-gray-500 hover:text-gray-800">公式HD 📊</button>
         ${State.availableRankingTerms.map((term, i) => `
           <button onclick="changeRankingTab('${escapeHtml(term)}')" id="tab_${escapeHtml(term)}"
             class="${tabClass} text-gray-500 hover:text-gray-800 text-center">
@@ -701,7 +701,7 @@ async function loadOfficialHdcpHistory() {
       renderRankingContent();
     }
 
-    function renderRankingContent() {
+   function renderRankingContent() {
       const header    = document.getElementById('rankingTableHeader');
       const tbody     = document.getElementById('rankingTableBody');
       if (!header || !tbody) return;
@@ -709,16 +709,14 @@ async function loadOfficialHdcpHistory() {
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
       const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
 
-      // ==========================================
       // 1. 公式ハンディキャップ タブ
-      // ==========================================
       if (State.currentRankingTab === 'official') {
         header.innerHTML = `
-          <tr class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs">
-            <th scope="col" class="px-1 py-2 text-center font-normal whitespace-nowrap w-10 sm:w-12">順位</th>
-            <th scope="col" class="px-1 py-2 text-left font-normal whitespace-nowrap">名前</th>
-            <th scope="col" class="px-1 py-2 text-right font-normal whitespace-nowrap">公式HD 📊</th>
-            <th scope="col" class="px-2 py-2 text-right font-normal whitespace-nowrap">イ会HD</th>
+          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
+            <th scope="col" class="p-2 font-normal">名前</th>
+            <th scope="col" class="p-2 text-right font-normal">公式HD</th>
+            <th scope="col" class="p-2 pr-4 text-right font-normal">イ会HD</th>
           </tr>`;
           
         tbody.innerHTML = State.memberList
@@ -727,27 +725,25 @@ async function loadOfficialHdcpHistory() {
             const rank = i + 1;
             const isMe = m.name === State.currentUser;
             return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
-              <td class="px-1 py-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
-              <td class="px-1 py-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
-                <button onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[100px] sm:max-w-[150px] leading-tight">
+              <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
+              <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
+                <button onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
                   ${escapeHtml(m.name)}
                 </button>
               </td>
-              <td class="px-1 py-2 text-right font-bold text-purple-700 whitespace-nowrap text-[15px]">${escapeHtml(String(m.hdcp))}</td>
-              <td class="px-2 py-2 text-right font-bold text-sky-600 whitespace-nowrap text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
+              <td class="p-2 text-right font-bold text-purple-700">${escapeHtml(String(m.hdcp))}</td>
+              <td class="p-2 pr-4 text-right font-bold text-sky-600 text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
             </tr>`;
           }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
 
-      // ==========================================
       // 2. NET（今期 / 前期） タブ
-      // ==========================================
       } else {
        header.innerHTML = `
-          <tr class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs">
-            <th scope="col" class="px-1 py-2 text-center font-normal whitespace-nowrap w-10 sm:w-12">順位</th>
-            <th scope="col" class="px-1 py-2 text-left font-normal whitespace-nowrap">名前</th>
-            <th scope="col" class="px-1 py-2 text-right font-normal whitespace-nowrap">平均NET</th>
-            <th scope="col" class="px-2 py-2 text-right font-normal whitespace-nowrap">参戦</th>
+          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
+            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
+            <th scope="col" class="p-2 font-normal">名前</th>
+            <th scope="col" class="p-2 text-right font-normal">平均NET</th>
+            <th scope="col" class="p-2 pr-4 text-right font-normal">参戦</th>
           </tr>`;
           
         const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
@@ -762,19 +758,18 @@ async function loadOfficialHdcpHistory() {
           const rank = i + 1;
           const isMe = m.name === State.currentUser;
           return `<tr class="border-b ${isMe ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
-            <td class="px-1 py-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
-            <td class="px-1 py-2 font-bold ${isMe ? 'text-green-800' : 'text-gray-800'}">
-              <span class="block w-full text-left overflow-hidden truncate max-w-[100px] sm:max-w-[150px] leading-tight">
+            <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
+            <td class="p-2 font-bold ${isMe ? 'text-green-800' : 'text-gray-800'}">
+              <span class="block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
                 ${escapeHtml(m.name)}
               </span>
             </td>
-            <td class="px-1 py-2 text-right font-bold text-green-700 whitespace-nowrap text-[15px]">${escapeHtml(String(m.avg))}</td>
-            <td class="px-2 py-2 text-right font-medium text-gray-500 whitespace-nowrap text-xs">${escapeHtml(String(m.count))}回</td>
+            <td class="p-2 text-right font-bold text-green-700">${escapeHtml(String(m.avg))}</td>
+            <td class="p-2 pr-4 text-right text-gray-500">${escapeHtml(String(m.count))}回</td>
           </tr>`;
         }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
       }
     }
-
 
     // ==========================================
     // ライバル対決
