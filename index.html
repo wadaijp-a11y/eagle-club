@@ -109,8 +109,6 @@
     // ==========================================
     /**
      * フロントエンドでSHA-256ハッシュ化する設計意図：
-     * GAS＋スプレッドシートは管理者が Logger.log() を1行追加するだけで
-     * 生パスワードを盗み見できる透明性の高すぎるインフラ。
      * ユーザーのスマホ内（Web Crypto API）でハッシュ化することで、
      * ネットワーク上にも GAS 上にも生パスワードが存在しない設計とする。
      * ※ Pass-the-Hash リスクは HTTPS 強制により経路傍受の可能性が極めて低く許容。
@@ -152,8 +150,8 @@
           err.textContent = res.error || 'IDまたはパスワードが違います';
           err.classList.remove('hidden');
         }
-      } catch {
-        err.textContent = '通信エラーが発生しました';
+        } catch {
+        err.textContent = '通信エラー、または一時的なシステム制限です。少し時間をおいてお試しください。';
         err.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -212,7 +210,6 @@
 
     // ---- カードビルダー群 ----
     function buildScheduleCard(res) {
-      // 【修正④】初期値を「未定」にしてチラつき防止
       return `
         <div class="bg-white border-2 border-green-500 rounded-xl shadow-sm overflow-hidden">
           <div class="bg-green-500 text-white text-sm font-bold py-1.5 text-center tracking-widest flex items-center justify-center gap-2">
@@ -479,13 +476,16 @@
       });
     }
 
-    // 【要確認①対応】エラー時にmainSection全体を差し替えてUI崩れを防止
-    function showErrorAndRetry() {
+     function showErrorAndRetry() {
       const main = document.getElementById('mainSection');
       if (main) {
         main.innerHTML = `
           <div class="bg-white border border-red-200 rounded-xl p-6 text-center shadow-sm">
-            <p class="text-red-500 font-bold mb-4">データの取得に失敗しました。<br>通信環境をご確認ください。</p>
+            <p class="text-red-500 font-bold mb-2">データの取得に失敗しました</p>
+            <p class="text-xs text-gray-600 mb-4 leading-relaxed">
+              通信環境が不安定か、システムの無料枠アクセス制限に達している可能性があります。<br>
+              しばらく時間をおいてから再読み込みをお試しください。
+            </p>
             <button onclick="retryLoadAllData()"
               class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-lg font-bold shadow-sm">
               再読み込み
@@ -493,6 +493,7 @@
           </div>`;
       }
     }
+
 
     function retryLoadAllData() {
       if (State.authRes) buildMainUI(State.authRes);
@@ -623,7 +624,7 @@ async function loadOfficialHdcpHistory() {
         }).join('');
       } catch {
         document.getElementById('officialHdcpTableBody').innerHTML =
-          `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー</td></tr>`;
+          `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー、しばらしてから再度お試しください。</td></tr>`;
       }
     }
 
@@ -1230,7 +1231,7 @@ async function loadOfficialHdcpHistory() {
   </div>
 
  <!-- 免責事項・ルール モーダル -->
-  <div id="termsModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeTermsModal()">
+<div id="termsModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeTermsModal()">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b pb-3 mb-4">
         <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
@@ -1244,21 +1245,36 @@ async function loadOfficialHdcpHistory() {
         </section>
         
         <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度とプライバシー</h4>
-          <p class="leading-relaxed mb-2">倶楽部の公式ハンディキャップおよび本会の成績表は、AIによる画像認識（OCR）を用いて自動取得・登録しています。そのため、読み取りの誤りが含まれる可能性があります。スコア等に誤りを発見した際はお手数ですが管理者までお知らせください。</p>
-          <p class="leading-relaxed text-red-600 font-semibold">※ 本アプリ内の情報は倶楽部のホームページのメンバーサイトやイーグル会の成績表を元にしています。メンバー以外の第三者に共有・公開はお控えください。</p>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度について</h4>
+          <p class="leading-relaxed">倶楽部の公式ハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれる可能性があります。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。ハンディキャップやスコア等に誤りを発見した際はLINE等でお知らせください。</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. 情報の取り扱いについて</h4>
+          <p class="leading-relaxed">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開、および成績・ランキング画面のSNS等への投稿はお控えください。</p>
         </section>
         
         <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. システムの稼働について</h4>
-          <p class="leading-relaxed">本アプリは、GoogleやGitHub、各種AI、APIサービスの無料インフラ枠を活用して構築されています。各サービスの仕様変更やアクセス過多により、予告なく機能の停止や読み込み遅延が発生する場合があります。</p>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. システムの稼働について</h4>
+          <p class="leading-relaxed">本アプリはGoogle・GitHub・各種AIおよびAPIサービスの無料インフラを活用して構築されています。各サービスの仕様変更やアクセス集中により、予告なく機能停止・読み込み遅延が発生する場合があります。</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 5. サービスの継続性について</h4>
+          <p class="leading-relaxed">本アプリは管理者個人の善意により運営されており、管理者の都合により予告なくサービスを終了する場合があります。大切な成績データは各自でバックアップを取ることを推奨します。</p>
         </section>
         
         <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. アカウントとセキュリティ</h4>
-          <p class="leading-relaxed">ご設定いただいたパスワードは、端末内で不可逆の暗号化（ハッシュ化）を行ってから保存されるため、管理者であっても確認することはできません。サイトの不正アクセス対策は可能な範囲で実施しておりますが、トラブルの責任は負いかねますので、パスワードは各自で厳重に管理してください。</p>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 6. アカウントとセキュリティ</h4>
+          <p class="leading-relaxed">ご設定いただいたパスワードはご本人の端末内で不可逆の暗号化処理（ハッシュ化）が施されてからサーバーに送信されるため、管理者を含む第三者が元のパスワードを知ることはできません。不正アクセス対策は可能な範囲で実施していますが、パスワードは各自で厳重に管理してください。</p>
         </section>
       </div>
+      
+      <div class="mt-5 pt-4 border-t text-center">
+        <button onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
+      </div>
+    </div>
+  </div>
       
       <div class="mt-5 pt-4 border-t text-center">
         <button onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
