@@ -9,26 +9,43 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
 
-  <div id="loginSection" class="w-full max-w-md bg-white rounded-xl shadow-md p-6 mt-10">
-    <h1 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h1>
-    <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-4 mb-6">
-      <div>
-        <label for="loginId" class="block text-gray-700 text-sm font-bold mb-1">ログインID</label>
-        <input type="text" id="loginId" autocomplete="username"
-          class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+
+    <!-- ログインセクション -->
+  <div id="loginSection" class="w-full max-w-md mt-10">
+    <div class="bg-white rounded-xl shadow-md p-6">
+      <h1 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h1>
+      <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-4">
+        <div>
+          <label for="loginId" class="block text-gray-700 text-sm font-bold mb-1">ログインID</label>
+          <input type="text" id="loginId" autocomplete="username"
+            class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+        </div>
+        <div>
+          <label for="loginPw" class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
+          <input type="password" id="loginPw" autocomplete="current-password"
+            class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+        </div>
+        <button type="submit" id="loginBtn" aria-label="ログインする"
+          class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm mt-2">
+          ログイン
+        </button>
+      </form>
+      <p id="loginError" class="text-red-500 mt-3 text-center text-sm font-bold hidden" role="alert"></p>
+      
+      <!-- 同意テキスト -->
+      <div class="mt-5 border-t border-gray-100 pt-4">
+        <p class="text-[11px] text-gray-500 text-center leading-relaxed">
+          ログインすることで<br>
+          <button type="button" onclick="openTermsModal()" class="text-blue-600 font-semibold hover:underline focus:outline-none">免責事項・利用のルール</button>
+          に同意したものとみなします。
+        </p>
       </div>
-      <div>
-        <label for="loginPw" class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
-        <input type="password" id="loginPw" autocomplete="current-password"
-          class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
-      </div>
-      <button type="submit" id="loginBtn" aria-label="ログインする"
-        class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm">
-        ログイン
-      </button>
-    </form>
-    <p id="loginError" class="text-red-500 mt-2 text-center text-sm font-bold hidden" role="alert"></p>
+    </div>
+    <!-- コピーライト（極小表示） -->
+    <p class="text-center text-[10px] text-gray-400 mt-4">&copy; 2026 イーグル会 システム管理者. All rights reserved.</p>
   </div>
+
+
 
   <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10"></div>
 
@@ -1170,6 +1187,17 @@ async function loadOfficialHdcpHistory() {
       document.getElementById('memberCompeModal').classList.add('hidden');
     }
 
+    // ==========================================
+    // 免責事項モーダル
+    // ==========================================
+    function openTermsModal() {
+      document.getElementById('termsModal').classList.remove('hidden');
+    }
+
+    function closeTermsModal() {
+      document.getElementById('termsModal').classList.add('hidden');
+    }
+
 
   </script>
   <!-- メンバーHDCP推移モーダル -->
@@ -1197,6 +1225,43 @@ async function loadOfficialHdcpHistory() {
       <div class="py-1 min-h-[150px] relative">
         <canvas id="memberCompeChart"></canvas>
         <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+      </div>
+    </div>
+  </div>
+
+ <!-- 免責事項・ルール モーダル -->
+  <div id="termsModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeTermsModal()">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b pb-3 mb-4">
+        <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
+        <button onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+      </div>
+      
+      <div class="overflow-y-auto pr-2 text-sm text-gray-600 space-y-5">
+        <section>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 1. 運営と免責</h4>
+          <p class="leading-relaxed">本アプリはイーグル会のシステム管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
+        </section>
+        
+        <section>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度とプライバシー</h4>
+          <p class="leading-relaxed mb-2">倶楽部の公式ハンディキャップおよび本会の成績表は、AIによる画像認識（OCR）を用いて自動取得・登録しています。そのため、読み取りの誤りが含まれる可能性があります。スコア等に誤りを発見した際はお手数ですが管理者までお知らせください。</p>
+          <p class="leading-relaxed text-red-600 font-semibold">※ 本アプリ内の情報は倶楽部のホームページのメンバーサイトやイーグル会の成績表を元にしています。メンバー以外の第三者に共有・公開はお控えください。</p>
+        </section>
+        
+        <section>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. システムの稼働について</h4>
+          <p class="leading-relaxed">本アプリは、GoogleやGitHub、各種AI、APIサービスの無料インフラ枠を活用して構築されています。各サービスの仕様変更やアクセス過多により、予告なく機能の停止や読み込み遅延が発生する場合があります。</p>
+        </section>
+        
+        <section>
+          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. アカウントとセキュリティ</h4>
+          <p class="leading-relaxed">ご設定いただいたパスワードは、端末内で不可逆の暗号化（ハッシュ化）を行ってから保存されるため、管理者であっても確認することはできません。サイトの不正アクセス対策は可能な範囲で実施しておりますが、トラブルの責任は負いかねますので、パスワードは各自で厳重に管理してください。</p>
+        </section>
+      </div>
+      
+      <div class="mt-5 pt-4 border-t text-center">
+        <button onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
       </div>
     </div>
   </div>
