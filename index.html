@@ -53,8 +53,9 @@
       gender:                'male',
       myOfficialHdcp:        '-',
       memberList:            [],
-      allOfficialHdcpHistory: [],      // 追加
-      memberHdcpChartInstance: null,   // 追加
+      allOfficialHdcpHistory: [],
+      memberHdcpChartInstance: null,
+      memberCompeChartInstance: null, 
     };
 
     // ==========================================
@@ -368,7 +369,7 @@
         </div>`;
     }
 
-    function buildCompeResultCard() {
+        function buildCompeResultCard() {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
@@ -380,11 +381,11 @@
           <div class="max-h-60 overflow-y-auto">
             <table class="w-full text-left border-collapse text-sm">
               <thead>
-                <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-                  <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
-                  <th scope="col" class="p-2 font-normal">名前</th>
-                  <th scope="col" class="p-2 text-right font-normal">GROSS</th>
-                  <th scope="col" class="p-2 pr-4 text-right font-normal">NET</th>
+                <tr class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs">
+                  <th scope="col" class="p-2 text-center font-normal whitespace-nowrap w-10 sm:w-12">順位</th>
+                  <th scope="col" class="p-2 text-left font-normal whitespace-nowrap">名前 📈</th>
+                  <th scope="col" class="p-2 text-right font-normal whitespace-nowrap">GROSS</th>
+                  <th scope="col" class="p-2 pr-4 text-right font-normal whitespace-nowrap">NET</th>
                 </tr>
               </thead>
               <tbody id="scoreContainer"></tbody>
@@ -621,27 +622,30 @@ async function loadOfficialHdcpHistory() {
       renderScoresByDate();
     }
 
-    function renderScoresByDate() {
+        function renderScoresByDate() {
       const target   = document.getElementById('dateSelect').value;
       const filtered = State.allScoreHistory
         .filter(r => r['日付'] === target)
         .sort((a, b) => Number(a['順位']) - Number(b['順位']));
-      document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
-        const rank      = Number(row['順位']);
-        const rankStyle = rank === 1 ? 'text-yellow-600 font-bold'
-                        : rank === 2 ? 'text-gray-500 font-bold'
-                        : rank === 3 ? 'text-amber-700 font-bold'
-                        : 'text-gray-700';
-        const isMe      = row['名前'] === State.currentUser;
-        return `<tr class="border-b ${isMe ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'}">
-          <td class="p-2 font-bold text-center ${rankStyle}">${escapeHtml(String(rank))} 位</td>
-          <td class="p-2 font-bold ${isMe ? 'text-blue-800' : 'text-gray-800'}">${escapeHtml(row['名前'])}</td>
-          <td class="p-2 text-right text-gray-600">${escapeHtml(String(row['GROSS']))}</td>
-          <td class="p-2 pr-4 text-right text-green-600 font-bold">${escapeHtml(String(row['NET']))}</td>
-        </tr>`;
-      }).join('');
-    }
 
+      const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
+      const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
+
+      document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
+        const rank     = Number(row['順位']);
+        const isMe     = row['名前'] === State.currentUser;
+        return `<tr class="border-b ${isMe ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
+          <td class="p-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
+          <td class="p-2 font-bold ${isMe ? 'text-blue-800' : 'text-gray-800'}">
+            <button onclick="openMemberCompeModal('${escapeHtml(row['名前'])}')" aria-label="成績推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+              ${escapeHtml(row['名前'])}
+            </button>
+          </td>
+          <td class="p-2 text-right text-gray-600 whitespace-nowrap">${escapeHtml(String(row['GROSS']))}</td>
+          <td class="p-2 pr-4 text-right text-green-600 font-bold whitespace-nowrap">${escapeHtml(String(row['NET']))}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+    }
     // ==========================================
     // ランキング
     // ==========================================
@@ -1058,7 +1062,7 @@ async function loadOfficialHdcpHistory() {
       }
     }
 
-// ==========================================
+    // ==========================================
     // メンバーHDCP推移モーダル
     // ==========================================
     function openMemberHdcpModal(memberName) {
@@ -1107,7 +1111,66 @@ async function loadOfficialHdcpHistory() {
       document.getElementById('memberHdcpModal').classList.add('hidden');
     }
 
-    
+  
+
+    // ==========================================
+    // イーグル会結果推移モーダル
+    // ==========================================
+    function openMemberCompeModal(memberName) {
+      document.getElementById('memberCompeModalTitle').textContent = `${memberName} さんの順位推移`;
+      const noDataEl = document.getElementById('memberCompeNoData');
+      const canvasEl = document.getElementById('memberCompeChart');
+      
+      // 選択月に関わらず、全履歴から対象メンバーの有効な成績を抽出してソート
+      const history = State.allScoreHistory
+        .filter(r => r['名前'] === memberName && !isNaN(Number(r['順位'])))
+        .sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
+
+      if (State.memberCompeChartInstance) {
+        State.memberCompeChartInstance.destroy();
+      }
+
+      if (history.length === 0) {
+        canvasEl.classList.add('hidden');
+        noDataEl.classList.remove('hidden');
+      } else {
+        canvasEl.classList.remove('hidden');
+        noDataEl.classList.add('hidden');
+        
+        const ctx = canvasEl.getContext('2d');
+        State.memberCompeChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: history.map(r => formatYearMonth(r['日付'])),
+            datasets: [{
+              label: '順位', 
+              data: history.map(r => Number(r['順位'])),
+              borderColor: 'rgb(59,130,246)', // 公式HDとは異なる青色
+              backgroundColor: 'rgba(59,130,246,0.1)',
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: { 
+              y: { 
+                reverse: true, // 1位が上になるようにY軸を反転
+                ticks: { stepSize: 1 } // 順位なので1刻みに設定
+              } 
+            },
+          },
+        });
+      }
+      document.getElementById('memberCompeModal').classList.remove('hidden');
+    }
+
+    function closeMemberCompeModal() {
+      document.getElementById('memberCompeModal').classList.add('hidden');
+    }
+
+
   </script>
   <!-- メンバーHDCP推移モーダル -->
   <div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberHdcpModal()">
@@ -1122,5 +1185,21 @@ async function loadOfficialHdcpHistory() {
       </div>
     </div>
   </div>
+
+
+<!-- イーグル会結果推移モーダル -->
+  <div id="memberCompeModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberCompeModal()">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <h3 id="memberCompeModalTitle" class="font-bold text-gray-800 text-sm"></h3>
+        <button onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+      </div>
+      <div class="py-1 min-h-[150px] relative">
+        <canvas id="memberCompeChart"></canvas>
+        <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
