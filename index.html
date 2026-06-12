@@ -246,19 +246,33 @@
     }
 
 
-  function buildUserHeader(res) {
+   function buildUserHeader(res) {
       return `
-        <div class="flex justify-between items-end px-1">
-          <h2 class="text-xl font-bold text-green-700">こんにちは、${escapeHtml(res.name)} さん</h2>
-          <div class="flex items-center gap-3">
-            <button onclick="openChangePwModal()" aria-label="パスワードを変更する"
-              class="text-xs text-gray-500 underline hover:text-gray-700">PW変更</button>
-            <button onclick="onLogout()" aria-label="ログアウトする"
-              class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
+        <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm flex justify-between items-center">
+          <div class="flex items-center gap-2.5 overflow-hidden pr-2">
+            <div class="bg-green-100 text-green-700 w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-inner">
+              🏌️
+            </div>
+            <div class="truncate">
+              <p class="text-[9px] text-gray-400 font-bold mb-0.5">こんにちは、</p>
+              <h2 class="text-sm font-bold text-gray-800 truncate">
+                ${escapeHtml(res.name)} <span class="text-xs font-normal text-gray-500 ml-0.5">さん</span>
+              </h2>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="openChangePwModal()" aria-label="パスワード変更"
+              class="text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
+              <span>⚙️</span> PW変更
+            </button>
+            <button onclick="onLogout()" aria-label="ログアウト"
+              class="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
+              <span>🚪</span> ログアウト
+            </button>
           </div>
         </div>`;
     }
-
 
     function buildHdcpCard(res) {
       return `
