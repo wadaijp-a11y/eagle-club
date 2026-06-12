@@ -1266,7 +1266,7 @@ async function loadOfficialHdcpHistory() {
       `;
     }
 
-    function renderSummaryFooter() {
+  function renderSummaryFooter() {
       const container = document.getElementById('summaryFooterContainer');
       if (!container) return;
 
@@ -1299,6 +1299,7 @@ async function loadOfficialHdcpHistory() {
 
       const avgGross = validGrossCount > 0 ? (totalGross / validGrossCount).toFixed(1) : '-';
       const avgNet = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
+      const totalParticipation = myHistory.length; // 通算参加回数
       
       let bestScoreHtml = `<span class="text-xl font-bold text-gray-300">-</span>`;
       if (bestGross !== Infinity) {
@@ -1326,7 +1327,10 @@ async function loadOfficialHdcpHistory() {
 
       container.innerHTML = `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">📊 あなたの通算サマリー</h3>
+          <h3 class="font-bold text-gray-800 border-b pb-2 mb-3 flex justify-between items-end">
+            <span>📊 あなたのサマリー</span>
+            <span class="text-[10px] text-gray-500 font-normal mb-0.5">(通算参加: ${totalParticipation}回)</span>
+          </h3>
           
           <div class="flex justify-between items-start mb-4 px-1">
             <div class="text-center flex-1">
