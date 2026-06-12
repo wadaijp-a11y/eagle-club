@@ -25,6 +25,17 @@
           <input type="password" id="loginPw" autocomplete="current-password"
             class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
         </div>
+
+ <div>
+          <label for="loginPw" class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
+          <input type="password" id="loginPw" autocomplete="current-password"
+            class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+        </div>    
+        <div class="text-right mt-1">
+          <button type="button" onclick="openForgotPwModal()" class="text-[11px] text-gray-500 hover:text-gray-700 underline focus:outline-none">
+            パスワードを忘れた場合はこちら
+          </button>
+        </div>
         <button type="submit" id="loginBtn" aria-label="ログインする"
           class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm mt-2">
           ログイン
@@ -50,7 +61,7 @@
   <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10"></div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxCJVXqWdaWewEggPJ4t8VYZUK_aR3zYG1ytSqmvzx2VN-_QR8HuLRp4Jic5Z-D-7PUaQ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzPV9OzvAIC1XEvuVuly1hKAkHeJL4t8QJdBqnbMnjwVtiqsN636M91ZDv2HpG4D1NJYg/exec";
 
     // ==========================================
     // STATE
@@ -58,6 +69,7 @@
     const State = {
       authRes:               null,
       currentUser:           null,
+      loginId:               null,
       authToken:             null,
       allScoreHistory:       [],
       rankingByTerm:         {},
@@ -144,6 +156,7 @@
         const res = await callGasApi('checkLogin', { id, password: hashedPw });
 
         if (res.success) {
+        State.loginId = id;
           document.getElementById('loginPw').value = '';
           initSession(res);
         } else {
@@ -236,14 +249,20 @@
         </div>`;
     }
 
-    function buildUserHeader(res) {
+
+  function buildUserHeader(res) {
       return `
         <div class="flex justify-between items-end px-1">
           <h2 class="text-xl font-bold text-green-700">こんにちは、${escapeHtml(res.name)} さん</h2>
-          <button onclick="onLogout()" aria-label="ログアウトする"
-            class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
+          <div class="flex items-center gap-3">
+            <button onclick="openChangePwModal()" aria-label="パスワードを変更する"
+              class="text-xs text-gray-500 underline hover:text-gray-700">PW変更</button>
+            <button onclick="onLogout()" aria-label="ログアウトする"
+              class="text-xs text-gray-500 underline hover:text-gray-700">ログアウト</button>
+          </div>
         </div>`;
     }
+
 
     function buildHdcpCard(res) {
       return `
@@ -891,7 +910,6 @@ async function loadOfficialHdcpHistory() {
         if (versusData.length === 0) { container.innerHTML = vsHeader; return; }
 
         const tableRows = [...versusData].reverse().map(r => {
-          // 【修正】'勝利'/'敗北'/'引分' で統一しているためバッジも正しく表示される
           const badge   = r.result === '勝利'
             ? `<span class="bg-blue-500 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">勝利</span>`
             : r.result === '敗北'
@@ -1314,6 +1332,69 @@ async function loadOfficialHdcpHistory() {
       `;
     }
 
+
+    // ==========================================
+    // パスワード変更（自分用）
+    // ==========================================
+    async function onChangeMyPassword() {
+      const currentPw  = document.getElementById('myCurrentPw').value;
+      const newPw      = document.getElementById('myNewPw').value;
+      const statusText = document.getElementById('myChangePwStatus');
+      const btn        = document.getElementById('myChangePwBtn');
+
+      if (!currentPw || !newPw) {
+        statusText.textContent = '両方のパスワードを入力してください。';
+        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+        return;
+      }
+      if (newPw.length < 8) { // 必要に応じて文字数制限
+        statusText.textContent = '新しいパスワードは8文字以上で入力してください。';
+        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '変更中...';
+      statusText.textContent = '';
+
+      try {
+        const hashedCurrent = await hashPassword(currentPw);
+        const hashedNew     = await hashPassword(newPw);
+        const res = await callGasApi('changeMyPassword', { 
+          loginId: State.loginId, 
+          currentPassword: hashedCurrent, 
+          newPassword: hashedNew 
+        });
+
+        statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
+        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-green-700' : 'text-red-600'}`;
+        
+        if (res.success) {
+          document.getElementById('myCurrentPw').value = '';
+          document.getElementById('myNewPw').value = '';
+          setTimeout(closeChangePwModal, 2000); // 2秒後に自動で閉じる
+        }
+      } catch {
+        statusText.textContent = '通信エラーが発生しました。';
+        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'パスワードを変更';
+      }
+    }
+
+    // モーダル開閉制御
+    function openForgotPwModal() { document.getElementById('forgotPwModal').classList.remove('hidden'); }
+    function closeForgotPwModal() { document.getElementById('forgotPwModal').classList.add('hidden'); }
+    function openChangePwModal() { 
+      document.getElementById('myCurrentPw').value = '';
+      document.getElementById('myNewPw').value = '';
+      document.getElementById('myChangePwStatus').textContent = '';
+      document.getElementById('changePwModal').classList.remove('hidden'); 
+    }
+    function closeChangePwModal() { document.getElementById('changePwModal').classList.add('hidden'); }
+
+
   </script>
   <!-- メンバーHDCP推移モーダル -->
   <div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberHdcpModal()">
@@ -1391,6 +1472,41 @@ async function loadOfficialHdcpHistory() {
   </div>
       
  
+ <div id="forgotPwModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeForgotPwModal()">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 text-center" onclick="event.stopPropagation()">
+      <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">ℹ️</div>
+      <h3 class="font-bold text-gray-800 text-lg mb-2">パスワードの再発行</h3>
+      <p class="text-sm text-gray-600 leading-relaxed mb-5 text-left">
+        システムのセキュリティ上、パスワードの自動再発行はできません。<br><br>
+        お手数ですが、ご本人確認のためシステム管理者までLINE等で直接ご連絡ください。新しいパスワードを発行してお伝えいたします。
+      </p>
+      <button onclick="closeForgotPwModal()" class="w-full bg-gray-100 text-gray-800 p-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">閉じる</button>
+    </div>
+  </div>
+
+  <div id="changePwModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeChangePwModal()">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-center border-b pb-2 mb-4">
+        <h3 class="font-bold text-gray-800 text-sm">⚙️ パスワードの変更</h3>
+        <button onclick="closeChangePwModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label for="myCurrentPw" class="block text-xs font-bold text-gray-700 mb-1">現在のパスワード</label>
+          <input type="password" id="myCurrentPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+        </div>
+        <div>
+          <label for="myNewPw" class="block text-xs font-bold text-gray-700 mb-1">新しいパスワード <span class="text-gray-400 font-normal">(8文字以上)</span></label>
+          <input type="password" id="myNewPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+        </div>
+        <button id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-green-600 text-white text-sm font-bold p-2.5 rounded hover:bg-green-700 transition-colors shadow-sm">
+          パスワードを変更
+        </button>
+        <p id="myChangePwStatus" class="text-center"></p>
+      </div>
+    </div>
+  </div>
+
 
 </body>
 </html>
