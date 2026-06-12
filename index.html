@@ -233,21 +233,24 @@
       const isAdmin = res.role === '管理者';
       const main    = document.getElementById('mainSection');
 
+      // UX（ユーザー体験）に基づき、自然な視線の流れになるようコンポーネントを配置
       main.innerHTML = `
-        ${buildScheduleCard(res)}
         ${buildUserHeader(res)}
+        ${buildScheduleCard(res)}
         ${buildHdcpCard(res)}
-        ${isAdmin ? buildAdminUploadCard() : ''}
-        ${isAdmin ? buildAdminPasswordCard() : ''}
         ${buildMyScoreCard()}
         ${buildVersusCard()}
         ${buildCompeResultCard()}
         ${buildRankingCard()}
+        ${isAdmin ? buildAdminUploadCard() : ''}
+        ${isAdmin ? buildAdminPasswordCard() : ''}
         ${buildSummaryFooter()}
       `;
+      
       CourseHdcp.render();
       setupScheduleDisplay(res);
     }
+
 
     function buildScheduleCard(res) {
       return `
@@ -1070,7 +1073,8 @@
       document.getElementById('btnTable').className  = `text-xs px-3 py-1 rounded font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-800'}`;
     }
 
-    function renderSummaryFooter() {
+
+       function renderSummaryFooter() {
       const container = document.getElementById('summaryFooterContainer');
       if (!container) return;
 
@@ -1113,6 +1117,17 @@
         `;
       }
 
+      // 全成績データから一番古い日付（集計開始日）を取得
+      let oldestDateText = '';
+      if (State.allScoreHistory.length > 0) {
+        // 日付文字列をタイムスタンプに変換して最小値を探す
+        const timestamps = State.allScoreHistory.map(r => new Date(r['日付']).getTime()).filter(t => !isNaN(t));
+        if (timestamps.length > 0) {
+          const minDate = new Date(Math.min(...timestamps));
+          oldestDateText = `${String(minDate.getFullYear()).slice(-2)}年${minDate.getMonth() + 1}月${minDate.getDate()}日`;
+        }
+      }
+
       const currentYear = new Date().getFullYear();
       const thisYearDates = new Set();
       State.allScoreHistory.forEach(r => {
@@ -1128,10 +1143,13 @@
 
       container.innerHTML = `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <h3 class="font-bold text-gray-800 border-b pb-2 mb-3 flex justify-between items-end">
-            <span>📊 あなたの通算サマリー</span>
-            <span class="text-[10px] text-gray-500 font-normal mb-0.5">(通算参加回数: ${totalParticipation}回)</span>
-          </h3>
+          <div class="flex justify-between items-end border-b pb-2 mb-3">
+            <div>
+              <h3 class="font-bold text-gray-800 leading-tight">📊 あなたの通算サマリー</h3>
+              ${oldestDateText ? `<p class="text-[9px] text-gray-400 mt-1">※${oldestDateText}以降の集計</p>` : ''}
+            </div>
+            <span class="text-[10px] text-gray-500 font-normal shrink-0 ml-2 mb-0.5">(通算参加: ${totalParticipation}回)</span>
+          </div>
           
           <div class="flex justify-between items-start mb-4 px-1">
             <div class="text-center flex-1">
@@ -1161,6 +1179,7 @@
         </div>
       `;
     }
+
 
     // ==========================================
     // ACTION HANDLERS (ADMIN & MODALS)
