@@ -2,8 +2,13 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
   <title>イーグル会</title>
+
+  <meta name="description" content="イーグル会メンバー専用サイト">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text x=%2250%%22 y=%2250%%22 style=%22dominant-baseline:central;text-anchor:middle;font-size:90px;%22>⛳️</text></svg>">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,9 +32,7 @@
 
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800 font-sans antialiased">
 
-
-    <!-- ログインセクション -->
-  <div id="loginSection" class="w-full max-w-md mt-10">
+  <section id="loginSection" class="w-full max-w-md mt-10">
     <div class="bg-white rounded-xl shadow-md p-6">
       <h1 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h1>
       <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-4">
@@ -39,8 +42,7 @@
             class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
         </div>
  
-
- <div>
+        <div>
           <label for="loginPw" class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
           <input type="password" id="loginPw" autocomplete="current-password"
             class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
@@ -57,7 +59,6 @@
       </form>
       <p id="loginError" class="text-red-500 mt-3 text-center text-sm font-bold hidden" role="alert"></p>
       
-      <!-- 同意テキスト -->
       <div class="mt-5 border-t border-gray-100 pt-4">
         <p class="text-[11px] text-gray-500 text-center leading-relaxed">
           ログインすることで<br>
@@ -66,11 +67,10 @@
         </p>
       </div>
     </div>
-    <!-- コピーライト（極小表示） -->
     <p class="text-center text-[10px] text-gray-400 mt-4">&copy; 2026 イーグル会 システム管理者. All rights reserved.</p>
-  </div>
+  </section>
 
-<div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-16"></div>
+  <main id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-16"></main>
 
   <script>
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzPV9OzvAIC1XEvuVuly1hKAkHeJL4t8QJdBqnbMnjwVtiqsN636M91ZDv2HpG4D1NJYg/exec";
@@ -108,7 +108,6 @@
       );
     }
 
-  
     function formatYearMonth(dateStr) {
       if (!dateStr) return '';
       const d = new Date(dateStr);
@@ -116,28 +115,36 @@
       return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
+    // ③ タイムアウトの実装（15秒）
     async function callGasApi(action, data = {}) {
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
-      const res = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-        redirect: 'follow',
-      });
-      return res.json();
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload),
+          redirect: 'follow',
+          signal: controller.signal // タイムアウト用シグナル
+        });
+        clearTimeout(timeoutId);
+        return await res.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('通信がタイムアウトしました');
+        }
+        throw error;
+      }
     }
 
     // ==========================================
     // ログイン
     // ==========================================
-    /**
-     * フロントエンドでSHA-256ハッシュ化する設計意図：
-     * ユーザーのスマホ内（Web Crypto API）でハッシュ化することで、
-     * ネットワーク上にも GAS 上にも生パスワードが存在しない設計とする。
-     * ※ Pass-the-Hash リスクは HTTPS 強制により経路傍受の可能性が極めて低く許容。
-     * ※ GAS の CPU リソース節約（無料枠の保護）にも寄与。
-     */
     async function hashPassword(plainText) {
       const msgBuffer  = new TextEncoder().encode(plainText);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -163,19 +170,18 @@
       btn.textContent = '認証中...';
 
       try {
-        // フロントでハッシュ化してから送信（生パスワードはネットワーク・GAS上に存在しない）
         const hashedPw = await hashPassword(pw);
         const res = await callGasApi('checkLogin', { id, password: hashedPw });
 
         if (res.success) {
-        State.loginId = id;
+          State.loginId = id;
           document.getElementById('loginPw').value = '';
           initSession(res);
         } else {
           err.textContent = res.error || 'IDまたはパスワードが違います';
           err.classList.remove('hidden');
         }
-        } catch {
+      } catch {
         err.textContent = '通信エラー、または一時的なシステム制限です。少し時間をおいてお試しください。';
         err.classList.remove('hidden');
       } finally {
@@ -184,9 +190,7 @@
       }
     }
 
-
     async function onLogout(btnElement) {
-      // ボタンが押されたら、連打を防止してスピナー（くるくる）を表示
       if (btnElement) {
         btnElement.disabled = true;
         btnElement.innerHTML = `
@@ -208,8 +212,6 @@
       document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('loginId').value = '';
     }
-
-
 
     // ==========================================
     // セッション初期化・DOM構築
@@ -250,14 +252,15 @@
       setupScheduleDisplay(res);
     }
 
-// ---- カードビルダー群 ----
-     function buildScheduleCard(res) {
+    // ---- カードビルダー群 ----
+    // ② 各種動的生成ボタンに type="button" を追加
+    function buildScheduleCard(res) {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
             <h3 class="font-bold text-gray-800">📅 スケジュール</h3>
             <div id="scheduleToggleBtnContainer" class="hidden">
-              <button onclick="toggleFutureSchedules()" aria-label="今後のスケジュールを表示"
+              <button type="button" onclick="toggleFutureSchedules()" aria-label="今後のスケジュールを表示"
                 class="text-[10px] text-green-700 font-bold bg-green-50 hover:bg-green-100 border border-green-200 transition-colors px-2.5 py-1 rounded-md shadow-sm flex items-center gap-1">
                 <span>今後の予定</span>
                 <span class="bg-white px-1.5 rounded-full text-green-600 shadow-sm" id="futureScheduleCount">0</span>
@@ -282,8 +285,7 @@
         </div>`;
     }
 
-
-     function buildUserHeader(res) {
+    function buildUserHeader(res) {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm flex justify-between items-center">
           <div class="flex items-center gap-2.5 overflow-hidden pr-2">
@@ -299,11 +301,11 @@
           </div>
           
           <div class="flex items-center gap-1.5 shrink-0">
-            <button onclick="openChangePwModal()" aria-label="パスワード変更"
+            <button type="button" onclick="openChangePwModal()" aria-label="パスワード変更"
               class="text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
               <span>⚙️</span> PW変更
             </button>
-            <button onclick="onLogout(this)" aria-label="ログアウト"
+            <button type="button" onclick="onLogout(this)" aria-label="ログアウト"
               class="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
               <span>🚪</span> ログアウト
             </button>
@@ -339,7 +341,7 @@
               </div>
               <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 mb-3 justify-center min-h-6"></div>
               <div class="mt-auto">
-                <button onclick="toggleOfficialHdcpHistory()" aria-label="HDCP推移を表示"
+                <button type="button" onclick="toggleOfficialHdcpHistory()" aria-label="HDCP推移を表示"
                   class="text-xs text-purple-700 font-bold bg-purple-100 hover:bg-purple-200 transition-colors px-2 py-1 rounded-md w-full text-center block">
                   📊 1年の推移を見る
                 </button>
@@ -370,7 +372,7 @@
         <div class="border-2 border-dashed border-green-300 rounded-xl p-4 bg-green-50 text-center">
           <h3 class="font-bold text-green-800 mb-2 text-sm">【管理者用】成績表アップロード</h3>
           <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-gray-600 w-full">
-          <button onclick="onUpload()" id="uploadBtn"
+          <button type="button" onclick="onUpload()" id="uploadBtn"
             class="w-full bg-blue-600 text-white text-sm font-bold p-2 rounded hover:bg-blue-700 transition-colors">
             画像を解析して登録
           </button>
@@ -395,7 +397,7 @@
                 placeholder="8文字以上">
             </div>
           </div>
-          <button onclick="onResetPassword()" id="resetPasswordBtn"
+          <button type="button" onclick="onResetPassword()" id="resetPasswordBtn"
             class="w-full mt-3 bg-orange-500 text-white text-sm font-bold p-2 rounded hover:bg-orange-600 transition-colors">
             パスワードをリセット
           </button>
@@ -409,9 +411,9 @@
           <div class="flex justify-between items-center border-b pb-2 mb-3">
             <h3 class="font-bold text-gray-800">📈 イーグル会スコア推移</h3>
             <div class="flex space-x-1 bg-gray-100 rounded-md p-1 border border-gray-200">
-              <button id="btnChart" onclick="toggleScoreView('chart')" aria-label="グラフ表示"
+              <button type="button" id="btnChart" onclick="toggleScoreView('chart')" aria-label="グラフ表示"
                 class="text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
-              <button id="btnTable" onclick="toggleScoreView('table')" aria-label="表表示"
+              <button type="button" id="btnTable" onclick="toggleScoreView('table')" aria-label="表表示"
                 class="text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
             </div>
           </div>
@@ -450,7 +452,7 @@
         </div>`;
     }
 
-        function buildCompeResultCard() {
+    function buildCompeResultCard() {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
           <div class="flex justify-between items-center border-b pb-2 mb-3">
@@ -505,7 +507,6 @@
           document.getElementById('nextClubCompeBadge').classList.remove('hidden');
         }
       }
-      // nextCompeがnullの場合は初期値「未定」のまま（チラつきなし）
 
       const listContainer = document.getElementById('futureSchedulesList');
       if (res.futureSchedules && res.futureSchedules.length > 0) {
@@ -543,7 +544,7 @@
       });
     }
 
-     function showErrorAndRetry() {
+    function showErrorAndRetry() {
       const main = document.getElementById('mainSection');
       if (main) {
         main.innerHTML = `
@@ -553,7 +554,7 @@
               通信環境が不安定か、システムの無料枠アクセス制限に達している可能性があります。<br>
               しばらく時間をおいてから再読み込みをお試しください。
             </p>
-            <button onclick="retryLoadAllData()"
+            <button type="button" onclick="retryLoadAllData()"
               class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-lg font-bold shadow-sm">
               再読み込み
             </button>
@@ -561,23 +562,27 @@
       }
     }
 
-
+    // ⑨ 認証情報チェック（ログアウト誘導）を追加
     function retryLoadAllData() {
-      if (State.authRes) buildMainUI(State.authRes);
+      if (!State.authRes || !State.authToken) {
+        onLogout();
+        return;
+      }
+      buildMainUI(State.authRes);
       loadAllData();
     }
 
-async function loadAllData() {
+    async function loadAllData() {
       showSkeletons();
       try {
         const [history, members, hdcpHistory] = await Promise.all([
           callGasApi('getScoreHistory'),
           callGasApi('getMemberList'),
-          callGasApi('getAllOfficialHdcpHistory') // 追加
+          callGasApi('getAllOfficialHdcpHistory')
         ]);
 
         if (members && members.length > 0) State.memberList = members;
-        if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory; // 追加
+        if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory;
 
         if (history && history.length > 0) {
           State.allScoreHistory = history;
@@ -642,12 +647,11 @@ async function loadAllData() {
       }
     }
 
-async function loadOfficialHdcpHistory() {
+    async function loadOfficialHdcpHistory() {
       try {
         State.isOfficialHistoryLoaded = true;
         const tbody = document.getElementById('officialHdcpTableBody');
 
-        // 通信を削除し、Stateから自分用のデータを抽出してソート
         const myNameNorm = State.currentUser.replace(/\s+/g, '');
         const history = State.allOfficialHdcpHistory.filter(r => r.name === myNameNorm);
 
@@ -708,7 +712,7 @@ async function loadOfficialHdcpHistory() {
       renderScoresByDate();
     }
 
-        function renderScoresByDate() {
+    function renderScoresByDate() {
       const target   = document.getElementById('dateSelect').value;
       const filtered = State.allScoreHistory
         .filter(r => r['日付'] === target)
@@ -723,7 +727,7 @@ async function loadOfficialHdcpHistory() {
         return `<tr class="border-b ${isMe ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
           <td class="p-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
           <td class="p-2 font-bold ${isMe ? 'text-blue-800' : 'text-gray-800'}">
-            <button onclick="openMemberCompeModal('${escapeHtml(row['名前'])}')" aria-label="成績推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+            <button type="button" onclick="openMemberCompeModal('${escapeHtml(row['名前'])}')" aria-label="成績推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
               ${escapeHtml(row['名前'])}
             </button>
           </td>
@@ -732,13 +736,13 @@ async function loadOfficialHdcpHistory() {
         </tr>`;
       }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
     }
+
     // ==========================================
     // ランキング
     // ==========================================
     function setupRanking() {
       State.rankingByTerm = {};
       State.allScoreHistory.forEach(row => {
-        // 【修正】Date経由で年・月を取得（スラッシュ分割廃止）
         const d = new Date(row['日付']);
         if (isNaN(d.getTime())) return;
         const year    = String(d.getFullYear()).slice(-2);
@@ -767,10 +771,10 @@ async function loadOfficialHdcpHistory() {
       const container = document.getElementById('rankingTabsContainer');
       const tabClass  = 'flex-1 text-xs px-1 py-1 rounded font-bold transition-all leading-tight';
       container.innerHTML = `
-        <button onclick="changeRankingTab('official')" id="tab_official"
+        <button type="button" onclick="changeRankingTab('official')" id="tab_official"
           class="${tabClass} text-gray-500 hover:text-gray-800">公式HD 📊</button>
         ${State.availableRankingTerms.map((term, i) => `
-          <button onclick="changeRankingTab('${escapeHtml(term)}')" id="tab_${escapeHtml(term)}"
+          <button type="button" onclick="changeRankingTab('${escapeHtml(term)}')" id="tab_${escapeHtml(term)}"
             class="${tabClass} text-gray-500 hover:text-gray-800 text-center">
             ${i === 0 ? '今期' : '前期'} NET<br><span class="text-xs font-normal">(${escapeHtml(term)})</span>
           </button>`).join('')}`;
@@ -791,7 +795,7 @@ async function loadOfficialHdcpHistory() {
       renderRankingContent();
     }
 
-   function renderRankingContent() {
+    function renderRankingContent() {
       const header    = document.getElementById('rankingTableHeader');
       const tbody     = document.getElementById('rankingTableBody');
       if (!header || !tbody) return;
@@ -799,7 +803,6 @@ async function loadOfficialHdcpHistory() {
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
       const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
 
-      // 1. 公式ハンディキャップ タブ
       if (State.currentRankingTab === 'official') {
         header.innerHTML = `
           <tr class="bg-gray-50 border-b text-gray-500 text-xs">
@@ -817,7 +820,7 @@ async function loadOfficialHdcpHistory() {
             return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
               <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
               <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
-                <button onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+                <button type="button" onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
                   ${escapeHtml(m.name)}
                 </button>
               </td>
@@ -826,7 +829,6 @@ async function loadOfficialHdcpHistory() {
             </tr>`;
           }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
 
-      // 2. NET（今期 / 前期） タブ
       } else {
        header.innerHTML = `
           <tr class="bg-gray-50 border-b text-gray-500 text-xs">
@@ -921,7 +923,6 @@ async function loadOfficialHdcpHistory() {
           .map(([date, d]) => {
             const myG = Number(d[myName]['GROSS']), opG = Number(d[opName]['GROSS']);
             if (isNaN(myG) || isNaN(opG)) return null;
-            // 【修正】勝敗文字列を '勝利'/'敗北'/'引分' で統一
             let result = '引分';
             if (myG < opG) { result = '勝利'; win++; }
             else if (myG > opG) { result = '敗北'; lose++; }
@@ -1009,7 +1010,7 @@ async function loadOfficialHdcpHistory() {
         });
       },
     };
-    window.Versus = Versus;
+    // ⑦ window.Versus = Versus; の削除を実施しました
 
     // ==========================================
     // 自分のスコア推移
@@ -1017,7 +1018,7 @@ async function loadOfficialHdcpHistory() {
     function loadMyChart(history) {
       const sorted     = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
       const recentMax10 = sorted.slice(0, 10);
-      const chartData  = [...recentMax10].reverse(); // グラフ用に昇順
+      const chartData  = [...recentMax10].reverse();
 
       const emptyEl = document.getElementById('myScoreEmpty');
       const chartEl = document.getElementById('scoreChartContainer');
@@ -1129,7 +1130,6 @@ async function loadOfficialHdcpHistory() {
       statusText.textContent = '';
 
       try {
-        // 新パスワードもフロントでハッシュ化して送信（生パスワードをGASに渡さない設計と統一）
         const hashedNewPw = await hashPassword(newPw);
         const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
         statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
@@ -1196,8 +1196,6 @@ async function loadOfficialHdcpHistory() {
       document.getElementById('memberHdcpModal').classList.add('hidden');
     }
 
-  
-
     // ==========================================
     // イーグル会結果推移モーダル
     // ==========================================
@@ -1206,7 +1204,6 @@ async function loadOfficialHdcpHistory() {
       const noDataEl = document.getElementById('memberCompeNoData');
       const canvasEl = document.getElementById('memberCompeChart');
       
-      // 選択月に関わらず、全履歴から対象メンバーの有効な成績を抽出してソート
       const history = State.allScoreHistory
         .filter(r => r['名前'] === memberName && !isNaN(Number(r['順位'])))
         .sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
@@ -1230,7 +1227,7 @@ async function loadOfficialHdcpHistory() {
             datasets: [{
               label: '順位', 
               data: history.map(r => Number(r['順位'])),
-              borderColor: 'rgb(59,130,246)', // 公式HDとは異なる青色
+              borderColor: 'rgb(59,130,246)',
               backgroundColor: 'rgba(59,130,246,0.1)',
               borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3,
             }],
@@ -1241,8 +1238,8 @@ async function loadOfficialHdcpHistory() {
             plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
             scales: { 
               y: { 
-                reverse: true, // 1位が上になるようにY軸を反転
-                ticks: { stepSize: 1 } // 順位なので1刻みに設定
+                reverse: true,
+                ticks: { stepSize: 1 }
               } 
             },
           },
@@ -1266,8 +1263,7 @@ async function loadOfficialHdcpHistory() {
       document.getElementById('termsModal').classList.add('hidden');
     }
 
-
-   // ==========================================
+    // ==========================================
     // サマリーフッター（全成績計算）
     // ==========================================
     function buildSummaryFooter() {
@@ -1287,7 +1283,7 @@ async function loadOfficialHdcpHistory() {
       `;
     }
 
-  function renderSummaryFooter() {
+    function renderSummaryFooter() {
       const container = document.getElementById('summaryFooterContainer');
       if (!container) return;
 
@@ -1296,14 +1292,12 @@ async function loadOfficialHdcpHistory() {
       let totalGross = 0, totalNet = 0, validGrossCount = 0, validNetCount = 0;
       let bestGross = Infinity, bestDate = '';
 
-      // 過去すべての履歴から平均とベストスコアを算出
       myHistory.forEach(r => {
         const g = Number(r['GROSS']);
         const n = Number(r['NET']);
         if (!isNaN(g)) {
           totalGross += g;
           validGrossCount++;
-          // ベストスコア更新（同スコアの場合は日付が新しい方を優先）
           if (g < bestGross) {
             bestGross = g;
             bestDate = r['日付'];
@@ -1320,7 +1314,7 @@ async function loadOfficialHdcpHistory() {
 
       const avgGross = validGrossCount > 0 ? (totalGross / validGrossCount).toFixed(1) : '-';
       const avgNet = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
-      const totalParticipation = myHistory.length; // 通算参加回数
+      const totalParticipation = myHistory.length;
       
       let bestScoreHtml = `<span class="text-xl font-bold text-gray-300">-</span>`;
       if (bestGross !== Infinity) {
@@ -1332,7 +1326,6 @@ async function loadOfficialHdcpHistory() {
         `;
       }
 
-      // 参加回数（現在の年だけでフィルタリング）
       const currentYear = new Date().getFullYear();
       const thisYearDates = new Set();
       State.allScoreHistory.forEach(r => {
@@ -1382,7 +1375,6 @@ async function loadOfficialHdcpHistory() {
       `;
     }
 
-
     // ==========================================
     // パスワード変更（自分用）
     // ==========================================
@@ -1397,7 +1389,7 @@ async function loadOfficialHdcpHistory() {
         statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
         return;
       }
-      if (newPw.length < 8) { // 必要に応じて文字数制限
+      if (newPw.length < 8) {
         statusText.textContent = '新しいパスワードは8文字以上で入力してください。';
         statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
         return;
@@ -1422,7 +1414,7 @@ async function loadOfficialHdcpHistory() {
         if (res.success) {
           document.getElementById('myCurrentPw').value = '';
           document.getElementById('myNewPw').value = '';
-          setTimeout(closeChangePwModal, 2000); // 2秒後に自動で閉じる
+          setTimeout(closeChangePwModal, 2000);
         }
       } catch {
         statusText.textContent = '通信エラーが発生しました。';
@@ -1443,15 +1435,13 @@ async function loadOfficialHdcpHistory() {
       document.getElementById('changePwModal').classList.remove('hidden'); 
     }
     function closeChangePwModal() { document.getElementById('changePwModal').classList.add('hidden'); }
-
-
   </script>
-  <!-- メンバーHDCP推移モーダル -->
+
   <div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberHdcpModal()">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b pb-2 mb-3">
         <h3 id="memberHdcpModalTitle" class="font-bold text-gray-800 text-sm"></h3>
-        <button onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+        <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
       </div>
       <div class="py-1 min-h-[150px] relative">
         <canvas id="memberHdcpChart"></canvas>
@@ -1460,13 +1450,11 @@ async function loadOfficialHdcpHistory() {
     </div>
   </div>
 
-
-<!-- イーグル会結果推移モーダル -->
   <div id="memberCompeModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberCompeModal()">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b pb-2 mb-3">
         <h3 id="memberCompeModalTitle" class="font-bold text-gray-800 text-sm"></h3>
-        <button onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+        <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
       </div>
       <div class="py-1 min-h-[150px] relative">
         <canvas id="memberCompeChart"></canvas>
@@ -1475,12 +1463,11 @@ async function loadOfficialHdcpHistory() {
     </div>
   </div>
 
- <!-- 免責事項・ルール モーダル -->
-<div id="termsModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeTermsModal()">
+  <div id="termsModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeTermsModal()">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b pb-3 mb-4">
         <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
-        <button onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+        <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
       </div>
       
       <div class="overflow-y-auto pr-2 text-sm text-gray-600 space-y-5">
@@ -1516,13 +1503,12 @@ async function loadOfficialHdcpHistory() {
       </div>
       
       <div class="mt-5 pt-4 border-t text-center">
-        <button onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
+        <button type="button" onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
       </div>
     </div>
   </div>
       
- 
- <div id="forgotPwModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeForgotPwModal()">
+  <div id="forgotPwModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeForgotPwModal()">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 text-center" onclick="event.stopPropagation()">
       <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">ℹ️</div>
       <h3 class="font-bold text-gray-800 text-lg mb-2">パスワードの再発行</h3>
@@ -1530,7 +1516,7 @@ async function loadOfficialHdcpHistory() {
         システムのセキュリティ上、パスワードの自動再発行はできません。<br><br>
         お手数ですが、ご本人確認のためシステム管理者までLINE等で直接ご連絡ください。新しいパスワードを発行してお伝えいたします。
       </p>
-      <button onclick="closeForgotPwModal()" class="w-full bg-gray-100 text-gray-800 p-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">閉じる</button>
+      <button type="button" onclick="closeForgotPwModal()" class="w-full bg-gray-100 text-gray-800 p-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">閉じる</button>
     </div>
   </div>
 
@@ -1538,7 +1524,7 @@ async function loadOfficialHdcpHistory() {
     <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5" onclick="event.stopPropagation()">
       <div class="flex justify-between items-center border-b pb-2 mb-4">
         <h3 class="font-bold text-gray-800 text-sm">⚙️ パスワードの変更</h3>
-        <button onclick="closeChangePwModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+        <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
       </div>
       <div class="space-y-3">
         <div>
@@ -1549,14 +1535,13 @@ async function loadOfficialHdcpHistory() {
           <label for="myNewPw" class="block text-xs font-bold text-gray-700 mb-1">新しいパスワード <span class="text-gray-400 font-normal">(8文字以上)</span></label>
           <input type="password" id="myNewPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
         </div>
-        <button id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-green-600 text-white text-sm font-bold p-2.5 rounded hover:bg-green-700 transition-colors shadow-sm">
+        <button type="button" id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-green-600 text-white text-sm font-bold p-2.5 rounded hover:bg-green-700 transition-colors shadow-sm">
           パスワードを変更
         </button>
         <p id="myChangePwStatus" class="text-center"></p>
       </div>
     </div>
   </div>
-
 
 </body>
 </html>
