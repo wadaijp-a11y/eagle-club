@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
   <title>イーグル会</title>
 
   <meta name="description" content="イーグル会メンバー専用サイト">
@@ -41,7 +40,6 @@
           <input type="text" id="loginId" autocomplete="username"
             class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
         </div>
- 
         <div>
           <label for="loginPw" class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
           <input type="password" id="loginPw" autocomplete="current-password"
@@ -115,7 +113,6 @@
       return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
-    // ③ タイムアウトの実装（15秒）
     async function callGasApi(action, data = {}) {
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
@@ -129,7 +126,7 @@
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(payload),
           redirect: 'follow',
-          signal: controller.signal // タイムアウト用シグナル
+          signal: controller.signal
         });
         clearTimeout(timeoutId);
         return await res.json();
@@ -143,7 +140,7 @@
     }
 
     // ==========================================
-    // ログイン
+    // AUTHENTICATION
     // ==========================================
     async function hashPassword(plainText) {
       const msgBuffer  = new TextEncoder().encode(plainText);
@@ -182,7 +179,7 @@
           err.classList.remove('hidden');
         }
       } catch {
-        err.textContent = '通信エラー、または一時的なシステム制限です。少し時間をおいてお試しください。';
+        err.textContent = '通信エラー、またはシステム制限です。時間をおいてお試しください。';
         err.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -213,9 +210,6 @@
       document.getElementById('loginId').value = '';
     }
 
-    // ==========================================
-    // セッション初期化・DOM構築
-    // ==========================================
     function initSession(res) {
       State.authRes               = res;
       State.currentUser           = res.name;
@@ -232,6 +226,9 @@
       loadAllData();
     }
 
+    // ==========================================
+    // UI BUILDERS
+    // ==========================================
     function buildMainUI(res) {
       const isAdmin = res.role === '管理者';
       const main    = document.getElementById('mainSection');
@@ -252,8 +249,6 @@
       setupScheduleDisplay(res);
     }
 
-    // ---- カードビルダー群 ----
-    // ② 各種動的生成ボタンに type="button" を追加
     function buildScheduleCard(res) {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -495,8 +490,25 @@
         </div>`;
     }
 
+    function buildSummaryFooter() {
+      return `
+        <div id="summaryFooterContainer" class="mt-6 mb-4">
+          <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm animate-pulse h-32"></div>
+        </div>
+        
+        <div class="mt-6 mb-8 flex justify-center">
+          <a href="https://sengaricc.com/" target="_blank" rel="noopener noreferrer" 
+             class="flex items-center gap-2 bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-400 hover:bg-green-50 transition-all group">
+            <span class="text-green-600 text-sm group-hover:scale-110 transition-transform">⛳️</span>
+            千刈カンツリー倶楽部 公式サイト
+            <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
+        </div>
+      `;
+    }
+
     // ==========================================
-    // スケジュール表示
+    // LOGIC & DATA FETCHING
     // ==========================================
     function setupScheduleDisplay(res) {
       if (res.nextCompe) {
@@ -527,9 +539,6 @@
       document.getElementById('futureSchedulesSection').classList.toggle('hidden');
     }
 
-    // ==========================================
-    // データ一括取得
-    // ==========================================
     function showSkeletons() {
       const row = `
         <tr class="animate-pulse border-b">
@@ -562,7 +571,6 @@
       }
     }
 
-    // ⑨ 認証情報チェック（ログアウト誘導）を追加
     function retryLoadAllData() {
       if (!State.authRes || !State.authToken) {
         onLogout();
@@ -627,7 +635,8 @@
       render() {
         const container = document.getElementById('courseHdcpContainer');
         if (!container) return;
-        const index = parseFloat(document.getElementById('officialHdcpDisplay').textContent);
+        // 修正：DOMからではなくStateから直接取得して計算の安全性を向上
+        const index = parseFloat(State.myOfficialHdcp);
         if (isNaN(index)) { container.innerHTML = ''; return; }
         container.innerHTML = this.RATINGS[State.gender].map(r => `
           <span class="px-1.5 py-0.5 ${r.bg} rounded text-xs font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
@@ -637,7 +646,7 @@
     };
 
     // ==========================================
-    // 公式HDCP推移
+    // 各種レンダリングロジック
     // ==========================================
     function toggleOfficialHdcpHistory() {
       const section = document.getElementById('officialHdcpHistorySection');
@@ -700,9 +709,6 @@
       }
     }
 
-    // ==========================================
-    // コンペ結果
-    // ==========================================
     function setupCompeResults() {
       const sel   = document.getElementById('dateSelect');
       const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))]
@@ -737,9 +743,6 @@
       }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
     }
 
-    // ==========================================
-    // ランキング
-    // ==========================================
     function setupRanking() {
       State.rankingByTerm = {};
       State.allScoreHistory.forEach(row => {
@@ -863,9 +866,6 @@
       }
     }
 
-    // ==========================================
-    // ライバル対決
-    // ==========================================
     const Versus = {
       setup() {
         const sel    = document.getElementById('vsOpponentSelect');
@@ -1010,11 +1010,7 @@
         });
       },
     };
-    // ⑦ window.Versus = Versus; の削除を実施しました
 
-    // ==========================================
-    // 自分のスコア推移
-    // ==========================================
     function loadMyChart(history) {
       const sorted     = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
       const recentMax10 = sorted.slice(0, 10);
@@ -1072,215 +1068,6 @@
       document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
       document.getElementById('btnChart').className = `text-xs px-3 py-1 rounded font-bold transition-all ${isChart ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-800'}`;
       document.getElementById('btnTable').className  = `text-xs px-3 py-1 rounded font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-800'}`;
-    }
-
-    // ==========================================
-    // 管理者：画像アップロード
-    // ==========================================
-    async function onUpload() {
-      const fileInput  = document.getElementById('imageFile');
-      const statusText = document.getElementById('uploadStatus');
-      const btn        = document.getElementById('uploadBtn');
-
-      if (fileInput.files.length === 0) {
-        statusText.textContent = '画像ファイルを選択してください。';
-        return;
-      }
-
-      statusText.textContent = 'Geminiが画像を解析中...（最大数分）';
-      btn.disabled = true;
-
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const res = await callGasApi('uploadAndProcessImage', {
-            base64Data: reader.result.split(',')[1],
-            mimeType:   fileInput.files[0].type,
-          });
-          statusText.textContent = res.success
-            ? `成功！ ${res.count}件のデータを登録しました。`
-            : `エラー: ${res.error}`;
-          if (res.success) loadAllData();
-        } catch {
-          statusText.textContent = '通信エラーが発生しました。';
-        } finally {
-          btn.disabled = false;
-        }
-      };
-      reader.readAsDataURL(fileInput.files[0]);
-    }
-
-    // ==========================================
-    // 管理者：パスワードリセット
-    // ==========================================
-    async function onResetPassword() {
-      const targetId   = document.getElementById('resetTargetId').value.trim();
-      const newPw      = document.getElementById('resetNewPassword').value.trim();
-      const statusText = document.getElementById('resetPasswordStatus');
-      const btn        = document.getElementById('resetPasswordBtn');
-
-      if (!targetId || !newPw) {
-        statusText.textContent = '入力してください。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
-        return;
-      }
-
-      btn.disabled    = true;
-      btn.textContent = '処理中...';
-      statusText.textContent = '';
-
-      try {
-        const hashedNewPw = await hashPassword(newPw);
-        const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
-        statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
-        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-green-700' : 'text-red-600'}`;
-        if (res.success) {
-          document.getElementById('resetTargetId').value   = '';
-          document.getElementById('resetNewPassword').value = '';
-        }
-      } catch {
-        statusText.textContent = '通信エラーが発生しました。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
-      } finally {
-        btn.disabled    = false;
-        btn.textContent = 'パスワードをリセット';
-      }
-    }
-
-    // ==========================================
-    // メンバーHDCP推移モーダル
-    // ==========================================
-    function openMemberHdcpModal(memberName) {
-      document.getElementById('memberHdcpModalTitle').textContent = `${memberName} さんの公式HDCP推移`;
-      const noDataEl = document.getElementById('memberHdcpNoData');
-      const canvasEl = document.getElementById('memberHdcpChart');
-      
-      const targetNameNorm = memberName.replace(/\s+/g, '');
-      const history = State.allOfficialHdcpHistory.filter(r => r.name === targetNameNorm);
-      const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
-
-      if (State.memberHdcpChartInstance) {
-        State.memberHdcpChartInstance.destroy();
-      }
-
-      if (valid.length === 0) {
-        canvasEl.classList.add('hidden');
-        noDataEl.classList.remove('hidden');
-      } else {
-        canvasEl.classList.remove('hidden');
-        noDataEl.classList.add('hidden');
-        
-        const ctx = canvasEl.getContext('2d');
-        State.memberHdcpChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: valid.map(r => formatYearMonth(r.date)),
-            datasets: [{
-              label: '公式HDCP', data: valid.map(r => Number(r.hdcp)),
-              borderColor: 'rgb(147,51,234)', backgroundColor: 'rgba(147,51,234,0.1)',
-              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147,51,234)', tension: 0.3,
-            }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-            scales: { y: { reverse: true } },
-          },
-        });
-      }
-      document.getElementById('memberHdcpModal').classList.remove('hidden');
-    }
-
-    function closeMemberHdcpModal() {
-      document.getElementById('memberHdcpModal').classList.add('hidden');
-    }
-
-    // ==========================================
-    // イーグル会結果推移モーダル
-    // ==========================================
-    function openMemberCompeModal(memberName) {
-      document.getElementById('memberCompeModalTitle').textContent = `${memberName} さんの順位推移`;
-      const noDataEl = document.getElementById('memberCompeNoData');
-      const canvasEl = document.getElementById('memberCompeChart');
-      
-      const history = State.allScoreHistory
-        .filter(r => r['名前'] === memberName && !isNaN(Number(r['順位'])))
-        .sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
-
-      if (State.memberCompeChartInstance) {
-        State.memberCompeChartInstance.destroy();
-      }
-
-      if (history.length === 0) {
-        canvasEl.classList.add('hidden');
-        noDataEl.classList.remove('hidden');
-      } else {
-        canvasEl.classList.remove('hidden');
-        noDataEl.classList.add('hidden');
-        
-        const ctx = canvasEl.getContext('2d');
-        State.memberCompeChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: history.map(r => formatYearMonth(r['日付'])),
-            datasets: [{
-              label: '順位', 
-              data: history.map(r => Number(r['順位'])),
-              borderColor: 'rgb(59,130,246)',
-              backgroundColor: 'rgba(59,130,246,0.1)',
-              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3,
-            }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-            scales: { 
-              y: { 
-                reverse: true,
-                ticks: { stepSize: 1 }
-              } 
-            },
-          },
-        });
-      }
-      document.getElementById('memberCompeModal').classList.remove('hidden');
-    }
-
-    function closeMemberCompeModal() {
-      document.getElementById('memberCompeModal').classList.add('hidden');
-    }
-
-    // ==========================================
-    // 免責事項モーダル
-    // ==========================================
-    function openTermsModal() {
-      document.getElementById('termsModal').classList.remove('hidden');
-    }
-
-    function closeTermsModal() {
-      document.getElementById('termsModal').classList.add('hidden');
-    }
-
-    // ==========================================
-    // サマリーフッター（全成績計算）
-    // ==========================================
-    function buildSummaryFooter() {
-      return `
-        <div id="summaryFooterContainer" class="mt-6 mb-4">
-          <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm animate-pulse h-32"></div>
-        </div>
-        
-        <div class="mt-6 mb-8 flex justify-center">
-          <a href="https://sengaricc.com/" target="_blank" rel="noopener noreferrer" 
-             class="flex items-center gap-2 bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-400 hover:bg-green-50 transition-all group">
-            <span class="text-green-600 text-sm group-hover:scale-110 transition-transform">⛳️</span>
-            千刈カンツリー倶楽部 公式サイト
-            <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-          </a>
-        </div>
-      `;
     }
 
     function renderSummaryFooter() {
@@ -1376,8 +1163,75 @@
     }
 
     // ==========================================
-    // パスワード変更（自分用）
+    // ACTION HANDLERS (ADMIN & MODALS)
     // ==========================================
+    async function onUpload() {
+      const fileInput  = document.getElementById('imageFile');
+      const statusText = document.getElementById('uploadStatus');
+      const btn        = document.getElementById('uploadBtn');
+
+      if (fileInput.files.length === 0) {
+        statusText.textContent = '画像ファイルを選択してください。';
+        return;
+      }
+
+      statusText.textContent = 'Geminiが画像を解析中...（最大数分）';
+      btn.disabled = true;
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const res = await callGasApi('uploadAndProcessImage', {
+            base64Data: reader.result.split(',')[1],
+            mimeType:   fileInput.files[0].type,
+          });
+          statusText.textContent = res.success
+            ? `成功！ ${res.count}件のデータを登録しました。`
+            : `エラー: ${res.error}`;
+          if (res.success) loadAllData();
+        } catch {
+          statusText.textContent = '通信エラーが発生しました。';
+        } finally {
+          btn.disabled = false;
+        }
+      };
+      reader.readAsDataURL(fileInput.files[0]);
+    }
+
+    async function onResetPassword() {
+      const targetId   = document.getElementById('resetTargetId').value.trim();
+      const newPw      = document.getElementById('resetNewPassword').value.trim();
+      const statusText = document.getElementById('resetPasswordStatus');
+      const btn        = document.getElementById('resetPasswordBtn');
+
+      if (!targetId || !newPw) {
+        statusText.textContent = '入力してください。';
+        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = '処理中...';
+      statusText.textContent = '';
+
+      try {
+        const hashedNewPw = await hashPassword(newPw);
+        const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
+        statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
+        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-green-700' : 'text-red-600'}`;
+        if (res.success) {
+          document.getElementById('resetTargetId').value   = '';
+          document.getElementById('resetNewPassword').value = '';
+        }
+      } catch {
+        statusText.textContent = '通信エラーが発生しました。';
+        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'パスワードをリセット';
+      }
+    }
+
     async function onChangeMyPassword() {
       const currentPw  = document.getElementById('myCurrentPw').value;
       const newPw      = document.getElementById('myNewPw').value;
@@ -1425,7 +1279,94 @@
       }
     }
 
-    // モーダル開閉制御
+    // Modal Controls
+    function openMemberHdcpModal(memberName) {
+      document.getElementById('memberHdcpModalTitle').textContent = `${memberName} さんの公式HDCP推移`;
+      const noDataEl = document.getElementById('memberHdcpNoData');
+      const canvasEl = document.getElementById('memberHdcpChart');
+      
+      const targetNameNorm = memberName.replace(/\s+/g, '');
+      const history = State.allOfficialHdcpHistory.filter(r => r.name === targetNameNorm);
+      const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
+
+      if (State.memberHdcpChartInstance) State.memberHdcpChartInstance.destroy();
+
+      if (valid.length === 0) {
+        canvasEl.classList.add('hidden');
+        noDataEl.classList.remove('hidden');
+      } else {
+        canvasEl.classList.remove('hidden');
+        noDataEl.classList.add('hidden');
+        
+        const ctx = canvasEl.getContext('2d');
+        State.memberHdcpChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: valid.map(r => formatYearMonth(r.date)),
+            datasets: [{
+              label: '公式HDCP', data: valid.map(r => Number(r.hdcp)),
+              borderColor: 'rgb(147,51,234)', backgroundColor: 'rgba(147,51,234,0.1)',
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147,51,234)', tension: 0.3,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: { y: { reverse: true } },
+          },
+        });
+      }
+      document.getElementById('memberHdcpModal').classList.remove('hidden');
+    }
+
+    function closeMemberHdcpModal() { document.getElementById('memberHdcpModal').classList.add('hidden'); }
+
+    function openMemberCompeModal(memberName) {
+      document.getElementById('memberCompeModalTitle').textContent = `${memberName} さんの順位推移`;
+      const noDataEl = document.getElementById('memberCompeNoData');
+      const canvasEl = document.getElementById('memberCompeChart');
+      
+      const history = State.allScoreHistory
+        .filter(r => r['名前'] === memberName && !isNaN(Number(r['順位'])))
+        .sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
+
+      if (State.memberCompeChartInstance) State.memberCompeChartInstance.destroy();
+
+      if (history.length === 0) {
+        canvasEl.classList.add('hidden');
+        noDataEl.classList.remove('hidden');
+      } else {
+        canvasEl.classList.remove('hidden');
+        noDataEl.classList.add('hidden');
+        
+        const ctx = canvasEl.getContext('2d');
+        State.memberCompeChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: history.map(r => formatYearMonth(r['日付'])),
+            datasets: [{
+              label: '順位', 
+              data: history.map(r => Number(r['順位'])),
+              borderColor: 'rgb(59,130,246)',
+              backgroundColor: 'rgba(59,130,246,0.1)',
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+            scales: { y: { reverse: true, ticks: { stepSize: 1 } } },
+          },
+        });
+      }
+      document.getElementById('memberCompeModal').classList.remove('hidden');
+    }
+
+    function closeMemberCompeModal() { document.getElementById('memberCompeModal').classList.add('hidden'); }
+    function openTermsModal() { document.getElementById('termsModal').classList.remove('hidden'); }
+    function closeTermsModal() { document.getElementById('termsModal').classList.add('hidden'); }
     function openForgotPwModal() { document.getElementById('forgotPwModal').classList.remove('hidden'); }
     function closeForgotPwModal() { document.getElementById('forgotPwModal').classList.add('hidden'); }
     function openChangePwModal() { 
@@ -1469,39 +1410,32 @@
         <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
         <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
       </div>
-      
       <div class="overflow-y-auto pr-2 text-sm text-gray-600 space-y-5">
         <section>
           <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 1. 運営と免責</h4>
           <p class="leading-relaxed">本アプリは運営管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
         </section>
-        
         <section>
           <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度について</h4>
           <p class="leading-relaxed">本アプリに記載のハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれます。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。アプリ内の記載に誤りを発見した際はLINE等でお知らせください。</p>
         </section>
-
         <section>
           <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. 情報の取り扱いについて</h4>
           <p class="leading-relaxed">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開・SNS等への投稿はお控えください。</p>
         </section>
-        
         <section>
           <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. システムの稼働について</h4>
           <p class="leading-relaxed">本アプリは、GoogleやGitHubなどの無料インフラ、および各種AI・外部APIサービスを活用して構築されています。これら外部サービスの仕様変更やアクセス集中により、予告なく機能停止や読み込み遅延が発生する場合があります。</p>
         </section>
-
         <section>
           <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 5. サービスの継続性について</h4>
           <p class="leading-relaxed">本アプリは管理者が個人で運営しており、管理者の都合により予告なくサービスを終了する場合があります。予め、ご了承ください。</p>
         </section>
-        
         <section>
           <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 6. アカウントとセキュリティ</h4>
           <p class="leading-relaxed">本アプリで利用しているパスワードは利用者の端末内で不可逆の暗号化処理（ハッシュ化）が施されてからサーバーに送信されるため、管理者を含む第三者が元のパスワードを知ることはできません。アプリ内への不正アクセス対策は可能な範囲で実施していますが、IDやパスワードの管理は各自で厳重にお願い致します。</p>
         </section>
       </div>
-      
       <div class="mt-5 pt-4 border-t text-center">
         <button type="button" onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
       </div>
