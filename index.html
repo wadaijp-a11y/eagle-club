@@ -168,8 +168,22 @@
       }
     }
 
-    async function onLogout() {
+
+    async function onLogout(btnElement) {
+      // ボタンが押されたら、連打を防止してスピナー（くるくる）を表示
+      if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = `
+          <svg class="animate-spin h-3.5 w-3.5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          処理中...
+        `;
+      }
+
       await callGasApi('logout').catch(() => {});
+      
       State.authToken   = null;
       State.currentUser = null;
       State.authRes     = null;
@@ -178,6 +192,8 @@
       document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('loginId').value = '';
     }
+
+
 
     // ==========================================
     // セッション初期化・DOM構築
@@ -246,7 +262,7 @@
     }
 
 
-   function buildUserHeader(res) {
+     function buildUserHeader(res) {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm flex justify-between items-center">
           <div class="flex items-center gap-2.5 overflow-hidden pr-2">
@@ -266,7 +282,7 @@
               class="text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
               <span>⚙️</span> PW変更
             </button>
-            <button onclick="onLogout()" aria-label="ログアウト"
+            <button onclick="onLogout(this)" aria-label="ログアウト"
               class="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
               <span>🚪</span> ログアウト
             </button>
@@ -1230,19 +1246,21 @@ async function loadOfficialHdcpHistory() {
     }
 
 
-    // ==========================================
+   // ==========================================
     // サマリーフッター（全成績計算）
     // ==========================================
     function buildSummaryFooter() {
       return `
-        <div id="summaryFooterContainer" class="mt-8 mb-4">
-          <div class="bg-slate-800 rounded-xl p-4 shadow-lg animate-pulse h-32"></div>
+        <div id="summaryFooterContainer" class="mt-6 mb-4">
+          <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm animate-pulse h-32"></div>
         </div>
-        <div class="text-center mt-6 mb-2">
+        
+        <div class="mt-6 mb-8 flex justify-center">
           <a href="https://sengaricc.com/" target="_blank" rel="noopener noreferrer" 
-             class="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-green-600 transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-            千刈カンツリー倶楽部 HP
+             class="flex items-center gap-2 bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-400 hover:bg-green-50 transition-all group">
+            <span class="text-green-600 text-sm group-hover:scale-110 transition-transform">⛳️</span>
+            千刈カンツリー倶楽部 公式サイト
+            <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
           </a>
         </div>
       `;
@@ -1282,13 +1300,13 @@ async function loadOfficialHdcpHistory() {
       const avgGross = validGrossCount > 0 ? (totalGross / validGrossCount).toFixed(1) : '-';
       const avgNet = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
       
-      let bestScoreHtml = `<span class="text-xl font-bold text-slate-300">-</span>`;
+      let bestScoreHtml = `<span class="text-xl font-bold text-gray-300">-</span>`;
       if (bestGross !== Infinity) {
         const bd = new Date(bestDate);
         const dateStr = !isNaN(bd) ? `${String(bd.getFullYear()).slice(-2)}年${bd.getMonth() + 1}月` : '';
         bestScoreHtml = `
-          <span class="text-xl font-bold text-yellow-400">${bestGross}</span>
-          ${dateStr ? `<span class="text-[9px] text-slate-400 font-normal -mt-0.5">${dateStr}</span>` : ''}
+          <span class="text-xl font-bold text-amber-600">${bestGross}</span>
+          ${dateStr ? `<span class="text-[9px] text-gray-500 font-normal -mt-0.5">${dateStr}</span>` : ''}
         `;
       }
 
@@ -1307,35 +1325,32 @@ async function loadOfficialHdcpHistory() {
       }).length;
 
       container.innerHTML = `
-        <div class="bg-slate-800 rounded-xl p-4 shadow-lg text-white relative overflow-hidden">
-          <div class="absolute -right-3 -top-3 opacity-10 text-6xl rotate-12">📊</div>
-          <h3 class="text-xs font-bold border-b border-slate-600 pb-2 mb-4 text-slate-200 flex items-center gap-1.5">
-            📊 あなたのサマリー
-          </h3>
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">📊 あなたの通算サマリー</h3>
           
           <div class="flex justify-between items-start mb-4 px-1">
             <div class="text-center flex-1">
-              <div class="text-[10px] text-slate-400 mb-0.5">平均GROSS</div>
-              <div class="text-xl font-bold text-white">${avgGross}</div>
+              <div class="text-[10px] text-gray-500 font-bold mb-0.5">平均GROSS</div>
+              <div class="text-xl font-bold text-gray-800">${avgGross}</div>
             </div>
-            <div class="text-center flex-1 border-l border-slate-600">
-              <div class="text-[10px] text-slate-400 mb-0.5">平均NET</div>
-              <div class="text-xl font-bold text-green-400">${avgNet}</div>
+            <div class="text-center flex-1 border-l border-gray-200">
+              <div class="text-[10px] text-gray-500 font-bold mb-0.5">平均NET</div>
+              <div class="text-xl font-bold text-green-600">${avgNet}</div>
             </div>
-            <div class="text-center flex-1 border-l border-slate-600 flex flex-col justify-center items-center">
-              <div class="text-[10px] text-slate-400 mb-0.5">ベストスコア</div>
+            <div class="text-center flex-1 border-l border-gray-200 flex flex-col justify-center items-center">
+              <div class="text-[10px] text-gray-500 font-bold mb-0.5">ベストスコア</div>
               <div class="flex flex-col items-center leading-none">
                 ${bestScoreHtml}
               </div>
             </div>
           </div>
           
-          <div class="bg-slate-700/50 rounded p-2.5 flex justify-between items-center border border-slate-600/50">
-            <span class="text-xs text-slate-300 font-medium">${String(currentYear).slice(-2)}年の参加回数</span>
-            <span class="text-sm font-bold flex items-baseline">
-              <span class="text-sky-400 text-lg leading-none">${myCompes}</span><span class="text-[10px] text-slate-400 ml-0.5">回</span> 
-              <span class="text-slate-500 font-normal mx-1.5 text-xs">/</span> 
-              <span class="text-[11px] text-slate-400">${totalCompes}回開催</span>
+          <div class="bg-gray-50 rounded-lg p-2.5 flex justify-between items-center border border-gray-100">
+            <span class="text-xs text-gray-700 font-bold">${String(currentYear).slice(-2)}年の参加回数</span>
+            <span class="text-sm font-bold flex items-baseline text-gray-800">
+              <span class="text-blue-600 text-lg leading-none">${myCompes}</span><span class="text-[10px] text-gray-500 ml-0.5 font-normal">回</span> 
+              <span class="text-gray-400 mx-1.5 text-xs font-normal">/</span> 
+              <span class="text-[11px] text-gray-500 font-normal">${totalCompes}回開催</span>
             </span>
           </div>
         </div>
