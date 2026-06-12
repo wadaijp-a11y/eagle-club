@@ -4,10 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>イーグル会</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans JP"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800">
+
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800 font-sans antialiased">
 
 
     <!-- ログインセクション -->
@@ -52,9 +70,7 @@
     <p class="text-center text-[10px] text-gray-400 mt-4">&copy; 2026 イーグル会 システム管理者. All rights reserved.</p>
   </div>
 
-
-
-  <div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-10"></div>
+<div id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-16"></div>
 
   <script>
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzPV9OzvAIC1XEvuVuly1hKAkHeJL4t8QJdBqnbMnjwVtiqsN636M91ZDv2HpG4D1NJYg/exec";
