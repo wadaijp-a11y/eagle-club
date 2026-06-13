@@ -310,7 +310,7 @@ async function callGasApi(action, data = {}, retries = 3) {
         </div>`;
     }
 
-    function buildUserHeader(res) {
+function buildUserHeader(res) {
       return `
         <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm flex justify-between items-center">
           <div class="flex items-center gap-2.5 overflow-hidden pr-2">
@@ -326,6 +326,10 @@ async function callGasApi(action, data = {}, retries = 3) {
           </div>
           
           <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="onUserManualSync(this)" aria-label="最新情報を取得"
+              class="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
+              <span>🔄</span> 更新
+            </button>
             <button type="button" onclick="openChangePwModal()" aria-label="パスワード変更"
               class="text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
               <span>⚙️</span> PW変更
@@ -1412,6 +1416,28 @@ function setupRanking() {
         if (document.getElementById('maintenanceBtn')) {
            document.getElementById('maintenanceBtn').disabled = false;
         }
+      }
+    }
+    
+    // 一般ユーザー用の手動データ更新機能
+    async function onUserManualSync(btnElement) {
+      const originalHtml = btnElement.innerHTML;
+      btnElement.disabled = true;
+      btnElement.innerHTML = `${SPINNER_SVG}取得中...`;
+      
+      try {
+        // 1. ブラウザのローカルキャッシュを破棄
+        localStorage.removeItem('eagle_data_cache');
+        localStorage.removeItem('eagle_cache_timestamp');
+        
+        // 2. 最新データを再取得して画面を再描画
+        await loadAllData();
+      } catch (e) {
+        console.error('手動更新エラー', e);
+        alert('データの取得に失敗しました。時間をおいて再度お試しください。');
+      } finally {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalHtml;
       }
     }
 
