@@ -71,7 +71,7 @@
   <main id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-16"></main>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycby5-cQIJqs-4JhPE6S6W2WeyZ8RrvkX7G6NHEq1AnBjK_iy5k8oOj3EJ6ZovZInSg9ksg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwTedJVubv0ITuOHIqCiWIzBq_1NRuh_RSt9KOJ-D8Yz02uh4TOxIUpaCQv3V4Ri1QHRA/exec";
 
     const SPINNER_SVG = `
       <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current inline-block align-text-bottom" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -102,6 +102,7 @@
       allOfficialHdcpHistory: [],
       memberHdcpChartInstance: null,
       memberCompeChartInstance: null, 
+      maintenanceMode: false,
     };
 
     // ==========================================
@@ -242,6 +243,7 @@ async function callGasApi(action, data = {}, retries = 3) {
       State.gender                = res.gender || 'male';
       State.myOfficialHdcp        = res.officialHdcp || '-';
       State.isOfficialHistoryLoaded = false;
+      State.maintenanceMode       = res.maintenanceMode || false;
 
       buildMainUI(res);
 
@@ -269,6 +271,7 @@ async function callGasApi(action, data = {}, retries = 3) {
         ${isAdmin ? buildAdminUploadCard() : ''}
         ${isAdmin ? buildAdminPasswordCard() : ''}
         ${isAdmin ? buildAdminCacheCard() : ''}
+        ${isAdmin ? buildAdminMaintenanceCard() : ''}
         ${buildSummaryFooter()}
       `;
       
@@ -622,31 +625,42 @@ async function callGasApi(action, data = {}, retries = 3) {
     }
 
     // フロントエンドのLocalStorageキャッシュ対応と、データ0件時の安全な初期化
-    async function loadAllData() {
+async function loadAllData() {
       showSkeletons();
       try {
         let history, members, hdcpHistory;
+        let usedCache = false;
         
         // 1. LocalStorageのキャッシュを確認
         const cachedStr = localStorage.getItem('eagle_data_cache');
         const cacheTime = localStorage.getItem('eagle_cache_timestamp');
         const now = new Date().getTime();
         
-        // キャッシュが有効（6時間以内）であれば利用
-        if (cachedStr && cacheTime && (now - Number(cacheTime) < 6 * 60 * 60 * 1000)) {
-          const cached = JSON.parse(cachedStr);
-          history = cached.history;
-          members = cached.members;
-          hdcpHistory = cached.hdcpHistory;
-        } else {
-          // キャッシュが古いか無い場合はAPIを呼び出す
+        // キャッシュが有効（24時間以内）であれば利用
+        if (cachedStr && cacheTime && (now - Number(cacheTime) < 24 * 60 * 60 * 1000)) {
+          try {
+            const cached = JSON.parse(cachedStr);
+            history     = cached.history;
+            members     = cached.members;
+            hdcpHistory = cached.hdcpHistory;
+            usedCache   = true;
+          } catch (e) {
+            // キャッシュが破損している場合は即座に破棄してAPIフォールバック
+            console.warn('[イーグル会] キャッシュの破損を検知しました。破棄して再取得します。');
+            localStorage.removeItem('eagle_data_cache');
+            localStorage.removeItem('eagle_cache_timestamp');
+          }
+        }
+
+        if (!usedCache) {
+          // キャッシュが古い、無い、または破損していた場合はAPIを呼び出す
           [history, members, hdcpHistory] = await Promise.all([
             callGasApi('getScoreHistory'),
             callGasApi('getMemberList'),
             callGasApi('getAllOfficialHdcpHistory')
           ]);
           
-          // キャッシュに保存
+          // 新しいデータをキャッシュに保存
           localStorage.setItem('eagle_data_cache', JSON.stringify({ history, members, hdcpHistory }));
           localStorage.setItem('eagle_cache_timestamp', String(now));
         }
@@ -656,7 +670,7 @@ async function callGasApi(action, data = {}, retries = 3) {
         if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory;
         if (history) State.allScoreHistory = history;
 
-        // 3. データ0件の場合でもUIコンポーネントを初期化する（修正提案②対応）
+        // 3. UIコンポーネントの初期化
         setupCompeResults();
         setupRanking();
         Versus.setup();
@@ -771,7 +785,7 @@ async function callGasApi(action, data = {}, retries = 3) {
         }).join('');
       } catch {
         document.getElementById('officialHdcpTableBody').innerHTML =
-          `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー、しばらしてから再度お試しください。</td></tr>`;
+          `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー、しばらくしてから再度お試しください。</td></tr>`;
       }
     }
 
@@ -819,7 +833,6 @@ async function callGasApi(action, data = {}, retries = 3) {
 function setupRanking() {
       State.rankingByTerm = {};
       
-      // 0件でもタブの初期化を回してUIを正常に保つ
       if (State.allScoreHistory.length === 0) {
         State.availableRankingTerms = [];
         renderRankingTabs();
@@ -1342,6 +1355,63 @@ function setupRanking() {
       } finally {
         btn.disabled    = false;
         btn.textContent = 'パスワードをリセット';
+      }
+    }
+
+    // ==========================================
+    // 管理者：メンテナンスモード切り替え
+    // ==========================================
+    function buildAdminMaintenanceCard() {
+      const isMaint = State.maintenanceMode;
+      const statusText  = isMaint ? '🚨 メンテナンス中 (一般ログイン停止)' : '🟢 通常稼働中';
+      const statusColor = isMaint ? 'text-red-600' : 'text-green-600';
+      const btnText     = isMaint ? '通常稼働に戻す' : 'メンテナンスモードにする';
+      const btnColor    = isMaint ? 'bg-gray-700 hover:bg-gray-800' : 'bg-red-600 hover:bg-red-700';
+
+      return `
+        <div class="border-2 border-dashed ${isMaint ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-gray-50'} rounded-xl p-4 shadow-sm transition-colors" id="maintenanceCardWrap">
+          <h3 class="font-bold text-gray-800 mb-2 text-sm text-center">【管理者用】システム状態管理</h3>
+          <p class="text-xs text-gray-600 mb-3 text-center">オンにすると、管理者以外のログインを一時的にブロックします。</p>
+          
+          <div class="flex flex-col items-center gap-3 mt-4">
+            <span class="font-black text-sm ${statusColor}" id="maintenanceStatusDisp">${statusText}</span>
+            <button type="button" onclick="onToggleMaintenance(this)" id="maintenanceBtn"
+              class="w-full ${btnColor} text-white text-sm font-bold p-2.5 rounded shadow-sm transition-colors">
+              ${btnText}
+            </button>
+          </div>
+        </div>`;
+    }
+
+    async function onToggleMaintenance(btnElement) {
+      // 現在の状態の「逆」を設定する
+      const newState = !State.maintenanceMode;
+      const confirmMsg = newState 
+        ? "メンテナンスモードをオンにします。\n一般メンバーはログインできなくなります。よろしいですか？" 
+        : "通常稼働に戻します。\n一般メンバーのログインが可能になります。よろしいですか？";
+        
+      if (!confirm(confirmMsg)) return;
+
+      btnElement.disabled = true;
+      btnElement.innerHTML = `${SPINNER_SVG}切り替え中...`;
+
+      try {
+        const res = await callGasApi('toggleMaintenance', { state: String(newState) });
+        if (res.success) {
+          State.maintenanceMode = res.maintenanceMode;
+          // UIを再描画して状態を反映
+          buildMainUI(State.authRes);
+          alert(State.maintenanceMode ? '🚨 メンテナンスモードを開始しました。' : '🟢 通常稼働を再開しました。');
+        } else {
+          alert('エラーが発生しました: ' + res.error);
+        }
+      } catch (e) {
+        console.error(e);
+        alert('通信エラーが発生しました。');
+      } finally {
+        if (document.getElementById('maintenanceBtn')) {
+           document.getElementById('maintenanceBtn').disabled = false;
+        }
       }
     }
 
