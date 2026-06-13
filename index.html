@@ -1387,7 +1387,7 @@ function setupRanking() {
         </div>`;
     }
 
-    async function onToggleMaintenance(btnElement) {
+async function onToggleMaintenance(btnElement) {
       // 現在の状態の「逆」を設定する
       const newState = !State.maintenanceMode;
       const confirmMsg = newState 
@@ -1403,8 +1403,17 @@ function setupRanking() {
         const res = await callGasApi('toggleMaintenance', { state: String(newState) });
         if (res.success) {
           State.maintenanceMode = res.maintenanceMode;
-          // UIを再描画して状態を反映
+          
+          // 【追加】バックエンド側のキャッシュも破棄されているため、ブラウザ側のキャッシュも捨てる
+          localStorage.removeItem('eagle_data_cache');
+          localStorage.removeItem('eagle_cache_timestamp');
+          
+          // UIの枠組みを再描画して状態（カードの色やテキスト）を反映
           buildMainUI(State.authRes);
+          
+          // 【追加】枠の中に最新データを取得して流し込む
+          await loadAllData();
+          
           alert(State.maintenanceMode ? '🚨 メンテナンスモードを開始しました。' : '🟢 通常稼働を再開しました。');
         } else {
           alert('エラーが発生しました: ' + res.error);
@@ -1413,12 +1422,13 @@ function setupRanking() {
         console.error(e);
         alert('通信エラーが発生しました。');
       } finally {
-        if (document.getElementById('maintenanceBtn')) {
-           document.getElementById('maintenanceBtn').disabled = false;
+        // ボタン自体が buildMainUI で新しく作り直されるため、万が一DOMに残っていた場合のみロック解除
+        const newBtn = document.getElementById('maintenanceBtn');
+        if (newBtn) {
+           newBtn.disabled = false;
         }
       }
-    }
-    
+    }    
     // 一般ユーザー用の手動データ更新機能
     async function onUserManualSync(btnElement) {
       const originalHtml = btnElement.innerHTML;
