@@ -120,11 +120,12 @@
       return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
-    async function callGasApi(action, data = {}) {
+async function callGasApi(action, data = {}, retries = 3) {
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
       
       const controller = new AbortController();
+      // タイムアウトは15秒に設定
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
@@ -136,9 +137,27 @@
           signal: controller.signal
         });
         clearTimeout(timeoutId);
+        
+        // GAS特有のHTMLエラー（同時アクセス制限時の500/502エラー等）を検知
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("text/html")) {
+          throw new Error('GAS Overload');
+        }
+        
         return await res.json();
       } catch (error) {
         clearTimeout(timeoutId);
+        
+        // リトライ回数が残っていれば、時間を置いて再実行（指数バックオフ + ジッター）
+        if (retries > 0) {
+          // 1回目1秒、2回目2秒、3回目4秒 待機（+最大0.5秒のランダムな揺らぎで衝突回避）
+          const delay = (Math.pow(2, 3 - retries) * 1000) + (Math.random() * 500);
+          console.warn(`[イーグル会] API通信再試行: ${Math.round(delay)}ms待機 (残り${retries - 1}回)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return callGasApi(action, data, retries - 1);
+        }
+        
+        // リトライを使い切った、または他のエラーの場合
         if (error.name === 'AbortError') {
           throw new Error('通信がタイムアウトしました');
         }
