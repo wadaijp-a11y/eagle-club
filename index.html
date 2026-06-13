@@ -816,12 +816,14 @@ async function callGasApi(action, data = {}, retries = 3) {
       }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
     }
 
-    function setupRanking() {
+function setupRanking() {
       State.rankingByTerm = {};
       
+      // 0件でもタブの初期化を回してUIを正常に保つ
       if (State.allScoreHistory.length === 0) {
-        document.getElementById('rankingTabsContainer').innerHTML = '';
-        renderRankingContent();
+        State.availableRankingTerms = [];
+        renderRankingTabs();
+        changeRankingTab('official');
         return;
       }
       
@@ -1205,9 +1207,11 @@ async function callGasApi(action, data = {}, retries = 3) {
         `;
       }
 
+// 全成績データから一番古い日付（集計開始日）を取得
       let oldestDateText = '';
       if (State.allScoreHistory.length > 0) {
         const timestamps = State.allScoreHistory.map(r => new Date(r['日付']).getTime()).filter(t => !isNaN(t));
+        // 【修正】timestamps が空配列でないことを明示的にチェック
         if (timestamps.length > 0) {
           const minDate = new Date(Math.min(...timestamps));
           oldestDateText = `${String(minDate.getFullYear()).slice(-2)}年${minDate.getMonth() + 1}月${minDate.getDate()}日`;
@@ -1534,101 +1538,111 @@ async function callGasApi(action, data = {}, retries = 3) {
     });
   </script>
 
-  <div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberHdcpModal()">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center border-b pb-2 mb-3">
-        <h3 id="memberHdcpModalTitle" class="font-bold text-gray-800 text-sm"></h3>
-        <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
-      </div>
-      <div class="py-1 min-h-[150px] relative">
-        <canvas id="memberHdcpChart"></canvas>
-        <p id="memberHdcpNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
-      </div>
-    </div>
-  </div>
-
-  <div id="memberCompeModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberCompeModal()">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center border-b pb-2 mb-3">
-        <h3 id="memberCompeModalTitle" class="font-bold text-gray-800 text-sm"></h3>
-        <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
-      </div>
-      <div class="py-1 min-h-[150px] relative">
-        <canvas id="memberCompeChart"></canvas>
-        <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+<div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeMemberHdcpModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b pb-2 mb-3">
+          <h3 id="memberHdcpModalTitle" class="font-bold text-gray-800 text-sm"></h3>
+          <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+        </div>
+        <div class="py-1 min-h-[150px] relative">
+          <canvas id="memberHdcpChart"></canvas>
+          <p id="memberHdcpNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="termsModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeTermsModal()">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center border-b pb-3 mb-4">
-        <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
-        <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+  <div id="memberCompeModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeMemberCompeModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b pb-2 mb-3">
+          <h3 id="memberCompeModalTitle" class="font-bold text-gray-800 text-sm"></h3>
+          <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+        </div>
+        <div class="py-1 min-h-[150px] relative">
+          <canvas id="memberCompeChart"></canvas>
+          <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+        </div>
       </div>
-      <div class="overflow-y-auto pr-2 text-sm text-gray-600 space-y-5">
-        <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 1. 運営と免責</h4>
-          <p class="leading-relaxed">本アプリは運営管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
-        </section>
-        <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度について</h4>
-          <p class="leading-relaxed">本アプリに記載のハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれます。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。アプリ内の記載に誤りを発見した際はLINE等でお知らせください。</p>
-        </section>
-        <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. 情報の取り扱いについて</h4>
-          <p class="leading-relaxed">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開・SNS等への投稿はお控えください。</p>
-        </section>
-        <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. システムの稼働について</h4>
-          <p class="leading-relaxed">本アプリは、GoogleやGitHubなどの無料インフラ、および各種AI・外部APIサービスを活用して構築されています。これら外部サービスの仕様変更やアクセス集中により、予告なく機能停止や読み込み遅延が発生する場合があります。</p>
-        </section>
-        <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 5. サービスの継続性について</h4>
-          <p class="leading-relaxed">本アプリは管理者が個人で運営しており、管理者の都合により予告なくサービスを終了する場合があります。予め、ご了承ください。</p>
-        </section>
-        <section>
-          <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 6. アカウントとセキュリティ</h4>
-          <p class="leading-relaxed">本アプリで利用しているパスワードは利用者の端末内で不可逆の暗号化処理（ハッシュ化）が施されてからサーバーに送信されるため、管理者を含む第三者が元のパスワードを知ることはできません。アプリ内への不正アクセス対策は可能な範囲で実施していますが、IDやパスワードの管理は各自で厳重にお願い致します。</p>
-        </section>
-      </div>
-      <div class="mt-5 pt-4 border-t text-center">
-        <button type="button" onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
+    </div>
+  </div>
+
+  <div id="termsModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeTermsModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+          <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
+          <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+        </div>
+        <div class="overflow-y-auto pr-2 text-sm text-gray-600 space-y-5">
+          <section>
+            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 1. 運営と免責</h4>
+            <p class="leading-relaxed">本アプリは運営管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
+          </section>
+          <section>
+            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度について</h4>
+            <p class="leading-relaxed">本アプリに記載のハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれます。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。アプリ内の記載に誤りを発見した際はLINE等でお知らせください。</p>
+          </section>
+          <section>
+            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. 情報の取り扱いについて</h4>
+            <p class="leading-relaxed">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開・SNS等への投稿はお控えください。</p>
+          </section>
+          <section>
+            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. システムの稼働について</h4>
+            <p class="leading-relaxed">本アプリは、GoogleやGitHubなどの無料インフラ、および各種AI・外部APIサービスを活用して構築されています。これら外部サービスの仕様変更やアクセス集中により、予告なく機能停止や読み込み遅延が発生する場合があります。</p>
+          </section>
+          <section>
+            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 5. サービスの継続性について</h4>
+            <p class="leading-relaxed">本アプリは管理者が個人で運営しており、管理者の都合により予告なくサービスを終了する場合があります。予め、ご了承ください。</p>
+          </section>
+          <section>
+            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 6. アカウントとセキュリティ</h4>
+            <p class="leading-relaxed">本アプリで利用しているパスワードは利用者の端末内で不可逆の暗号化処理（ハッシュ化）が施されてからサーバーに送信されるため、管理者を含む第三者が元のパスワードを知ることはできません。アプリ内への不正アクセス対策は可能な範囲で実施していますが、IDやパスワードの管理は各自で厳重にお願い致します。</p>
+          </section>
+        </div>
+        <div class="mt-5 pt-4 border-t text-center">
+          <button type="button" onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
+        </div>
       </div>
     </div>
   </div>
       
-  <div id="forgotPwModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeForgotPwModal()">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 text-center" onclick="event.stopPropagation()">
-      <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">ℹ️</div>
-      <h3 class="font-bold text-gray-800 text-lg mb-2">パスワードの再発行</h3>
-      <p class="text-sm text-gray-600 leading-relaxed mb-5 text-left">
-        システムのセキュリティ上、パスワードの自動再発行はできません。<br><br>
-        お手数ですが、ご本人確認のためシステム管理者までLINE等で直接ご連絡ください。新しいパスワードを発行してお伝えいたします。
-      </p>
-      <button type="button" onclick="closeForgotPwModal()" class="w-full bg-gray-100 text-gray-800 p-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">閉じる</button>
+  <div id="forgotPwModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeForgotPwModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 text-center" onclick="event.stopPropagation()">
+        <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">ℹ️</div>
+        <h3 class="font-bold text-gray-800 text-lg mb-2">パスワードの再発行</h3>
+        <p class="text-sm text-gray-600 leading-relaxed mb-5 text-left">
+          システムのセキュリティ上、パスワードの自動再発行はできません。<br><br>
+          お手数ですが、ご本人確認のためシステム管理者までLINE等で直接ご連絡ください。新しいパスワードを発行してお伝えいたします。
+        </p>
+        <button type="button" onclick="closeForgotPwModal()" class="w-full bg-gray-100 text-gray-800 p-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">閉じる</button>
+      </div>
     </div>
   </div>
 
-  <div id="changePwModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeChangePwModal()">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center border-b pb-2 mb-4">
-        <h3 class="font-bold text-gray-800 text-sm">⚙️ パスワードの変更</h3>
-        <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
-      </div>
-      <div class="space-y-3">
-        <div>
-          <label for="myCurrentPw" class="block text-xs font-bold text-gray-700 mb-1">現在のパスワード</label>
-          <input type="password" id="myCurrentPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+  <div id="changePwModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeChangePwModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b pb-2 mb-4">
+          <h3 class="font-bold text-gray-800 text-sm">⚙️ パスワードの変更</h3>
+          <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
         </div>
-        <div>
-          <label for="myNewPw" class="block text-xs font-bold text-gray-700 mb-1">新しいパスワード <span class="text-gray-400 font-normal">(8文字以上)</span></label>
-          <input type="password" id="myNewPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+        <div class="space-y-3">
+          <div>
+            <label for="myCurrentPw" class="block text-xs font-bold text-gray-700 mb-1">現在のパスワード</label>
+            <input type="password" id="myCurrentPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+          </div>
+          <div>
+            <label for="myNewPw" class="block text-xs font-bold text-gray-700 mb-1">新しいパスワード <span class="text-gray-400 font-normal">(8文字以上)</span></label>
+            <input type="password" id="myNewPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+          </div>
+          <button type="button" id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-green-600 text-white text-sm font-bold p-2.5 rounded hover:bg-green-700 transition-colors shadow-sm">
+            パスワードを変更
+          </button>
+          <p id="myChangePwStatus" class="text-center"></p>
         </div>
-        <button type="button" id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-green-600 text-white text-sm font-bold p-2.5 rounded hover:bg-green-700 transition-colors shadow-sm">
-          パスワードを変更
-        </button>
-        <p id="myChangePwStatus" class="text-center"></p>
       </div>
     </div>
   </div>
