@@ -71,7 +71,14 @@
   <main id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-16"></main>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzPV9OzvAIC1XEvuVuly1hKAkHeJL4t8QJdBqnbMnjwVtiqsN636M91ZDv2HpG4D1NJYg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycby5-cQIJqs-4JhPE6S6W2WeyZ8RrvkX7G6NHEq1AnBjK_iy5k8oOj3EJ6ZovZInSg9ksg/exec";
+
+    const SPINNER_SVG = `
+      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current inline-block align-text-bottom" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    `;
 
     // ==========================================
     // STATE
@@ -190,13 +197,7 @@
     async function onLogout(btnElement) {
       if (btnElement) {
         btnElement.disabled = true;
-        btnElement.innerHTML = `
-          <svg class="animate-spin h-3.5 w-3.5 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          処理中...
-        `;
+        btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
       }
 
       await callGasApi('logout').catch(() => {});
@@ -204,6 +205,11 @@
       State.authToken   = null;
       State.currentUser = null;
       State.authRes     = null;
+      
+      // キャッシュクリア（ログアウト時は安全のため）
+      localStorage.removeItem('eagle_data_cache');
+      localStorage.removeItem('eagle_cache_timestamp');
+
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
@@ -233,7 +239,6 @@
       const isAdmin = res.role === '管理者';
       const main    = document.getElementById('mainSection');
 
-      // UX（ユーザー体験）に基づき、自然な視線の流れになるようコンポーネントを配置
       main.innerHTML = `
         ${buildUserHeader(res)}
         ${buildScheduleCard(res)}
@@ -244,13 +249,13 @@
         ${buildRankingCard()}
         ${isAdmin ? buildAdminUploadCard() : ''}
         ${isAdmin ? buildAdminPasswordCard() : ''}
+        ${isAdmin ? buildAdminCacheCard() : ''}
         ${buildSummaryFooter()}
       `;
       
       CourseHdcp.render();
       setupScheduleDisplay(res);
     }
-
 
     function buildScheduleCard(res) {
       return `
@@ -400,6 +405,20 @@
             パスワードをリセット
           </button>
           <p id="resetPasswordStatus" class="mt-2 text-xs font-semibold text-gray-700" role="alert"></p>
+        </div>`;
+    }
+
+    // 管理者用：強制データ同期機能
+    function buildAdminCacheCard() {
+      return `
+        <div class="border-2 border-dashed border-blue-300 rounded-xl p-4 bg-blue-50">
+          <h3 class="font-bold text-blue-800 mb-2 text-sm text-center">【管理者用】強制データ同期</h3>
+          <p class="text-xs text-gray-600 mb-3">スプレッドシートを手動で修正した際など、サーバーと端末のキャッシュを破棄して最新データを読み込みます。</p>
+          <button type="button" onclick="onForceSync()" id="forceSyncBtn"
+            class="w-full bg-blue-500 text-white text-sm font-bold p-2 rounded hover:bg-blue-600 transition-colors shadow-sm">
+            🔄 キャッシュを破棄して最新化
+          </button>
+          <p id="forceSyncStatus" class="mt-2 text-xs font-semibold text-center hidden" role="alert"></p>
         </div>`;
     }
 
@@ -583,31 +602,57 @@
       loadAllData();
     }
 
+    // フロントエンドのLocalStorageキャッシュ対応と、データ0件時の安全な初期化
     async function loadAllData() {
       showSkeletons();
       try {
-        const [history, members, hdcpHistory] = await Promise.all([
-          callGasApi('getScoreHistory'),
-          callGasApi('getMemberList'),
-          callGasApi('getAllOfficialHdcpHistory')
-        ]);
+        let history, members, hdcpHistory;
+        
+        // 1. LocalStorageのキャッシュを確認
+        const cachedStr = localStorage.getItem('eagle_data_cache');
+        const cacheTime = localStorage.getItem('eagle_cache_timestamp');
+        const now = new Date().getTime();
+        
+        // キャッシュが有効（6時間以内）であれば利用
+        if (cachedStr && cacheTime && (now - Number(cacheTime) < 6 * 60 * 60 * 1000)) {
+          const cached = JSON.parse(cachedStr);
+          history = cached.history;
+          members = cached.members;
+          hdcpHistory = cached.hdcpHistory;
+        } else {
+          // キャッシュが古いか無い場合はAPIを呼び出す
+          [history, members, hdcpHistory] = await Promise.all([
+            callGasApi('getScoreHistory'),
+            callGasApi('getMemberList'),
+            callGasApi('getAllOfficialHdcpHistory')
+          ]);
+          
+          // キャッシュに保存
+          localStorage.setItem('eagle_data_cache', JSON.stringify({ history, members, hdcpHistory }));
+          localStorage.setItem('eagle_cache_timestamp', String(now));
+        }
 
+        // 2. ステートへの代入
         if (members && members.length > 0) State.memberList = members;
         if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory;
+        if (history) State.allScoreHistory = history;
+
+        // 3. データ0件の場合でもUIコンポーネントを初期化する（修正提案②対応）
+        setupCompeResults();
+        setupRanking();
+        Versus.setup();
+        renderSummaryFooter();
 
         if (history && history.length > 0) {
-          State.allScoreHistory = history;
           const myHistory = history
             .filter(r => r['名前'] === State.currentUser)
             .map(r => ({ date: r['日付'], rank: r['順位'], gross: r['GROSS'], hdcp: r['HDCP'], net: r['NET'] }));
-
-          setupCompeResults();
-          setupRanking();
-          Versus.setup();
           loadMyChart(myHistory);
-          renderSummaryFooter();
+        } else {
+          loadMyChart([]); // 空状態を表示
         }
-      } catch {
+      } catch (e) {
+        console.error(e);
         showErrorAndRetry();
       }
     }
@@ -638,7 +683,6 @@
       render() {
         const container = document.getElementById('courseHdcpContainer');
         if (!container) return;
-        // 修正：DOMからではなくStateから直接取得して計算の安全性を向上
         const index = parseFloat(State.myOfficialHdcp);
         if (isNaN(index)) { container.innerHTML = ''; return; }
         container.innerHTML = this.RATINGS[State.gender].map(r => `
@@ -714,6 +758,12 @@
 
     function setupCompeResults() {
       const sel   = document.getElementById('dateSelect');
+      
+      if (State.allScoreHistory.length === 0) {
+        document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+        return;
+      }
+      
       const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))]
         .sort((a, b) => new Date(b) - new Date(a));
       sel.innerHTML = dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(formatYearMonth(d))}</option>`).join('');
@@ -733,10 +783,11 @@
       document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
         const rank     = Number(row['順位']);
         const isMe     = row['名前'] === State.currentUser;
+        
         return `<tr class="border-b ${isMe ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
           <td class="p-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
           <td class="p-2 font-bold ${isMe ? 'text-blue-800' : 'text-gray-800'}">
-            <button type="button" onclick="openMemberCompeModal('${escapeHtml(row['名前'])}')" aria-label="成績推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+            <button type="button" data-name="${escapeHtml(row['名前'])}" onclick="openMemberCompeModal(this.dataset.name)" aria-label="成績推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
               ${escapeHtml(row['名前'])}
             </button>
           </td>
@@ -748,6 +799,13 @@
 
     function setupRanking() {
       State.rankingByTerm = {};
+      
+      if (State.allScoreHistory.length === 0) {
+        document.getElementById('rankingTabsContainer').innerHTML = '';
+        renderRankingContent();
+        return;
+      }
+      
       State.allScoreHistory.forEach(row => {
         const d = new Date(row['日付']);
         if (isNaN(d.getTime())) return;
@@ -823,10 +881,11 @@
           .map((m, i) => {
             const rank = i + 1;
             const isMe = m.name === State.currentUser;
+            
             return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
               <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
               <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
-                <button type="button" onclick="openMemberHdcpModal('${escapeHtml(m.name)}')" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+                <button type="button" data-name="${escapeHtml(m.name)}" onclick="openMemberHdcpModal(this.dataset.name)" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
                   ${escapeHtml(m.name)}
                 </button>
               </td>
@@ -873,6 +932,11 @@
       setup() {
         const sel    = document.getElementById('vsOpponentSelect');
         const myHdcp = parseFloat(State.myOfficialHdcp);
+        
+        if (State.allScoreHistory.length === 0) {
+          document.getElementById('versusContainer').innerHTML = `<div class="text-center p-4 text-gray-400 text-xs">データがありません</div>`;
+          return;
+        }
 
         const dateMap = {};
         State.allScoreHistory.forEach(r => {
@@ -1015,9 +1079,9 @@
     };
 
     function loadMyChart(history) {
-      const sorted     = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const sorted      = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
       const recentMax10 = sorted.slice(0, 10);
-      const chartData  = [...recentMax10].reverse();
+      const chartData   = [...recentMax10].reverse();
 
       const emptyEl = document.getElementById('myScoreEmpty');
       const chartEl = document.getElementById('scoreChartContainer');
@@ -1074,9 +1138,14 @@
     }
 
 
-       function renderSummaryFooter() {
+    function renderSummaryFooter() {
       const container = document.getElementById('summaryFooterContainer');
       if (!container) return;
+      
+      if (State.allScoreHistory.length === 0) {
+        container.innerHTML = `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center text-sm text-gray-400">サマリーデータがありません</div>`;
+        return;
+      }
 
       const myHistory = State.allScoreHistory.filter(r => r['名前'] === State.currentUser);
       
@@ -1117,10 +1186,8 @@
         `;
       }
 
-      // 全成績データから一番古い日付（集計開始日）を取得
       let oldestDateText = '';
       if (State.allScoreHistory.length > 0) {
-        // 日付文字列をタイムスタンプに変換して最小値を探す
         const timestamps = State.allScoreHistory.map(r => new Date(r['日付']).getTime()).filter(t => !isNaN(t));
         if (timestamps.length > 0) {
           const minDate = new Date(Math.min(...timestamps));
@@ -1180,7 +1247,6 @@
       `;
     }
 
-
     // ==========================================
     // ACTION HANDLERS (ADMIN & MODALS)
     // ==========================================
@@ -1207,7 +1273,12 @@
           statusText.textContent = res.success
             ? `成功！ ${res.count}件のデータを登録しました。`
             : `エラー: ${res.error}`;
-          if (res.success) loadAllData();
+          if (res.success) {
+            // ローカルキャッシュも破棄して最新を読み直す
+            localStorage.removeItem('eagle_data_cache');
+            localStorage.removeItem('eagle_cache_timestamp');
+            loadAllData();
+          }
         } catch {
           statusText.textContent = '通信エラーが発生しました。';
         } finally {
@@ -1251,6 +1322,45 @@
       }
     }
 
+    // 管理者によるキャッシュ破棄（システム強制同期）
+    async function onForceSync() {
+      const btn = document.getElementById('forceSyncBtn');
+      const statusText = document.getElementById('forceSyncStatus');
+      
+      btn.disabled = true;
+      btn.innerHTML = `${SPINNER_SVG}同期中...`;
+      statusText.classList.add('hidden');
+      
+      try {
+        // 1. バックエンド(GAS)のキャッシュを破棄
+        const res = await callGasApi('clearSystemCache');
+        if (!res.success) throw new Error(res.error);
+        
+        // 2. ブラウザ(フロントエンド)のローカルキャッシュを破棄
+        localStorage.removeItem('eagle_data_cache');
+        localStorage.removeItem('eagle_cache_timestamp');
+        
+        // 3. 最新データを再取得して画面を再描画
+        await loadAllData();
+        
+        statusText.textContent = '最新データに同期しました！';
+        statusText.className = 'mt-2 text-xs font-semibold text-green-700 text-center';
+      } catch (e) {
+        statusText.textContent = '同期エラーが発生しました。';
+        statusText.className = 'mt-2 text-xs font-semibold text-red-600 text-center';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 キャッシュを破棄して最新化';
+        statusText.classList.remove('hidden');
+        
+        setTimeout(() => {
+          if (statusText.classList.contains('text-green-700')) {
+            statusText.classList.add('hidden');
+          }
+        }, 3000);
+      }
+    }
+
     async function onChangeMyPassword() {
       const currentPw  = document.getElementById('myCurrentPw').value;
       const newPw      = document.getElementById('myNewPw').value;
@@ -1269,7 +1379,7 @@
       }
 
       btn.disabled = true;
-      btn.textContent = '変更中...';
+      btn.innerHTML = `${SPINNER_SVG}変更中...`;
       statusText.textContent = '';
 
       try {
@@ -1294,7 +1404,7 @@
         statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
       } finally {
         btn.disabled = false;
-        btn.textContent = 'パスワードを変更';
+        btn.innerHTML = 'パスワードを変更';
       }
     }
 
@@ -1395,6 +1505,14 @@
       document.getElementById('changePwModal').classList.remove('hidden'); 
     }
     function closeChangePwModal() { document.getElementById('changePwModal').classList.add('hidden'); }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        ['memberHdcpModal', 'memberCompeModal', 'termsModal', 'forgotPwModal', 'changePwModal'].forEach(id => {
+          document.getElementById(id)?.classList.add('hidden');
+        });
+      }
+    });
   </script>
 
   <div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 transition-opacity" onclick="closeMemberHdcpModal()">
