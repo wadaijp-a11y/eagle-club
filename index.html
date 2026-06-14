@@ -22,6 +22,20 @@
         extend: {
           fontFamily: {
             sans: ['"Noto Sans JP"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669', // エメラルドグリーン
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
           }
         }
       }
@@ -29,46 +43,44 @@
   </script>
 </head>
 
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4 text-gray-800 font-sans antialiased">
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-start text-slate-800 font-sans antialiased">
 
-  <section id="loginSection" class="w-full max-w-md mt-10">
-    <div class="bg-white rounded-xl shadow-md p-6">
-      <h1 class="text-2xl font-bold mb-6 text-center text-green-700 tracking-wider">イーグル会</h1>
-      <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-4">
+  <section id="loginSection" class="w-full max-w-md mt-12 px-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-7">
+      <h1 class="text-2xl font-black mb-8 text-center text-brand-600 tracking-widest">イーグル会</h1>
+      <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-5">
         <div>
-          <label for="loginId" class="block text-gray-700 text-sm font-bold mb-1">ログインID</label>
+          <label for="loginId" class="block text-slate-700 text-sm font-bold mb-1.5">ログインID</label>
           <input type="text" id="loginId" autocomplete="username"
-            class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
         </div>
         <div>
-          <label for="loginPw" class="block text-gray-700 text-sm font-bold mb-1">パスワード</label>
+          <label for="loginPw" class="block text-slate-700 text-sm font-bold mb-1.5">パスワード</label>
           <input type="password" id="loginPw" autocomplete="current-password"
-            class="w-full p-2.5 border border-gray-300 rounded focus:outline-none focus:border-green-500 transition-colors">
+            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
         </div>    
-        <div class="text-right mt-1">
-          <button type="button" onclick="openForgotPwModal()" class="text-[11px] text-gray-500 hover:text-gray-700 underline focus:outline-none">
-            パスワードを忘れた場合はこちら
+        <div class="text-right">
+          <button type="button" onclick="openForgotPwModal()" class="text-[11px] text-slate-500 hover:text-slate-700 underline focus:outline-none">
+            パスワードを忘れた場合
           </button>
         </div>
         <button type="submit" id="loginBtn" aria-label="ログインする"
-          class="w-full bg-green-600 text-white font-bold p-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm mt-2">
+          class="w-full bg-brand-600 text-white font-bold p-3.5 rounded-xl hover:bg-brand-700 transition-colors shadow-sm mt-2">
           ログイン
         </button>
       </form>
-      <p id="loginError" class="text-red-500 mt-3 text-center text-sm font-bold hidden" role="alert"></p>
+      <p id="loginError" class="text-red-500 mt-4 text-center text-sm font-bold hidden" role="alert"></p>
       
-      <div class="mt-5 border-t border-gray-100 pt-4">
-        <p class="text-[11px] text-gray-500 text-center leading-relaxed">
-          ログインすることで<br>
-          <button type="button" onclick="openTermsModal()" class="text-blue-600 font-semibold hover:underline focus:outline-none">免責事項・利用のルール</button>
-          に同意したものとみなします。
+      <div class="mt-8 pt-5 border-t border-slate-100 text-center">
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          ログインにより<button type="button" onclick="openTermsModal()" class="text-brand-600 font-semibold hover:underline focus:outline-none mx-1">利用規約</button>に同意したものとみなします。
         </p>
       </div>
     </div>
-    <p class="text-center text-[10px] text-gray-400 mt-4">&copy; 2026 イーグル会 システム管理者. All rights reserved.</p>
+    <p class="text-center text-[10px] text-slate-400 mt-6">&copy; 2026 イーグル会. All rights reserved.</p>
   </section>
 
-  <main id="mainSection" class="w-full max-w-md mt-4 hidden space-y-6 pb-16"></main>
+  <main id="mainSection" class="w-full max-w-md hidden space-y-5 pb-20 pt-6 px-4"></main>
 
   <script>
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwTedJVubv0ITuOHIqCiWIzBq_1NRuh_RSt9KOJ-D8Yz02uh4TOxIUpaCQv3V4Ri1QHRA/exec";
@@ -102,7 +114,7 @@
       allOfficialHdcpHistory: [],
       memberHdcpChartInstance: null,
       memberCompeChartInstance: null, 
-      maintenanceMode: false,
+      maintenanceMode:       false,
     };
 
     // ==========================================
@@ -121,12 +133,12 @@
       return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
-async function callGasApi(action, data = {}, retries = 3) {
+    // 自動リトライ機能付きAPIコール（指数バックオフ）
+    async function callGasApi(action, data = {}, retries = 3) {
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
       
       const controller = new AbortController();
-      // タイムアウトは15秒に設定
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
@@ -139,7 +151,6 @@ async function callGasApi(action, data = {}, retries = 3) {
         });
         clearTimeout(timeoutId);
         
-        // GAS特有のHTMLエラー（同時アクセス制限時の500/502エラー等）を検知
         const contentType = res.headers.get("content-type");
         if (contentType && contentType.includes("text/html")) {
           throw new Error('GAS Overload');
@@ -148,17 +159,12 @@ async function callGasApi(action, data = {}, retries = 3) {
         return await res.json();
       } catch (error) {
         clearTimeout(timeoutId);
-        
-        // リトライ回数が残っていれば、時間を置いて再実行（指数バックオフ + ジッター）
         if (retries > 0) {
-          // 1回目1秒、2回目2秒、3回目4秒 待機（+最大0.5秒のランダムな揺らぎで衝突回避）
           const delay = (Math.pow(2, 3 - retries) * 1000) + (Math.random() * 500);
           console.warn(`[イーグル会] API通信再試行: ${Math.round(delay)}ms待機 (残り${retries - 1}回)`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return callGasApi(action, data, retries - 1);
         }
-        
-        // リトライを使い切った、または他のエラーの場合
         if (error.name === 'AbortError') {
           throw new Error('通信がタイムアウトしました');
         }
@@ -219,31 +225,31 @@ async function callGasApi(action, data = {}, retries = 3) {
         btnElement.disabled = true;
         btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
       }
-
       await callGasApi('logout').catch(() => {});
       
       State.authToken   = null;
       State.currentUser = null;
       State.authRes     = null;
       
-      // キャッシュクリア（ログアウト時は安全のため）
       localStorage.removeItem('eagle_data_cache');
       localStorage.removeItem('eagle_cache_timestamp');
 
+      closeSettingsModal();
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('loginId').value = '';
+      window.scrollTo(0, 0);
     }
 
     function initSession(res) {
-      State.authRes               = res;
-      State.currentUser           = res.name;
-      State.authToken             = res.token;
-      State.gender                = res.gender || 'male';
-      State.myOfficialHdcp        = res.officialHdcp || '-';
+      State.authRes                 = res;
+      State.currentUser             = res.name;
+      State.authToken               = res.token;
+      State.gender                  = res.gender || 'male';
+      State.myOfficialHdcp          = res.officialHdcp || '-';
       State.isOfficialHistoryLoaded = false;
-      State.maintenanceMode       = res.maintenanceMode || false;
+      State.maintenanceMode         = res.maintenanceMode || false;
 
       buildMainUI(res);
 
@@ -254,264 +260,135 @@ async function callGasApi(action, data = {}, retries = 3) {
     }
 
     // ==========================================
-    // UI BUILDERS
+    // UI BUILDERS (スタイリッシュな新構成)
     // ==========================================
     function buildMainUI(res) {
       const isAdmin = res.role === '管理者';
       const main    = document.getElementById('mainSection');
 
       main.innerHTML = `
-        ${buildUserHeader(res)}
+        ${buildHeader(res)}
         ${buildScheduleCard(res)}
-        ${buildHdcpCard(res)}
-        ${buildMyScoreCard()}
-        ${buildVersusCard()}
+        ${buildMyDashboardCard(res)}
         ${buildCompeResultCard()}
         ${buildRankingCard()}
-        ${isAdmin ? buildAdminUploadCard() : ''}
-        ${isAdmin ? buildAdminPasswordCard() : ''}
-        ${isAdmin ? buildAdminCacheCard() : ''}
-        ${isAdmin ? buildAdminMaintenanceCard() : ''}
-        ${buildSummaryFooter()}
+        ${buildMyRecordCard()}
+        ${buildVersusCard()}
+        ${isAdmin ? buildAdminSection(res) : ''}
+        ${buildFooter()}
       `;
-      
       CourseHdcp.render();
       setupScheduleDisplay(res);
     }
 
-    function buildScheduleCard(res) {
+    function buildHeader(res) {
       return `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <div class="flex justify-between items-center border-b pb-2 mb-3">
-            <h3 class="font-bold text-gray-800">📅 スケジュール</h3>
-            <div id="scheduleToggleBtnContainer" class="hidden">
-              <button type="button" onclick="toggleFutureSchedules()" aria-label="今後のスケジュールを表示"
-                class="text-[10px] text-green-700 font-bold bg-green-50 hover:bg-green-100 border border-green-200 transition-colors px-2.5 py-1 rounded-md shadow-sm flex items-center gap-1">
-                <span>今後の予定</span>
-                <span class="bg-white px-1.5 rounded-full text-green-600 shadow-sm" id="futureScheduleCount">0</span>
-                <span>▾</span>
-              </button>
+        <header class="flex justify-between items-center mb-6 px-1">
+          <div class="flex items-center gap-3">
+            <div class="bg-brand-100 text-brand-700 w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-inner font-bold">
+              ${escapeHtml(res.name).charAt(0)}
+            </div>
+            <div>
+              <h2 class="text-lg font-black text-slate-800 tracking-wide">${escapeHtml(res.name)} <span class="text-xs text-slate-500 font-normal ml-0.5">さん</span></h2>
             </div>
           </div>
-          
-          <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100 text-center shadow-inner">
-            <p class="text-[10px] text-green-600 font-bold mb-0.5">次回イーグル会 開催予定</p>
-            <p id="nextCompeDateDisplay" class="text-[17px] font-bold text-green-800 tracking-wide leading-relaxed">未定</p>
-            <div id="nextClubCompeBadge" class="hidden mt-1.5">
-              <span class="inline-block bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+          <div class="flex gap-2">
+            <button type="button" onclick="onUserManualSync(this)" aria-label="データを最新に更新" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-brand-600 hover:bg-brand-50 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+            <button type="button" onclick="openSettingsModal()" aria-label="設定メニューを開く" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+          </div>
+        </header>
+      `;
+    }
+
+    function buildScheduleCard(res) {
+      return `
+        <div class="bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
+          <div class="absolute -top-2 -right-2 p-4 opacity-10 text-8xl pointer-events-none">📅</div>
+          <div class="relative z-10">
+            <p class="text-xs font-bold opacity-90 mb-1">次回スケジュール</p>
+            <p id="nextCompeDateDisplay" class="text-2xl font-black tracking-wide mb-2">未定</p>
+            <div id="nextClubCompeBadge" class="hidden">
+              <span class="inline-block bg-white/20 backdrop-blur-md border border-white/30 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
                 🏆 公式競技: <span id="nextClubCompeName"></span>
               </span>
             </div>
-          </div>
-          
-          <div id="futureSchedulesSection" class="hidden mt-3 pt-3 border-t border-dashed border-gray-200 max-h-40 overflow-y-auto">
-            <div id="futureSchedulesList" class="space-y-2.5"></div>
+            
+            <div id="scheduleToggleBtnContainer" class="hidden mt-5 pt-4 border-t border-white/20">
+              <button type="button" onclick="toggleFutureSchedules()" class="text-xs font-bold flex items-center gap-1.5 opacity-90 hover:opacity-100 transition-opacity focus:outline-none">
+                <span>今後の予定を見る</span>
+                <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px]" id="futureScheduleCount">0</span>
+                <span>▾</span>
+              </button>
+            </div>
+            <div id="futureSchedulesSection" class="hidden mt-3 max-h-40 overflow-y-auto space-y-2">
+              <div id="futureSchedulesList"></div>
+            </div>
           </div>
         </div>`;
     }
 
-function buildUserHeader(res) {
+    function buildMyDashboardCard(res) {
       return `
-        <div class="bg-white border border-gray-200 rounded-xl p-3 shadow-sm flex justify-between items-center">
-          <div class="flex items-center gap-2.5 overflow-hidden pr-2">
-            <div class="bg-green-100 text-green-700 w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-inner">
-              🏌️
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">⛳</span>
+            <h3 class="font-black text-slate-800 text-lg">マイダッシュボード</h3>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 mb-5">
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center text-center">
+              <p class="text-[10px] text-slate-500 font-bold mb-1">イーグル会 HDCP</p>
+              <p class="text-3xl font-black text-brand-600">${escapeHtml(String(res.eagleHdcp || '-'))}</p>
+              <p class="text-[9px] text-slate-400 mt-1">更新: ${escapeHtml(res.eagleUpdateDate || '')}</p>
             </div>
-            <div class="truncate">
-              <p class="text-[9px] text-gray-400 font-bold mb-0.5">こんにちは、</p>
-              <h2 class="text-sm font-bold text-gray-800 truncate">
-                ${escapeHtml(res.name)} <span class="text-xs font-normal text-gray-500 ml-0.5">さん</span>
-              </h2>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center text-center relative overflow-hidden transition-colors hover:bg-slate-100">
+              <p class="text-[10px] text-slate-500 font-bold mb-1">倶楽部公式 HDCP</p>
+              <p class="text-3xl font-black text-purple-600" id="officialHdcpDisplay">${escapeHtml(String(res.officialHdcp || '-'))}</p>
+              <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px]"></div>
+              <button onclick="toggleOfficialHdcpHistory()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="推移を見る"></button>
             </div>
           </div>
           
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button type="button" onclick="onUserManualSync(this)" aria-label="最新情報を取得"
-              class="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
-              <span>🔄</span> 更新
-            </button>
-            <button type="button" onclick="openChangePwModal()" aria-label="パスワード変更"
-              class="text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
-              <span>⚙️</span> PW変更
-            </button>
-            <button type="button" onclick="onLogout(this)" aria-label="ログアウト"
-              class="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
-              <span>🚪</span> ログアウト
-            </button>
-          </div>
-        </div>`;
-    }
-
-    function buildHdcpCard(res) {
-      return `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <h3 class="font-bold text-gray-800 border-b pb-2 mb-3">⛳ あなたの最新ハンディキャップ</h3>
-          <div class="grid grid-cols-2 gap-3 text-center items-stretch">
-            <div class="bg-blue-50 rounded-lg p-2.5 border border-blue-100 flex flex-col justify-between">
-              <div>
-                <p class="text-xs text-gray-600 font-bold mb-1">イーグル会 HDCP</p>
-                <p id="eagleHdcpDisplay" class="text-3xl font-bold text-blue-700 my-1">${escapeHtml(String(res.eagleHdcp || '-'))}</p>
-                <p class="text-xs text-gray-500 mb-2">更新日: <span id="eagleUpdateDisplay">${escapeHtml(res.eagleUpdateDate || '')}</span></p>
-                <div class="mb-1.5">
-                  <span class="inline-block bg-white border border-blue-200 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    ⛳ 使用ティー: <span id="eagleTeeDisplay">${escapeHtml(res.eagleTee || '未設定')}</span>
-                  </span>
-                </div>
-              </div>
-              <div class="mt-auto">
-                <p class="text-xs text-blue-600 font-semibold bg-blue-100/70 inline-block px-2 py-1 rounded-md">※1月と7月にHDCPリセット</p>
-              </div>
-            </div>
-            <div class="bg-purple-50 rounded-lg p-2.5 border border-purple-100 flex flex-col justify-between">
-              <div>
-                <p class="text-xs text-gray-600 font-bold mb-1">倶楽部公式 HDCP</p>
-                <p id="officialHdcpDisplay" class="text-3xl font-bold text-purple-700 my-1">${escapeHtml(String(res.officialHdcp || '-'))}</p>
-                <p class="text-xs text-gray-500 mb-1">更新日: <span id="officialUpdateDisplay">${escapeHtml(res.officialUpdateDate || '')}</span></p>
-              </div>
-              <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 mb-3 justify-center min-h-6"></div>
-              <div class="mt-auto">
-                <button type="button" onclick="toggleOfficialHdcpHistory()" aria-label="HDCP推移を表示"
-                  class="text-xs text-purple-700 font-bold bg-purple-100 hover:bg-purple-200 transition-colors px-2 py-1 rounded-md w-full text-center block">
-                  📊 1年の推移を見る
-                </button>
-              </div>
-            </div>
-          </div>
-          <div id="officialHdcpHistorySection" class="hidden mt-4 pt-4 border-t border-dashed border-gray-200 space-y-4">
+          <div id="officialHdcpHistorySection" class="hidden mb-5 pt-3 border-t border-slate-100">
+            <p class="text-xs font-bold text-slate-600 mb-2 text-center">公式HDCPの推移</p>
             <div class="py-1"><canvas id="officialHdcpChart"></canvas></div>
-            <div class="max-h-40 overflow-y-auto">
+            <div class="max-h-32 overflow-y-auto mt-2 -mx-1 px-1">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="bg-gray-50 border-b text-gray-500">
-                    <th scope="col" class="p-2 font-normal">年月</th>
-                    <th scope="col" class="p-2 text-right pr-4 font-normal">公式HDCP</th>
-                  </tr>
-                </thead>
-                <tbody id="officialHdcpTableBody">
-                  <tr><td colspan="2" class="text-center p-2 text-gray-400">履歴データを読み込み中...</td></tr>
-                </tbody>
+                <tbody id="officialHdcpTableBody"></tbody>
               </table>
             </div>
           </div>
-        </div>`;
-    }
 
-    function buildAdminUploadCard() {
-      return `
-        <div class="border-2 border-dashed border-green-300 rounded-xl p-4 bg-green-50 text-center">
-          <h3 class="font-bold text-green-800 mb-2 text-sm">【管理者用】成績表アップロード</h3>
-          <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-gray-600 w-full">
-          <button type="button" onclick="onUpload()" id="uploadBtn"
-            class="w-full bg-blue-600 text-white text-sm font-bold p-2 rounded hover:bg-blue-700 transition-colors">
-            画像を解析して登録
-          </button>
-          <p id="uploadStatus" class="mt-2 text-xs text-gray-700 font-semibold"></p>
-        </div>`;
-    }
-
-    function buildAdminPasswordCard() {
-      return `
-        <div class="border-2 border-dashed border-orange-300 rounded-xl p-4 bg-orange-50">
-          <h3 class="font-bold text-orange-800 mb-3 text-sm text-center">【管理者用】パスワードリセット</h3>
-          <div class="space-y-2 text-left">
-            <div>
-              <label for="resetTargetId" class="block text-xs font-bold text-gray-700 mb-1">対象のログインID</label>
-              <input type="text" id="resetTargetId"
-                class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-orange-400">
-            </div>
-            <div>
-              <label for="resetNewPassword" class="block text-xs font-bold text-gray-700 mb-1">新しいパスワード</label>
-              <input type="text" id="resetNewPassword"
-                class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-orange-400"
-                placeholder="8文字以上">
-            </div>
-          </div>
-          <button type="button" onclick="onResetPassword()" id="resetPasswordBtn"
-            class="w-full mt-3 bg-orange-500 text-white text-sm font-bold p-2 rounded hover:bg-orange-600 transition-colors">
-            パスワードをリセット
-          </button>
-          <p id="resetPasswordStatus" class="mt-2 text-xs font-semibold text-gray-700" role="alert"></p>
-        </div>`;
-    }
-
-    // 管理者用：強制データ同期機能
-    function buildAdminCacheCard() {
-      return `
-        <div class="border-2 border-dashed border-blue-300 rounded-xl p-4 bg-blue-50">
-          <h3 class="font-bold text-blue-800 mb-2 text-sm text-center">【管理者用】強制データ同期</h3>
-          <p class="text-xs text-gray-600 mb-3">スプレッドシートを手動で修正した際など、サーバーと端末のキャッシュを破棄して最新データを読み込みます。</p>
-          <button type="button" onclick="onForceSync()" id="forceSyncBtn"
-            class="w-full bg-blue-500 text-white text-sm font-bold p-2 rounded hover:bg-blue-600 transition-colors shadow-sm">
-            🔄 キャッシュを破棄して最新化
-          </button>
-          <p id="forceSyncStatus" class="mt-2 text-xs font-semibold text-center hidden" role="alert"></p>
-        </div>`;
-    }
-
-    function buildMyScoreCard() {
-      return `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <div class="flex justify-between items-center border-b pb-2 mb-3">
-            <h3 class="font-bold text-gray-800">📈 イーグル会スコア推移</h3>
-            <div class="flex space-x-1 bg-gray-100 rounded-md p-1 border border-gray-200">
-              <button type="button" id="btnChart" onclick="toggleScoreView('chart')" aria-label="グラフ表示"
-                class="text-xs px-3 py-1 rounded bg-white shadow-sm text-gray-800 font-bold transition-all">グラフ</button>
-              <button type="button" id="btnTable" onclick="toggleScoreView('table')" aria-label="表表示"
-                class="text-xs px-3 py-1 rounded text-gray-500 hover:text-gray-800 font-bold transition-all">表</button>
-            </div>
-          </div>
-          <div id="myScoreEmpty" class="hidden text-center text-sm text-gray-500 py-6">スコアデータがまだありません</div>
-          <div id="scoreChartContainer" class="py-2"><canvas id="myChart"></canvas></div>
-          <div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-                  <th scope="col" class="p-2 font-normal">日付</th>
-                  <th scope="col" class="p-2 text-right font-normal">順位</th>
-                  <th scope="col" class="p-2 text-right font-normal">GROSS</th>
-                  <th scope="col" class="p-2 pr-4 text-right font-normal">NET</th>
-                </tr>
-              </thead>
-              <tbody id="myScoreTableBody"></tbody>
-            </table>
-          </div>
-        </div>`;
-    }
-
-    function buildVersusCard() {
-      return `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <div class="flex justify-between items-center border-b pb-2 mb-3">
-            <h3 class="font-bold text-gray-800">⚔️ ライバル対決 <span class="text-xs text-gray-500 font-normal ml-1">(GROSS)</span></h3>
-          </div>
-          <div class="mb-3">
-            <select id="vsOpponentSelect" onchange="Versus.render()" aria-label="対戦相手を選択"
-              class="w-full text-sm border border-gray-300 rounded p-2 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
-            </select>
-          </div>
-          <div id="versusContainer">
-            <div class="text-center p-4 text-gray-400 text-xs">対戦相手を読み込んでいます...</div>
+          <div id="dashboardSummaryContainer">
+            <div class="animate-pulse flex space-x-4"><div class="flex-1 space-y-4 py-1"><div class="h-16 bg-slate-100 rounded-xl"></div></div></div>
           </div>
         </div>`;
     }
 
     function buildCompeResultCard() {
       return `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <div class="flex justify-between items-center border-b pb-2 mb-3">
-            <h3 class="font-bold text-gray-800">🏆 イーグル会の結果</h3>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🏆</span>
+              <h3 class="font-black text-slate-800 text-lg">コンペリザルト</h3>
+            </div>
             <select id="dateSelect" onchange="renderScoresByDate()" aria-label="開催日選択"
-              class="text-xs border border-gray-300 rounded p-1.5 text-gray-700 bg-white shadow-sm focus:outline-none focus:border-green-500 hidden">
+              class="text-xs border border-slate-200 rounded-lg p-1.5 font-bold text-slate-600 bg-slate-50 focus:outline-none focus:border-brand-400 hidden">
             </select>
           </div>
-          <div class="max-h-60 overflow-y-auto">
+          <div class="max-h-60 overflow-y-auto -mx-1 px-1">
             <table class="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr class="bg-gray-50 border-b text-gray-500 text-[11px] sm:text-xs">
-                  <th scope="col" class="p-2 text-center font-normal whitespace-nowrap w-10 sm:w-12">順位</th>
-                  <th scope="col" class="p-2 text-left font-normal whitespace-nowrap">名前 📈</th>
-                  <th scope="col" class="p-2 text-right font-normal whitespace-nowrap">GROSS</th>
-                  <th scope="col" class="p-2 pr-4 text-right font-normal whitespace-nowrap">NET</th>
+              <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+                  <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
+                  <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-[9px] font-normal font-sans">📈</span></th>
+                  <th scope="col" class="py-2 text-right font-bold">GROSS</th>
+                  <th scope="col" class="py-2 pl-2 text-right font-bold">NET</th>
                 </tr>
               </thead>
               <tbody id="scoreContainer"></tbody>
@@ -522,42 +399,144 @@ function buildUserHeader(res) {
 
     function buildRankingCard() {
       return `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="font-bold text-gray-800">🏅 メンバーランキング</h3>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">🏅</span>
+            <h3 class="font-black text-slate-800 text-lg">メンバーランキング</h3>
           </div>
-          <div class="flex space-x-1 bg-gray-100 rounded-md p-1 border border-gray-200 mb-3" id="rankingTabsContainer"></div>
-          <div class="max-h-60 overflow-y-auto">
+          <div class="flex p-1 bg-slate-50 rounded-xl border border-slate-200 mb-4 gap-1" id="rankingTabsContainer"></div>
+          <div class="max-h-60 overflow-y-auto -mx-1 px-1">
             <table class="w-full text-left border-collapse text-sm">
-              <thead id="rankingTableHeader"></thead>
+              <thead id="rankingTableHeader" class="sticky top-0 bg-white/95 backdrop-blur z-10"></thead>
               <tbody id="rankingTableBody">
-                <tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データを読み込んでいます...</td></tr>
+                <tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</td></tr>
               </tbody>
             </table>
           </div>
         </div>`;
     }
 
-    function buildSummaryFooter() {
+    function buildMyRecordCard() {
       return `
-        <div id="summaryFooterContainer" class="mt-6 mb-4">
-          <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm animate-pulse h-32"></div>
-        </div>
-        
-        <div class="mt-6 mb-8 flex justify-center">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📈</span>
+              <h3 class="font-black text-slate-800 text-lg">マイレコード</h3>
+            </div>
+            <div class="flex p-1 bg-slate-50 rounded-lg border border-slate-200">
+              <button type="button" id="btnChart" onclick="toggleScoreView('chart')" class="text-[11px] px-3 py-1 rounded-md font-bold transition-all bg-white shadow-sm text-slate-800">グラフ</button>
+              <button type="button" id="btnTable" onclick="toggleScoreView('table')" class="text-[11px] px-3 py-1 rounded-md font-bold transition-all text-slate-500 hover:text-slate-800">リスト</button>
+            </div>
+          </div>
+          <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
+          <div id="scoreChartContainer" class="py-2"><canvas id="myChart"></canvas></div>
+          <div id="scoreTableContainer" class="hidden max-h-60 overflow-y-auto -mx-1 px-1 mt-2">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+                  <th scope="col" class="py-2 font-bold">日付</th>
+                  <th scope="col" class="py-2 text-right font-bold">順位</th>
+                  <th scope="col" class="py-2 text-right font-bold">GROSS</th>
+                  <th scope="col" class="py-2 pl-2 text-right font-bold">NET</th>
+                </tr>
+              </thead>
+              <tbody id="myScoreTableBody"></tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function buildVersusCard() {
+      return `
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">⚔️</span>
+            <h3 class="font-black text-slate-800 text-lg">ライバル対決</h3>
+          </div>
+          <div class="mb-4 relative">
+            <select id="vsOpponentSelect" onchange="Versus.render()" aria-label="対戦相手を選択"
+              class="w-full text-sm font-bold border border-slate-200 rounded-xl p-3 text-slate-700 bg-slate-50 focus:outline-none focus:border-brand-500 appearance-none hidden">
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">▼</div>
+          </div>
+          <div id="versusContainer">
+            <div class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</div>
+          </div>
+        </div>`;
+    }
+
+    function buildAdminSection(res) {
+      return `
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden mt-8">
+          <button onclick="toggleAdminMenu()" class="w-full p-4 flex justify-between items-center bg-slate-800 text-white font-bold text-sm focus:outline-none hover:bg-slate-700 transition-colors">
+            <span class="flex items-center gap-2">👨‍💻 管理者メニュー</span>
+            <span id="adminMenuIcon" class="transition-transform">▼</span>
+          </button>
+          
+          <div id="adminMenuContent" class="hidden p-5 space-y-5 bg-slate-50">
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <h4 class="font-bold text-slate-800 mb-2 text-xs">📷 成績表アップロード</h4>
+              <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-slate-600 w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+              <button type="button" onclick="onUpload()" id="uploadBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">画像を解析して登録</button>
+              <p id="uploadStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
+            </div>
+            
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <h4 class="font-bold text-slate-800 mb-2 text-xs">🔑 パスワードリセット</h4>
+              <div class="space-y-2 mb-3">
+                <input type="text" id="resetTargetId" placeholder="対象ログインID" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                <input type="text" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+              </div>
+              <button type="button" onclick="onResetPassword()" id="resetPasswordBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">リセット実行</button>
+              <p id="resetPasswordStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
+            </div>
+            
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <h4 class="font-bold text-slate-800 mb-2 text-xs">🔄 強制データ同期</h4>
+              <p class="text-[10px] text-slate-500 mb-3 leading-relaxed">スプレッドシートを直接修正した際など、サーバーと端末のキャッシュを破棄して最新データを読み込みます。</p>
+              <button type="button" onclick="onForceSync()" id="forceSyncBtn" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">キャッシュ破棄＆同期</button>
+              <p id="forceSyncStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
+            </div>
+            
+            <div class="bg-white border border-slate-200 rounded-xl p-4 transition-colors" id="maintenanceCardWrap">
+              <h4 class="font-bold text-slate-800 mb-2 text-xs">🚧 メンテナンス切替</h4>
+              <p class="text-[10px] text-slate-500 mb-3 leading-relaxed">オンにすると、管理者以外のログインを一時的にブロックします。</p>
+              <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                <span class="font-black text-xs ${State.maintenanceMode ? 'text-red-600' : 'text-brand-600'}" id="maintenanceStatusDisp">
+                  ${State.maintenanceMode ? '🚨 停止中' : '🟢 稼働中'}
+                </span>
+                <button type="button" onclick="onToggleMaintenance(this)" id="maintenanceBtn" class="${State.maintenanceMode ? 'bg-slate-700 hover:bg-slate-800' : 'bg-red-600 hover:bg-red-700'} transition-colors text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow-sm">
+                  ${State.maintenanceMode ? '通常に戻す' : '停止する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function buildFooter() {
+      return `
+        <footer class="mt-8 mb-4 text-center">
           <a href="https://sengaricc.com/" target="_blank" rel="noopener noreferrer" 
-             class="flex items-center gap-2 bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm text-xs font-bold text-gray-600 hover:text-green-700 hover:border-green-400 hover:bg-green-50 transition-all group">
-            <span class="text-green-600 text-sm group-hover:scale-110 transition-transform">⛳️</span>
-            千刈カンツリー倶楽部 公式サイト
-            <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+             class="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors">
+            <span>⛳️ 千刈カンツリー倶楽部 公式サイト</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
           </a>
-        </div>
+        </footer>
       `;
     }
 
     // ==========================================
     // LOGIC & DATA FETCHING
     // ==========================================
+    function toggleAdminMenu() {
+      const content = document.getElementById('adminMenuContent');
+      const icon = document.getElementById('adminMenuIcon');
+      content.classList.toggle('hidden');
+      icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+
     function setupScheduleDisplay(res) {
       if (res.nextCompe) {
         document.getElementById('nextCompeDateDisplay').textContent =
@@ -573,12 +552,10 @@ function buildUserHeader(res) {
         document.getElementById('futureScheduleCount').textContent = res.futureSchedules.length;
         document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
         listContainer.innerHTML = res.futureSchedules.map(s => `
-          <div class="flex flex-col border-b border-gray-100 pb-2.5 last:border-0 last:pb-0">
-            <div class="flex justify-between items-center text-xs">
-              <span class="font-bold text-gray-800">${escapeHtml(s.dateText)}</span>
-              <span class="text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded shadow-sm">${escapeHtml(s.timeText)}</span>
-            </div>
-            ${s.clubCompe ? `<div class="mt-1 text-xs text-amber-700 font-bold flex items-center gap-1"><span>🏆 公式競技:</span><span>${escapeHtml(s.clubCompe)}</span></div>` : ''}
+          <div class="flex justify-between items-center text-[11px] bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+            <span class="font-bold">${escapeHtml(s.dateText)}</span>
+            <span class="opacity-90">${escapeHtml(s.timeText)}</span>
+            ${s.clubCompe ? `<span class="text-amber-300 font-bold ml-1 text-[10px]">🏆 ${escapeHtml(s.clubCompe)}</span>` : ''}
           </div>`).join('');
       }
     }
@@ -588,13 +565,7 @@ function buildUserHeader(res) {
     }
 
     function showSkeletons() {
-      const row = `
-        <tr class="animate-pulse border-b">
-          <td class="p-3"><div class="h-3 bg-gray-200 rounded w-3/4 mx-auto"></div></td>
-          <td class="p-3"><div class="h-3 bg-gray-200 rounded w-full"></div></td>
-          <td class="p-3"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
-          <td class="p-3 pr-4"><div class="h-3 bg-gray-200 rounded w-1/2 ml-auto"></div></td>
-        </tr>`.repeat(5);
+      const row = `<tr class="animate-pulse border-b border-slate-100"><td class="py-3"><div class="h-3 bg-slate-100 rounded w-3/4 mx-auto"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-full"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-1/2 ml-auto"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-1/2 ml-auto"></div></td></tr>`.repeat(5);
       ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = row;
@@ -605,42 +576,31 @@ function buildUserHeader(res) {
       const main = document.getElementById('mainSection');
       if (main) {
         main.innerHTML = `
-          <div class="bg-white border border-red-200 rounded-xl p-6 text-center shadow-sm">
+          <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-red-100 mt-10">
             <p class="text-red-500 font-bold mb-2">データの取得に失敗しました</p>
-            <p class="text-xs text-gray-600 mb-4 leading-relaxed">
-              通信環境が不安定か、システムの無料枠アクセス制限に達している可能性があります。<br>
-              しばらく時間をおいてから再読み込みをお試しください。
-            </p>
-            <button type="button" onclick="retryLoadAllData()"
-              class="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-lg font-bold shadow-sm">
-              再読み込み
-            </button>
+            <p class="text-xs text-slate-500 mb-5 leading-relaxed">通信環境が不安定か、アクセス制限に達しています。<br>しばらく時間をおいて再試行してください。</p>
+            <button type="button" onclick="retryLoadAllData()" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold shadow-sm hover:bg-slate-900 transition-colors">再読み込み</button>
           </div>`;
       }
     }
 
     function retryLoadAllData() {
-      if (!State.authRes || !State.authToken) {
-        onLogout();
-        return;
-      }
+      if (!State.authRes || !State.authToken) { onLogout(); return; }
       buildMainUI(State.authRes);
       loadAllData();
     }
 
-    // フロントエンドのLocalStorageキャッシュ対応と、データ0件時の安全な初期化
-async function loadAllData() {
+    // 【完全維持】自動リトライ＆24時間キャッシュ＆破損修復ロジック
+    async function loadAllData() {
       showSkeletons();
       try {
         let history, members, hdcpHistory;
         let usedCache = false;
         
-        // 1. LocalStorageのキャッシュを確認
         const cachedStr = localStorage.getItem('eagle_data_cache');
         const cacheTime = localStorage.getItem('eagle_cache_timestamp');
         const now = new Date().getTime();
         
-        // キャッシュが有効（24時間以内）であれば利用
         if (cachedStr && cacheTime && (now - Number(cacheTime) < 24 * 60 * 60 * 1000)) {
           try {
             const cached = JSON.parse(cachedStr);
@@ -649,7 +609,6 @@ async function loadAllData() {
             hdcpHistory = cached.hdcpHistory;
             usedCache   = true;
           } catch (e) {
-            // キャッシュが破損している場合は即座に破棄してAPIフォールバック
             console.warn('[イーグル会] キャッシュの破損を検知しました。破棄して再取得します。');
             localStorage.removeItem('eagle_data_cache');
             localStorage.removeItem('eagle_cache_timestamp');
@@ -657,24 +616,19 @@ async function loadAllData() {
         }
 
         if (!usedCache) {
-          // キャッシュが古い、無い、または破損していた場合はAPIを呼び出す
           [history, members, hdcpHistory] = await Promise.all([
             callGasApi('getScoreHistory'),
             callGasApi('getMemberList'),
             callGasApi('getAllOfficialHdcpHistory')
           ]);
-          
-          // 新しいデータをキャッシュに保存
           localStorage.setItem('eagle_data_cache', JSON.stringify({ history, members, hdcpHistory }));
           localStorage.setItem('eagle_cache_timestamp', String(now));
         }
 
-        // 2. ステートへの代入
         if (members && members.length > 0) State.memberList = members;
         if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory;
         if (history) State.allScoreHistory = history;
 
-        // 3. UIコンポーネントの初期化
         setupCompeResults();
         setupRanking();
         Versus.setup();
@@ -686,7 +640,7 @@ async function loadAllData() {
             .map(r => ({ date: r['日付'], rank: r['順位'], gross: r['GROSS'], hdcp: r['HDCP'], net: r['NET'] }));
           loadMyChart(myHistory);
         } else {
-          loadMyChart([]); // 空状態を表示
+          loadMyChart([]);
         }
       } catch (e) {
         console.error(e);
@@ -700,18 +654,18 @@ async function loadAllData() {
     const CourseHdcp = {
       RATINGS: {
         male: [
-          { name: '黒', sr: 135, cr: 72.0, par: 72, bg: 'bg-gray-800 text-white' },
+          { name: '黒', sr: 135, cr: 72.0, par: 72, bg: 'bg-slate-800 text-white' },
           { name: '青', sr: 133, cr: 70.7, par: 72, bg: 'bg-blue-600 text-white' },
-          { name: '白', sr: 131, cr: 69.4, par: 72, bg: 'bg-white text-gray-800 border border-gray-300' },
-          { name: '金', sr: 126, cr: 67.0, par: 72, bg: 'bg-yellow-500 text-gray-900 border border-yellow-600' },
-          { name: '緑', sr: 120, cr: 64.5, par: 72, bg: 'bg-green-600 text-white' },
+          { name: '白', sr: 131, cr: 69.4, par: 72, bg: 'bg-white text-slate-800 border border-slate-300' },
+          { name: '金', sr: 126, cr: 67.0, par: 72, bg: 'bg-amber-400 text-slate-900 border border-amber-500' },
+          { name: '緑', sr: 120, cr: 64.5, par: 72, bg: 'bg-brand-600 text-white' },
         ],
         female: [
-          { name: '黒', sr: 140, cr: 78.5, par: 72, bg: 'bg-gray-800 text-white' },
+          { name: '黒', sr: 140, cr: 78.5, par: 72, bg: 'bg-slate-800 text-white' },
           { name: '青', sr: 138, cr: 77.0, par: 72, bg: 'bg-blue-600 text-white' },
-          { name: '白', sr: 135, cr: 75.5, par: 72, bg: 'bg-white text-gray-800 border border-gray-300' },
-          { name: '金', sr: 129, cr: 72.5, par: 72, bg: 'bg-yellow-500 text-gray-900 border border-yellow-600' },
-          { name: '緑', sr: 122, cr: 69.5, par: 72, bg: 'bg-green-600 text-white' },
+          { name: '白', sr: 135, cr: 75.5, par: 72, bg: 'bg-white text-slate-800 border border-slate-300' },
+          { name: '金', sr: 129, cr: 72.5, par: 72, bg: 'bg-amber-400 text-slate-900 border border-amber-500' },
+          { name: '緑', sr: 122, cr: 69.5, par: 72, bg: 'bg-brand-600 text-white' },
         ],
       },
       calc(index, sr, cr, par) {
@@ -723,8 +677,8 @@ async function loadAllData() {
         const index = parseFloat(State.myOfficialHdcp);
         if (isNaN(index)) { container.innerHTML = ''; return; }
         container.innerHTML = this.RATINGS[State.gender].map(r => `
-          <span class="px-1.5 py-0.5 ${r.bg} rounded text-xs font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
-            <span class="text-xs opacity-90">${r.name}</span><span>${this.calc(index, r.sr, r.cr, r.par)}</span>
+          <span class="px-1.5 py-0.5 ${r.bg} rounded text-[10px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
+            <span class="opacity-90">${r.name}</span><span class="text-xs">${this.calc(index, r.sr, r.cr, r.par)}</span>
           </span>`).join('');
       },
     };
@@ -744,12 +698,11 @@ async function loadAllData() {
       try {
         State.isOfficialHistoryLoaded = true;
         const tbody = document.getElementById('officialHdcpTableBody');
-
         const myNameNorm = State.currentUser.replace(/\s+/g, '');
         const history = State.allOfficialHdcpHistory.filter(r => r.name === myNameNorm);
 
         if (!history || history.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-400 text-xs">直近1年の履歴データがありません</td></tr>`;
+          tbody.innerHTML = `<tr><td class="text-center py-4 text-slate-400 text-xs">履歴データがありません</td></tr>`;
           return;
         }
 
@@ -779,30 +732,25 @@ async function loadAllData() {
         }
 
         tbody.innerHTML = [...history].reverse().map(r => {
-          const hdcp = r.hdcp === '不明'
-            ? '<span class="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">不明</span>'
-            : escapeHtml(String(r.hdcp));
-          return `<tr class="border-b hover:bg-gray-50 text-xs">
-            <td class="p-2 text-gray-600 font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
-            <td class="p-2 text-right pr-4 font-bold text-purple-700">${hdcp}</td>
+          const hdcp = r.hdcp === '不明' ? '<span class="text-red-500">不明</span>' : escapeHtml(String(r.hdcp));
+          return `<tr class="border-b border-slate-100 last:border-0">
+            <td class="py-2 text-slate-500 font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
+            <td class="py-2 text-right font-bold text-purple-600">${hdcp}</td>
           </tr>`;
         }).join('');
       } catch {
-        document.getElementById('officialHdcpTableBody').innerHTML =
-          `<tr><td colspan="2" class="text-center p-4 text-red-500 text-xs">通信エラー、しばらくしてから再度お試しください。</td></tr>`;
+        document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td class="text-center py-4 text-red-400 text-xs">エラーが発生しました</td></tr>`;
       }
     }
 
+    // 【完全維持】0件時ガード機能
     function setupCompeResults() {
-      const sel   = document.getElementById('dateSelect');
-      
+      const sel = document.getElementById('dateSelect');
       if (State.allScoreHistory.length === 0) {
-        document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+        document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
         return;
       }
-      
-      const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))]
-        .sort((a, b) => new Date(b) - new Date(a));
+      const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort((a, b) => new Date(b) - new Date(a));
       sel.innerHTML = dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(formatYearMonth(d))}</option>`).join('');
       sel.classList.remove('hidden');
       renderScoresByDate();
@@ -815,28 +763,28 @@ async function loadAllData() {
         .sort((a, b) => Number(a['順位']) - Number(b['順位']));
 
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
-      const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
+      const rankStyle = (r) => r === 1 ? 'text-amber-500 font-black' : r === 2 ? 'text-slate-400 font-black' : r === 3 ? 'text-amber-700 font-black' : 'text-slate-600 font-bold';
 
       document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
-        const rank     = Number(row['順位']);
-        const isMe     = row['名前'] === State.currentUser;
-        
-        return `<tr class="border-b ${isMe ? 'bg-blue-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
-          <td class="p-2 text-center whitespace-nowrap ${rankStyle(rank)}">${rankBadge(rank)}</td>
-          <td class="p-2 font-bold ${isMe ? 'text-blue-800' : 'text-gray-800'}">
-            <button type="button" data-name="${escapeHtml(row['名前'])}" onclick="openMemberCompeModal(this.dataset.name)" aria-label="成績推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+        const rank = Number(row['順位']);
+        const isMe = row['名前'] === State.currentUser;
+        // 【完全維持】XSS対策の data-name
+        return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
+          <td class="py-3 text-center whitespace-nowrap ${rankStyle(rank)} text-xs">${rankBadge(rank)}</td>
+          <td class="py-3 font-bold ${isMe ? 'text-brand-700' : 'text-slate-800'}">
+            <button type="button" data-name="${escapeHtml(row['名前'])}" onclick="openMemberCompeModal(this.dataset.name)" class="hover:text-brand-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
               ${escapeHtml(row['名前'])}
             </button>
           </td>
-          <td class="p-2 text-right text-gray-600 whitespace-nowrap">${escapeHtml(String(row['GROSS']))}</td>
-          <td class="p-2 pr-4 text-right text-green-600 font-bold whitespace-nowrap">${escapeHtml(String(row['NET']))}</td>
+          <td class="py-3 text-right text-slate-500 font-medium whitespace-nowrap">${escapeHtml(String(row['GROSS']))}</td>
+          <td class="py-3 pl-2 text-right text-brand-600 font-black whitespace-nowrap">${escapeHtml(String(row['NET']))}</td>
         </tr>`;
-      }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+      }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
     }
 
-function setupRanking() {
+    // 【完全維持】ランキングの0件時ヘッダー未初期化ガード
+    function setupRanking() {
       State.rankingByTerm = {};
-      
       if (State.allScoreHistory.length === 0) {
         State.availableRankingTerms = [];
         renderRankingTabs();
@@ -871,47 +819,45 @@ function setupRanking() {
 
     function renderRankingTabs() {
       const container = document.getElementById('rankingTabsContainer');
-      const tabClass  = 'flex-1 text-xs px-1 py-1 rounded font-bold transition-all leading-tight';
+      const tabClass  = 'flex-1 text-[11px] px-1 py-1.5 rounded-lg font-bold transition-all leading-tight';
       container.innerHTML = `
-        <button type="button" onclick="changeRankingTab('official')" id="tab_official"
-          class="${tabClass} text-gray-500 hover:text-gray-800">公式HD 📊</button>
+        <button type="button" onclick="changeRankingTab('official')" id="tab_official" class="${tabClass} text-slate-500">公式HD 📊</button>
         ${State.availableRankingTerms.map((term, i) => `
-          <button type="button" onclick="changeRankingTab('${escapeHtml(term)}')" id="tab_${escapeHtml(term)}"
-            class="${tabClass} text-gray-500 hover:text-gray-800 text-center">
-            ${i === 0 ? '今期' : '前期'} NET<br><span class="text-xs font-normal">(${escapeHtml(term)})</span>
+          <button type="button" onclick="changeRankingTab('${escapeHtml(term)}')" id="tab_${escapeHtml(term)}" class="${tabClass} text-slate-500 text-center">
+            ${i === 0 ? '今期' : '前期'} NET<br><span class="text-[9px] font-normal text-slate-400">(${escapeHtml(term)})</span>
           </button>`).join('')}`;
     }
 
     function changeRankingTab(tabId) {
       State.currentRankingTab = tabId;
-      const tabClass = 'flex-1 text-xs px-1 py-1 rounded font-bold transition-all leading-tight';
+      const tabClass = 'flex-1 text-[11px] px-1 py-1.5 rounded-lg font-bold transition-all leading-tight';
       const tabs     = document.getElementById('rankingTabsContainer').children;
-      for (const tab of tabs) tab.className = `${tabClass} text-gray-500 hover:text-gray-800`;
+      for (const tab of tabs) tab.className = `${tabClass} text-slate-500`;
 
       const activeId = tabId === 'official' ? 'tab_official' : `tab_${tabId}`;
       const activeEl = document.getElementById(activeId);
       if (activeEl) {
-        const color = tabId === 'official' ? 'text-purple-700' : 'text-green-700';
-        activeEl.className = `${tabClass} bg-white shadow-sm ${color} border border-gray-200/50`;
+        const color = tabId === 'official' ? 'text-purple-600' : 'text-brand-600';
+        activeEl.className = `${tabClass} bg-white shadow-sm ${color}`;
       }
       renderRankingContent();
     }
 
     function renderRankingContent() {
-      const header    = document.getElementById('rankingTableHeader');
-      const tbody     = document.getElementById('rankingTableBody');
+      const header = document.getElementById('rankingTableHeader');
+      const tbody  = document.getElementById('rankingTableBody');
       if (!header || !tbody) return;
       
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
-      const rankStyle = (r) => r === 1 ? 'text-yellow-600 font-bold' : r === 2 ? 'text-gray-500 font-bold' : r === 3 ? 'text-amber-700 font-bold' : 'text-gray-700';
+      const rankStyle = (r) => r === 1 ? 'text-amber-500 font-black' : r === 2 ? 'text-slate-400 font-black' : r === 3 ? 'text-amber-700 font-black' : 'text-slate-600 font-bold';
 
       if (State.currentRankingTab === 'official') {
         header.innerHTML = `
-          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
-            <th scope="col" class="p-2 font-normal">名前</th>
-            <th scope="col" class="p-2 text-right font-normal">公式HD</th>
-            <th scope="col" class="p-2 pr-4 text-right font-normal">イ会HD</th>
+          <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+            <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
+            <th scope="col" class="py-2 font-bold">名前</th>
+            <th scope="col" class="py-2 text-right font-bold">公式HD</th>
+            <th scope="col" class="py-2 pr-2 text-right font-bold text-[10px]">イ会HD</th>
           </tr>`;
           
         tbody.innerHTML = State.memberList
@@ -919,26 +865,26 @@ function setupRanking() {
           .map((m, i) => {
             const rank = i + 1;
             const isMe = m.name === State.currentUser;
-            
-            return `<tr class="border-b ${isMe ? 'bg-purple-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
-              <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
-              <td class="p-2 font-bold ${isMe ? 'text-purple-800' : 'text-gray-800'}">
-                <button type="button" data-name="${escapeHtml(m.name)}" onclick="openMemberHdcpModal(this.dataset.name)" aria-label="HDCP推移を見る" class="hover:underline focus:outline-none block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+            // 【完全維持】XSS対策の data-name
+            return `<tr class="border-b border-slate-100 ${isMe ? 'bg-purple-50/40' : ''} text-sm">
+              <td class="py-3 text-center text-xs ${rankStyle(rank)}">${rankBadge(rank)}</td>
+              <td class="py-3 font-bold ${isMe ? 'text-purple-700' : 'text-slate-800'}">
+                <button type="button" data-name="${escapeHtml(m.name)}" onclick="openMemberHdcpModal(this.dataset.name)" class="hover:text-purple-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
                   ${escapeHtml(m.name)}
                 </button>
               </td>
-              <td class="p-2 text-right font-bold text-purple-700">${escapeHtml(String(m.hdcp))}</td>
-              <td class="p-2 pr-4 text-right font-bold text-sky-600 text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
+              <td class="py-3 text-right font-black text-purple-600">${escapeHtml(String(m.hdcp))}</td>
+              <td class="py-3 pr-2 text-right font-bold text-sky-600 text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
             </tr>`;
-          }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+          }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
 
       } else {
        header.innerHTML = `
-          <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-            <th scope="col" class="p-2 w-16 text-center font-normal">順位</th>
-            <th scope="col" class="p-2 font-normal">名前</th>
-            <th scope="col" class="p-2 text-right font-normal">平均NET</th>
-            <th scope="col" class="p-2 pr-4 text-right font-normal">参戦</th>
+          <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+            <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
+            <th scope="col" class="py-2 font-bold">名前</th>
+            <th scope="col" class="py-2 text-right font-bold">平均NET</th>
+            <th scope="col" class="py-2 pr-2 text-right font-bold text-[10px]">参戦</th>
           </tr>`;
           
         const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
@@ -952,17 +898,17 @@ function setupRanking() {
         tbody.innerHTML = list.map((m, i) => {
           const rank = i + 1;
           const isMe = m.name === State.currentUser;
-          return `<tr class="border-b ${isMe ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50'} text-sm">
-            <td class="p-2 text-center ${rankStyle(rank)}">${rankBadge(rank)}</td>
-            <td class="p-2 font-bold ${isMe ? 'text-green-800' : 'text-gray-800'}">
-              <span class="block w-full text-left overflow-hidden truncate max-w-[80px] sm:max-w-[120px] leading-tight">
+          return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
+            <td class="py-3 text-center text-xs ${rankStyle(rank)}">${rankBadge(rank)}</td>
+            <td class="py-3 font-bold ${isMe ? 'text-brand-700' : 'text-slate-800'}">
+              <span class="block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
                 ${escapeHtml(m.name)}
               </span>
             </td>
-            <td class="p-2 text-right font-bold text-green-700">${escapeHtml(String(m.avg))}</td>
-            <td class="p-2 pr-4 text-right text-gray-500">${escapeHtml(String(m.count))}回</td>
+            <td class="py-3 text-right font-black text-brand-600">${escapeHtml(String(m.avg))}</td>
+            <td class="py-3 pr-2 text-right text-slate-400 text-xs font-medium">${escapeHtml(String(m.count))}回</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+        }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
       }
     }
 
@@ -972,7 +918,7 @@ function setupRanking() {
         const myHdcp = parseFloat(State.myOfficialHdcp);
         
         if (State.allScoreHistory.length === 0) {
-          document.getElementById('versusContainer').innerHTML = `<div class="text-center p-4 text-gray-400 text-xs">データがありません</div>`;
+          document.getElementById('versusContainer').innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">データがありません</div>`;
           return;
         }
 
@@ -997,8 +943,7 @@ function setupRanking() {
           });
 
         if (options.length === 0) {
-          document.getElementById('versusContainer').innerHTML =
-            `<div class="text-center p-4 text-gray-400 text-xs">対戦可能なメンバーがいません</div>`;
+          document.getElementById('versusContainer').innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">対戦可能なメンバーがいません</div>`;
           return;
         }
 
@@ -1039,56 +984,54 @@ function setupRanking() {
 
         const container = document.getElementById('versusContainer');
         const vsHeader  = `
-          <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-3">
+          <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
             <div class="text-center w-1/3">
-              <p class="text-xs text-gray-500 font-bold mb-0.5">あなた</p>
-              <p class="text-sm font-bold text-blue-700 truncate">${escapeHtml(myName)}</p>
-              <p class="text-xs text-gray-500">公式HDCP: ${escapeHtml(String(State.myOfficialHdcp))}</p>
+              <p class="text-[10px] text-slate-400 font-bold mb-1">あなた</p>
+              <p class="text-sm font-black text-brand-600 truncate">${escapeHtml(myName)}</p>
+              <p class="text-[9px] text-slate-400 mt-0.5">HDCP: ${escapeHtml(String(State.myOfficialHdcp))}</p>
             </div>
             <div class="text-center w-1/3 flex flex-col items-center">
-              <span class="text-xs font-black text-gray-400 italic mb-1">VS</span>
+              <span class="text-[10px] font-black text-slate-300 italic mb-1.5">VS</span>
               ${versusData.length > 0
-                ? `<span class="text-xs font-bold px-2 py-0.5 rounded bg-white border border-gray-200 shadow-sm text-gray-700 whitespace-nowrap">
-                    <span class="text-blue-600">${win}勝</span> <span class="text-red-500">${lose}敗</span> ${draw}分
+                ? `<span class="text-xs font-black px-2.5 py-1 rounded bg-white shadow-sm text-slate-700 whitespace-nowrap border border-slate-100">
+                    <span class="text-brand-600">${win}勝</span> <span class="text-red-500">${lose}敗</span> ${draw}分
                    </span>`
-                : `<span class="text-xs text-gray-400 font-bold">対戦なし</span>`}
+                : `<span class="text-xs text-slate-400 font-bold">対戦なし</span>`}
             </div>
             <div class="text-center w-1/3">
-              <p class="text-xs text-gray-500 font-bold mb-0.5">ライバル</p>
-              <p class="text-sm font-bold text-gray-800 truncate">${escapeHtml(opName)}</p>
-              <p class="text-xs text-gray-500">公式HDCP: ${escapeHtml(String(opHdcp))}</p>
+              <p class="text-[10px] text-slate-400 font-bold mb-1">ライバル</p>
+              <p class="text-sm font-black text-slate-700 truncate">${escapeHtml(opName)}</p>
+              <p class="text-[9px] text-slate-400 mt-0.5">HDCP: ${escapeHtml(String(opHdcp))}</p>
             </div>
           </div>`;
 
         if (versusData.length === 0) { container.innerHTML = vsHeader; return; }
 
         const tableRows = [...versusData].reverse().map(r => {
-          const badge   = r.result === '勝利'
-            ? `<span class="bg-blue-500 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">勝利</span>`
-            : r.result === '敗北'
-            ? `<span class="bg-red-400 text-white px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">敗北</span>`
-            : `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded shadow-sm text-xs font-bold">引分</span>`;
-          const myColor = r.result === '勝利' ? 'text-blue-700 font-black' : 'text-gray-700 font-semibold';
-          const opColor = r.result === '敗北' ? 'text-red-500 font-black' : 'text-gray-500 font-semibold';
-          return `<tr class="border-b hover:bg-gray-50">
-            <td class="p-2 text-gray-600 text-xs font-bold">${escapeHtml(formatYearMonth(r.date))}</td>
-            <td class="p-2 text-center ${myColor}">${r.myGross}</td>
-            <td class="p-2 text-center ${opColor}">${r.opGross}</td>
-            <td class="p-2 pr-4 text-right">${badge}</td>
+          const badge   = r.result === '勝利' ? `<span class="bg-brand-500 text-white px-2 py-0.5 rounded text-[10px] font-bold">勝利</span>`
+                        : r.result === '敗北' ? `<span class="bg-red-400 text-white px-2 py-0.5 rounded text-[10px] font-bold">敗北</span>`
+                        : `<span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">引分</span>`;
+          const myColor = r.result === '勝利' ? 'text-brand-600 font-black' : 'text-slate-500 font-medium';
+          const opColor = r.result === '敗北' ? 'text-red-500 font-black' : 'text-slate-500 font-medium';
+          return `<tr class="border-b border-slate-100">
+            <td class="py-2 text-slate-500 text-xs font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
+            <td class="py-2 text-center ${myColor}">${r.myGross}</td>
+            <td class="py-2 text-center ${opColor}">${r.opGross}</td>
+            <td class="py-2 pr-2 text-right">${badge}</td>
           </tr>`;
         }).join('');
 
         container.innerHTML = `
           ${vsHeader}
           <div class="py-1"><canvas id="versusChart"></canvas></div>
-          <div class="max-h-60 overflow-y-auto mt-2">
+          <div class="max-h-60 overflow-y-auto mt-4 -mx-1 px-1">
             <table class="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr class="bg-gray-50 border-b text-gray-500 text-xs">
-                  <th scope="col" class="p-2 font-normal">日付</th>
-                  <th scope="col" class="p-2 text-center font-normal text-blue-700">あなた</th>
-                  <th scope="col" class="p-2 text-center font-normal text-gray-600">相手</th>
-                  <th scope="col" class="p-2 pr-4 text-right font-normal">結果</th>
+              <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+                  <th scope="col" class="py-2 font-bold">日付</th>
+                  <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
+                  <th scope="col" class="py-2 text-center font-bold text-slate-600">相手</th>
+                  <th scope="col" class="py-2 pr-2 text-right font-bold">結果</th>
                 </tr>
               </thead>
               <tbody>${tableRows}</tbody>
@@ -1103,8 +1046,8 @@ function setupRanking() {
           data: {
             labels: recent.map(r => formatYearMonth(r.date)),
             datasets: [
-              { label: 'あなた', data: recent.map(r => r.myGross), borderColor: 'rgb(59,130,246)', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3 },
-              { label: '相手',   data: recent.map(r => r.opGross), borderColor: 'rgb(156,163,175)', backgroundColor: 'rgba(156,163,175,0.1)', borderWidth: 2, pointRadius: 4, borderDash: [5, 5], pointBackgroundColor: 'rgb(156,163,175)', tension: 0.3 },
+              { label: 'あなた', data: recent.map(r => r.myGross), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#059669', tension: 0.3 },
+              { label: '相手',   data: recent.map(r => r.opGross), borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', borderWidth: 2, pointRadius: 4, borderDash: [5, 5], pointBackgroundColor: '#94a3b8', tension: 0.3 },
             ],
           },
           options: {
@@ -1127,8 +1070,7 @@ function setupRanking() {
       if (chartData.length === 0) {
         emptyEl.classList.remove('hidden');
         chartEl.classList.add('hidden');
-        document.getElementById('myScoreTableBody').innerHTML =
-          `<tr><td colspan="4" class="text-center p-4 text-gray-400 text-xs">データがありません</td></tr>`;
+        document.getElementById('myScoreTableBody').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
         return;
       }
 
@@ -1143,8 +1085,8 @@ function setupRanking() {
           labels: chartData.map(r => formatYearMonth(r.date)),
           datasets: [{
             label: 'GROSS', data: chartData.map(r => r.gross),
-            borderColor: 'rgb(255,99,132)', backgroundColor: 'rgba(255,99,132,0.1)',
-            borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(255,99,132)', tension: 0.3,
+            borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)',
+            borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#059669', tension: 0.3,
           }],
         },
         options: {
@@ -1157,12 +1099,12 @@ function setupRanking() {
       document.getElementById('myScoreTableBody').innerHTML = recentMax10.map(row => {
         const rank      = Number(row.rank);
         const rankText  = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
-        const rankStyle = rank === 1 ? 'text-yellow-600 font-bold' : rank === 2 ? 'text-gray-500 font-bold' : rank === 3 ? 'text-amber-700 font-bold' : 'text-gray-500';
-        return `<tr class="border-b hover:bg-gray-50">
-          <td class="p-2 text-gray-600 text-xs font-bold">${escapeHtml(formatYearMonth(row.date))}</td>
-          <td class="p-2 text-right ${rankStyle}">${rankText}</td>
-          <td class="p-2 text-right text-gray-800 font-bold">${escapeHtml(String(row.gross))}</td>
-          <td class="p-2 pr-4 text-right text-green-600 font-bold">${escapeHtml(String(row.net))}</td>
+        const rankStyle = rank === 1 ? 'text-amber-500 font-black' : rank === 2 ? 'text-slate-400 font-black' : rank === 3 ? 'text-amber-700 font-black' : 'text-slate-500 font-bold';
+        return `<tr class="border-b border-slate-100">
+          <td class="py-2 text-slate-500 text-xs font-medium">${escapeHtml(formatYearMonth(row.date))}</td>
+          <td class="py-2 text-right ${rankStyle}">${rankText}</td>
+          <td class="py-2 text-right text-slate-800 font-black">${escapeHtml(String(row.gross))}</td>
+          <td class="py-2 pr-2 text-right text-brand-600 font-black">${escapeHtml(String(row.net))}</td>
         </tr>`;
       }).join('');
     }
@@ -1171,64 +1113,54 @@ function setupRanking() {
       const isChart = view === 'chart';
       document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
       document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
-      document.getElementById('btnChart').className = `text-xs px-3 py-1 rounded font-bold transition-all ${isChart ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-800'}`;
-      document.getElementById('btnTable').className  = `text-xs px-3 py-1 rounded font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-800'}`;
+      document.getElementById('btnChart').className = `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
+      document.getElementById('btnTable').className  = `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
     }
 
-
-    function renderSummaryFooter() {
-      const container = document.getElementById('summaryFooterContainer');
+    function renderDashboardSummary() {
+      const container = document.getElementById('dashboardSummaryContainer');
       if (!container) return;
       
       if (State.allScoreHistory.length === 0) {
-        container.innerHTML = `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center text-sm text-gray-400">サマリーデータがありません</div>`;
+        container.innerHTML = `<div class="bg-slate-50 rounded-xl p-4 text-center text-sm text-slate-400">サマリーデータがありません</div>`;
         return;
       }
 
       const myHistory = State.allScoreHistory.filter(r => r['名前'] === State.currentUser);
-      
       let totalGross = 0, totalNet = 0, validGrossCount = 0, validNetCount = 0;
       let bestGross = Infinity, bestDate = '';
 
       myHistory.forEach(r => {
-        const g = Number(r['GROSS']);
-        const n = Number(r['NET']);
+        const g = Number(r['GROSS']), n = Number(r['NET']);
         if (!isNaN(g)) {
-          totalGross += g;
-          validGrossCount++;
-          if (g < bestGross) {
-            bestGross = g;
-            bestDate = r['日付'];
-          } else if (g === bestGross) {
+          totalGross += g; validGrossCount++;
+          if (g < bestGross) { bestGross = g; bestDate = r['日付']; } 
+          else if (g === bestGross) {
              const d1 = new Date(r['日付']), d2 = new Date(bestDate);
              if(!isNaN(d1) && !isNaN(d2) && d1 > d2) bestDate = r['日付'];
           }
         }
-        if (!isNaN(n)) {
-          totalNet += n;
-          validNetCount++;
-        }
+        if (!isNaN(n)) { totalNet += n; validNetCount++; }
       });
 
       const avgGross = validGrossCount > 0 ? (totalGross / validGrossCount).toFixed(1) : '-';
-      const avgNet = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
+      const avgNet   = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
       const totalParticipation = myHistory.length;
       
-      let bestScoreHtml = `<span class="text-xl font-bold text-gray-300">-</span>`;
+      let bestScoreHtml = `<span class="text-2xl font-black text-slate-300">-</span>`;
       if (bestGross !== Infinity) {
         const bd = new Date(bestDate);
         const dateStr = !isNaN(bd) ? `${String(bd.getFullYear()).slice(-2)}年${bd.getMonth() + 1}月` : '';
         bestScoreHtml = `
-          <span class="text-xl font-bold text-amber-600">${bestGross}</span>
-          ${dateStr ? `<span class="text-[9px] text-gray-500 font-normal -mt-0.5">${dateStr}</span>` : ''}
+          <span class="text-2xl font-black text-amber-500">${bestGross}</span>
+          ${dateStr ? `<span class="text-[9px] text-slate-400 font-medium -mt-1">${dateStr}</span>` : ''}
         `;
       }
 
-// 全成績データから一番古い日付（集計開始日）を取得
+      // 【完全維持】空配列チェックによる安全性向上
       let oldestDateText = '';
       if (State.allScoreHistory.length > 0) {
         const timestamps = State.allScoreHistory.map(r => new Date(r['日付']).getTime()).filter(t => !isNaN(t));
-        // 【修正】timestamps が空配列でないことを明示的にチェック
         if (timestamps.length > 0) {
           const minDate = new Date(Math.min(...timestamps));
           oldestDateText = `${String(minDate.getFullYear()).slice(-2)}年${minDate.getMonth() + 1}月${minDate.getDate()}日`;
@@ -1241,7 +1173,6 @@ function setupRanking() {
         const d = new Date(r['日付']);
         if (!isNaN(d) && d.getFullYear() === currentYear) thisYearDates.add(r['日付']);
       });
-      
       const totalCompes = thisYearDates.size;
       const myCompes = myHistory.filter(r => {
         const d = new Date(r['日付']);
@@ -1249,38 +1180,38 @@ function setupRanking() {
       }).length;
 
       container.innerHTML = `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div class="flex justify-between items-end border-b pb-2 mb-3">
+        <div class="mt-4 pt-4 border-t border-slate-100">
+          <div class="flex justify-between items-end mb-4">
             <div>
-              <h3 class="font-bold text-gray-800 leading-tight">📊 あなたの通算サマリー</h3>
-              ${oldestDateText ? `<p class="text-[9px] text-gray-400 mt-1">※${oldestDateText}以降の集計</p>` : ''}
+              <h4 class="font-bold text-slate-700 text-sm">通算サマリー</h4>
+              ${oldestDateText ? `<p class="text-[9px] text-slate-400 mt-0.5">※${oldestDateText}以降の集計</p>` : ''}
             </div>
-            <span class="text-[10px] text-gray-500 font-normal shrink-0 ml-2 mb-0.5">(通算参加: ${totalParticipation}回)</span>
+            <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">参加: ${totalParticipation}回</span>
           </div>
           
-          <div class="flex justify-between items-start mb-4 px-1">
+          <div class="flex justify-between items-start mb-4">
             <div class="text-center flex-1">
-              <div class="text-[10px] text-gray-500 font-bold mb-0.5">平均GROSS</div>
-              <div class="text-xl font-bold text-gray-800">${avgGross}</div>
+              <div class="text-[10px] text-slate-400 font-bold mb-0.5">平均GROSS</div>
+              <div class="text-xl font-black text-slate-700">${avgGross}</div>
             </div>
-            <div class="text-center flex-1 border-l border-gray-200">
-              <div class="text-[10px] text-gray-500 font-bold mb-0.5">平均NET</div>
-              <div class="text-xl font-bold text-green-600">${avgNet}</div>
+            <div class="text-center flex-1 border-l border-slate-100">
+              <div class="text-[10px] text-slate-400 font-bold mb-0.5">平均NET</div>
+              <div class="text-xl font-black text-brand-600">${avgNet}</div>
             </div>
-            <div class="text-center flex-1 border-l border-gray-200 flex flex-col justify-center items-center">
-              <div class="text-[10px] text-gray-500 font-bold mb-0.5">ベストスコア</div>
+            <div class="text-center flex-1 border-l border-slate-100 flex flex-col justify-center items-center">
+              <div class="text-[10px] text-slate-400 font-bold mb-0.5">ベスト</div>
               <div class="flex flex-col items-center leading-none">
                 ${bestScoreHtml}
               </div>
             </div>
           </div>
           
-          <div class="bg-gray-50 rounded-lg p-2.5 flex justify-between items-center border border-gray-100">
-            <span class="text-xs text-gray-700 font-bold">${String(currentYear).slice(-2)}年の参加回数</span>
-            <span class="text-sm font-bold flex items-baseline text-gray-800">
-              <span class="text-blue-600 text-lg leading-none">${myCompes}</span><span class="text-[10px] text-gray-500 ml-0.5 font-normal">回</span> 
-              <span class="text-gray-400 mx-1.5 text-xs font-normal">/</span> 
-              <span class="text-[11px] text-gray-500 font-normal">${totalCompes}回開催</span>
+          <div class="bg-slate-50 rounded-lg p-3 flex justify-between items-center border border-slate-100">
+            <span class="text-[11px] text-slate-500 font-bold">${String(currentYear).slice(-2)}年の参加状況</span>
+            <span class="text-sm font-bold flex items-baseline text-slate-700">
+              <span class="text-brand-600 text-lg leading-none font-black">${myCompes}</span><span class="text-[10px] text-slate-400 ml-0.5">回</span> 
+              <span class="text-slate-300 mx-1.5 text-xs font-normal">/</span> 
+              <span class="text-[11px] text-slate-500">${totalCompes}回開催</span>
             </span>
           </div>
         </div>
@@ -1290,15 +1221,29 @@ function setupRanking() {
     // ==========================================
     // ACTION HANDLERS (ADMIN & MODALS)
     // ==========================================
+    async function onUserManualSync(btnElement) {
+      const originalHtml = btnElement.innerHTML;
+      btnElement.disabled = true;
+      btnElement.innerHTML = `<svg class="animate-spin h-4 w-4 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+      try {
+        localStorage.removeItem('eagle_data_cache');
+        localStorage.removeItem('eagle_cache_timestamp');
+        await loadAllData();
+      } catch (e) {
+        console.error('手動更新エラー', e);
+        alert('データの取得に失敗しました。');
+      } finally {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalHtml;
+      }
+    }
+
     async function onUpload() {
       const fileInput  = document.getElementById('imageFile');
       const statusText = document.getElementById('uploadStatus');
       const btn        = document.getElementById('uploadBtn');
 
-      if (fileInput.files.length === 0) {
-        statusText.textContent = '画像ファイルを選択してください。';
-        return;
-      }
+      if (fileInput.files.length === 0) { statusText.textContent = '画像ファイルを選択してください。'; return; }
 
       statusText.textContent = 'Geminiが画像を解析中...（最大数分）';
       btn.disabled = true;
@@ -1310,11 +1255,8 @@ function setupRanking() {
             base64Data: reader.result.split(',')[1],
             mimeType:   fileInput.files[0].type,
           });
-          statusText.textContent = res.success
-            ? `成功！ ${res.count}件のデータを登録しました。`
-            : `エラー: ${res.error}`;
+          statusText.textContent = res.success ? `成功！ ${res.count}件のデータを登録しました。` : `エラー: ${res.error}`;
           if (res.success) {
-            // ローカルキャッシュも破棄して最新を読み直す
             localStorage.removeItem('eagle_data_cache');
             localStorage.removeItem('eagle_cache_timestamp');
             loadAllData();
@@ -1334,124 +1276,22 @@ function setupRanking() {
       const statusText = document.getElementById('resetPasswordStatus');
       const btn        = document.getElementById('resetPasswordBtn');
 
-      if (!targetId || !newPw) {
-        statusText.textContent = '入力してください。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
-        return;
-      }
+      if (!targetId || !newPw) { statusText.textContent = '入力してください。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500'; return; }
 
-      btn.disabled    = true;
-      btn.textContent = '処理中...';
-      statusText.textContent = '';
-
+      btn.disabled = true; btn.textContent = '処理中...'; statusText.textContent = '';
       try {
         const hashedNewPw = await hashPassword(newPw);
         const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
         statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
-        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-green-700' : 'text-red-600'}`;
-        if (res.success) {
-          document.getElementById('resetTargetId').value   = '';
-          document.getElementById('resetNewPassword').value = '';
-        }
+        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
+        if (res.success) { document.getElementById('resetTargetId').value = ''; document.getElementById('resetNewPassword').value = ''; }
       } catch {
-        statusText.textContent = '通信エラーが発生しました。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+        statusText.textContent = '通信エラーが発生しました。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500';
       } finally {
-        btn.disabled    = false;
-        btn.textContent = 'パスワードをリセット';
+        btn.disabled = false; btn.textContent = 'リセット実行';
       }
     }
 
-    // ==========================================
-    // 管理者：メンテナンスモード切り替え
-    // ==========================================
-    function buildAdminMaintenanceCard() {
-      const isMaint = State.maintenanceMode;
-      const statusText  = isMaint ? '🚨 メンテナンス中 (一般ログイン停止)' : '🟢 通常稼働中';
-      const statusColor = isMaint ? 'text-red-600' : 'text-green-600';
-      const btnText     = isMaint ? '通常稼働に戻す' : 'メンテナンスモードにする';
-      const btnColor    = isMaint ? 'bg-gray-700 hover:bg-gray-800' : 'bg-red-600 hover:bg-red-700';
-
-      return `
-        <div class="border-2 border-dashed ${isMaint ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-gray-50'} rounded-xl p-4 shadow-sm transition-colors" id="maintenanceCardWrap">
-          <h3 class="font-bold text-gray-800 mb-2 text-sm text-center">【管理者用】システム状態管理</h3>
-          <p class="text-xs text-gray-600 mb-3 text-center">オンにすると、管理者以外のログインを一時的にブロックします。</p>
-          
-          <div class="flex flex-col items-center gap-3 mt-4">
-            <span class="font-black text-sm ${statusColor}" id="maintenanceStatusDisp">${statusText}</span>
-            <button type="button" onclick="onToggleMaintenance(this)" id="maintenanceBtn"
-              class="w-full ${btnColor} text-white text-sm font-bold p-2.5 rounded shadow-sm transition-colors">
-              ${btnText}
-            </button>
-          </div>
-        </div>`;
-    }
-
-async function onToggleMaintenance(btnElement) {
-      // 現在の状態の「逆」を設定する
-      const newState = !State.maintenanceMode;
-      const confirmMsg = newState 
-        ? "メンテナンスモードをオンにします。\n一般メンバーはログインできなくなります。よろしいですか？" 
-        : "通常稼働に戻します。\n一般メンバーのログインが可能になります。よろしいですか？";
-        
-      if (!confirm(confirmMsg)) return;
-
-      btnElement.disabled = true;
-      btnElement.innerHTML = `${SPINNER_SVG}切り替え中...`;
-
-      try {
-        const res = await callGasApi('toggleMaintenance', { state: String(newState) });
-        if (res.success) {
-          State.maintenanceMode = res.maintenanceMode;
-          
-          // 【追加】バックエンド側のキャッシュも破棄されているため、ブラウザ側のキャッシュも捨てる
-          localStorage.removeItem('eagle_data_cache');
-          localStorage.removeItem('eagle_cache_timestamp');
-          
-          // UIの枠組みを再描画して状態（カードの色やテキスト）を反映
-          buildMainUI(State.authRes);
-          
-          // 【追加】枠の中に最新データを取得して流し込む
-          await loadAllData();
-          
-          alert(State.maintenanceMode ? '🚨 メンテナンスモードを開始しました。' : '🟢 通常稼働を再開しました。');
-        } else {
-          alert('エラーが発生しました: ' + res.error);
-        }
-      } catch (e) {
-        console.error(e);
-        alert('通信エラーが発生しました。');
-      } finally {
-        // ボタン自体が buildMainUI で新しく作り直されるため、万が一DOMに残っていた場合のみロック解除
-        const newBtn = document.getElementById('maintenanceBtn');
-        if (newBtn) {
-           newBtn.disabled = false;
-        }
-      }
-    }    
-    // 一般ユーザー用の手動データ更新機能
-    async function onUserManualSync(btnElement) {
-      const originalHtml = btnElement.innerHTML;
-      btnElement.disabled = true;
-      btnElement.innerHTML = `${SPINNER_SVG}取得中...`;
-      
-      try {
-        // 1. ブラウザのローカルキャッシュを破棄
-        localStorage.removeItem('eagle_data_cache');
-        localStorage.removeItem('eagle_cache_timestamp');
-        
-        // 2. 最新データを再取得して画面を再描画
-        await loadAllData();
-      } catch (e) {
-        console.error('手動更新エラー', e);
-        alert('データの取得に失敗しました。時間をおいて再度お試しください。');
-      } finally {
-        btnElement.disabled = false;
-        btnElement.innerHTML = originalHtml;
-      }
-    }
-
-    // 管理者によるキャッシュ破棄（システム強制同期）
     async function onForceSync() {
       const btn = document.getElementById('forceSyncBtn');
       const statusText = document.getElementById('forceSyncStatus');
@@ -1461,32 +1301,52 @@ async function onToggleMaintenance(btnElement) {
       statusText.classList.add('hidden');
       
       try {
-        // 1. バックエンド(GAS)のキャッシュを破棄
         const res = await callGasApi('clearSystemCache');
         if (!res.success) throw new Error(res.error);
-        
-        // 2. ブラウザ(フロントエンド)のローカルキャッシュを破棄
         localStorage.removeItem('eagle_data_cache');
         localStorage.removeItem('eagle_cache_timestamp');
-        
-        // 3. 最新データを再取得して画面を再描画
         await loadAllData();
-        
-        statusText.textContent = '最新データに同期しました！';
-        statusText.className = 'mt-2 text-xs font-semibold text-green-700 text-center';
+        statusText.textContent = 'システムを同期しました！';
+        statusText.className = 'mt-2 text-xs font-semibold text-brand-600 text-center';
       } catch (e) {
         statusText.textContent = '同期エラーが発生しました。';
-        statusText.className = 'mt-2 text-xs font-semibold text-red-600 text-center';
+        statusText.className = 'mt-2 text-xs font-semibold text-red-500 text-center';
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '🔄 キャッシュを破棄して最新化';
+        btn.innerHTML = 'キャッシュ破棄＆同期';
         statusText.classList.remove('hidden');
-        
-        setTimeout(() => {
-          if (statusText.classList.contains('text-green-700')) {
-            statusText.classList.add('hidden');
-          }
-        }, 3000);
+        setTimeout(() => { if (statusText.classList.contains('text-brand-600')) statusText.classList.add('hidden'); }, 3000);
+      }
+    }
+
+    // 【完全維持】メンテナンスモード切り替えと自動再描画
+    async function onToggleMaintenance(btnElement) {
+      const newState = !State.maintenanceMode;
+      const confirmMsg = newState 
+        ? "メンテナンスモードをオンにします。\n一般メンバーはログインできなくなります。よろしいですか？" 
+        : "通常稼働に戻します。\n一般メンバーのログインが可能になります。よろしいですか？";
+      if (!confirm(confirmMsg)) return;
+
+      btnElement.disabled = true;
+      btnElement.innerHTML = `${SPINNER_SVG}切替中...`;
+
+      try {
+        const res = await callGasApi('toggleMaintenance', { state: String(newState) });
+        if (res.success) {
+          State.maintenanceMode = res.maintenanceMode;
+          localStorage.removeItem('eagle_data_cache');
+          localStorage.removeItem('eagle_cache_timestamp');
+          buildMainUI(State.authRes);
+          await loadAllData();
+          alert(State.maintenanceMode ? '🚨 メンテナンスモードを開始しました。' : '🟢 通常稼働を再開しました。');
+        } else {
+          alert('エラーが発生しました: ' + res.error);
+        }
+      } catch (e) {
+        alert('通信エラーが発生しました。');
+      } finally {
+        const newBtn = document.getElementById('maintenanceBtn');
+        if (newBtn) newBtn.disabled = false;
       }
     }
 
@@ -1496,48 +1356,33 @@ async function onToggleMaintenance(btnElement) {
       const statusText = document.getElementById('myChangePwStatus');
       const btn        = document.getElementById('myChangePwBtn');
 
-      if (!currentPw || !newPw) {
-        statusText.textContent = '両方のパスワードを入力してください。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
-        return;
-      }
-      if (newPw.length < 8) {
-        statusText.textContent = '新しいパスワードは8文字以上で入力してください。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
-        return;
-      }
+      if (!currentPw || !newPw) { statusText.textContent = '両方のパスワードを入力してください。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500'; return; }
+      if (newPw.length < 8) { statusText.textContent = '新しいパスワードは8文字以上で入力してください。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500'; return; }
 
-      btn.disabled = true;
-      btn.innerHTML = `${SPINNER_SVG}変更中...`;
-      statusText.textContent = '';
-
+      btn.disabled = true; btn.innerHTML = `${SPINNER_SVG}変更中...`; statusText.textContent = '';
       try {
         const hashedCurrent = await hashPassword(currentPw);
         const hashedNew     = await hashPassword(newPw);
-        const res = await callGasApi('changeMyPassword', { 
-          loginId: State.loginId, 
-          currentPassword: hashedCurrent, 
-          newPassword: hashedNew 
-        });
+        const res = await callGasApi('changeMyPassword', { loginId: State.loginId, currentPassword: hashedCurrent, newPassword: hashedNew });
 
         statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
-        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-green-700' : 'text-red-600'}`;
-        
+        statusText.className   = `mt-3 text-xs font-bold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
         if (res.success) {
-          document.getElementById('myCurrentPw').value = '';
-          document.getElementById('myNewPw').value = '';
+          document.getElementById('myCurrentPw').value = ''; document.getElementById('myNewPw').value = '';
           setTimeout(closeChangePwModal, 2000);
         }
       } catch {
-        statusText.textContent = '通信エラーが発生しました。';
-        statusText.className   = 'mt-2 text-xs font-semibold text-red-600';
+        statusText.textContent = '通信エラーが発生しました。'; statusText.className = 'mt-3 text-xs font-bold text-red-500';
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'パスワードを変更';
+        btn.disabled = false; btn.innerHTML = 'パスワードを変更';
       }
     }
 
     // Modal Controls
+    function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
+    function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+    // 【完全維持】XSS対策 data-name の取得フロー
     function openMemberHdcpModal(memberName) {
       document.getElementById('memberHdcpModalTitle').textContent = `${memberName} さんの公式HDCP推移`;
       const noDataEl = document.getElementById('memberHdcpNoData');
@@ -1550,12 +1395,9 @@ async function onToggleMaintenance(btnElement) {
       if (State.memberHdcpChartInstance) State.memberHdcpChartInstance.destroy();
 
       if (valid.length === 0) {
-        canvasEl.classList.add('hidden');
-        noDataEl.classList.remove('hidden');
+        canvasEl.classList.add('hidden'); noDataEl.classList.remove('hidden');
       } else {
-        canvasEl.classList.remove('hidden');
-        noDataEl.classList.add('hidden');
-        
+        canvasEl.classList.remove('hidden'); noDataEl.classList.add('hidden');
         const ctx = canvasEl.getContext('2d');
         State.memberHdcpChartInstance = new Chart(ctx, {
           type: 'line',
@@ -1567,12 +1409,7 @@ async function onToggleMaintenance(btnElement) {
               borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147,51,234)', tension: 0.3,
             }],
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-            scales: { y: { reverse: true } },
-          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { y: { reverse: true } } },
         });
       }
       document.getElementById('memberHdcpModal').classList.remove('hidden');
@@ -1585,38 +1422,26 @@ async function onToggleMaintenance(btnElement) {
       const noDataEl = document.getElementById('memberCompeNoData');
       const canvasEl = document.getElementById('memberCompeChart');
       
-      const history = State.allScoreHistory
-        .filter(r => r['名前'] === memberName && !isNaN(Number(r['順位'])))
-        .sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
+      const history = State.allScoreHistory.filter(r => r['名前'] === memberName && !isNaN(Number(r['順位']))).sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
 
       if (State.memberCompeChartInstance) State.memberCompeChartInstance.destroy();
 
       if (history.length === 0) {
-        canvasEl.classList.add('hidden');
-        noDataEl.classList.remove('hidden');
+        canvasEl.classList.add('hidden'); noDataEl.classList.remove('hidden');
       } else {
-        canvasEl.classList.remove('hidden');
-        noDataEl.classList.add('hidden');
-        
+        canvasEl.classList.remove('hidden'); noDataEl.classList.add('hidden');
         const ctx = canvasEl.getContext('2d');
         State.memberCompeChartInstance = new Chart(ctx, {
           type: 'line',
           data: {
             labels: history.map(r => formatYearMonth(r['日付'])),
             datasets: [{
-              label: '順位', 
-              data: history.map(r => Number(r['順位'])),
-              borderColor: 'rgb(59,130,246)',
-              backgroundColor: 'rgba(59,130,246,0.1)',
-              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(59,130,246)', tension: 0.3,
+              label: '順位', data: history.map(r => Number(r['順位'])),
+              borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)',
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#059669', tension: 0.3,
             }],
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-            scales: { y: { reverse: true, ticks: { stepSize: 1 } } },
-          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } },
         });
       }
       document.getElementById('memberCompeModal').classList.remove('hidden');
@@ -1628,123 +1453,146 @@ async function onToggleMaintenance(btnElement) {
     function openForgotPwModal() { document.getElementById('forgotPwModal').classList.remove('hidden'); }
     function closeForgotPwModal() { document.getElementById('forgotPwModal').classList.add('hidden'); }
     function openChangePwModal() { 
-      document.getElementById('myCurrentPw').value = '';
-      document.getElementById('myNewPw').value = '';
-      document.getElementById('myChangePwStatus').textContent = '';
+      document.getElementById('myCurrentPw').value = ''; document.getElementById('myNewPw').value = ''; document.getElementById('myChangePwStatus').textContent = '';
+      closeSettingsModal();
       document.getElementById('changePwModal').classList.remove('hidden'); 
     }
     function closeChangePwModal() { document.getElementById('changePwModal').classList.add('hidden'); }
 
+    // 【完全維持】Escapeキーでのモーダル一括クローズ
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        ['memberHdcpModal', 'memberCompeModal', 'termsModal', 'forgotPwModal', 'changePwModal'].forEach(id => {
+        ['settingsModal', 'memberHdcpModal', 'memberCompeModal', 'termsModal', 'forgotPwModal', 'changePwModal'].forEach(id => {
           document.getElementById(id)?.classList.add('hidden');
         });
       }
     });
   </script>
 
-<div id="memberHdcpModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeMemberHdcpModal()">
+  <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeSettingsModal()">
+    <div class="flex items-end sm:items-center justify-center min-h-screen p-4 pb-10">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onclick="event.stopPropagation()">
+        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <h3 class="font-bold text-slate-700 text-sm">設定・メニュー</h3>
+          <button type="button" onclick="closeSettingsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors">&times;</button>
+        </div>
+        <div class="p-2">
+          <button type="button" onclick="openChangePwModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
+            <span class="text-lg">🔑</span> パスワードを変更する
+          </button>
+          <button type="button" onclick="openTermsModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
+            <span class="text-lg">📜</span> 免責事項・利用のルール
+          </button>
+          <div class="h-px bg-slate-100 my-2 mx-4"></div>
+          <button type="button" onclick="onLogout(this)" class="w-full text-left px-4 py-3 hover:bg-red-50 rounded-xl transition-colors font-bold text-red-600 text-sm flex items-center gap-3">
+            <span class="text-lg">🚪</span> ログアウト
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="memberHdcpModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeMemberHdcpModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center border-b pb-2 mb-3">
-          <h3 id="memberHdcpModalTitle" class="font-bold text-gray-800 text-sm"></h3>
-          <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+          <h3 id="memberHdcpModalTitle" class="font-bold text-slate-800 text-sm"></h3>
+          <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
         </div>
         <div class="py-1 min-h-[150px] relative">
           <canvas id="memberHdcpChart"></canvas>
-          <p id="memberHdcpNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+          <p id="memberHdcpNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-slate-400">データがありません</p>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="memberCompeModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeMemberCompeModal()">
+  <div id="memberCompeModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeMemberCompeModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-4" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center border-b pb-2 mb-3">
-          <h3 id="memberCompeModalTitle" class="font-bold text-gray-800 text-sm"></h3>
-          <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+          <h3 id="memberCompeModalTitle" class="font-bold text-slate-800 text-sm"></h3>
+          <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
         </div>
         <div class="py-1 min-h-[150px] relative">
           <canvas id="memberCompeChart"></canvas>
-          <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-gray-400">データがありません</p>
+          <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-slate-400">データがありません</p>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="termsModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeTermsModal()">
+  <div id="termsModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeTermsModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center border-b pb-3 mb-4">
-          <h3 class="font-bold text-gray-800 text-lg">免責事項・利用のルール</h3>
-          <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-5">
+          <h3 class="font-black text-slate-800 text-lg">免責事項・利用のルール</h3>
+          <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none">&times;</button>
         </div>
-        <div class="overflow-y-auto pr-2 text-sm text-gray-600 space-y-5">
+        <div class="overflow-y-auto pr-2 text-sm text-slate-600 space-y-6">
           <section>
-            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 1. 運営と免責</h4>
-            <p class="leading-relaxed">本アプリは運営管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 1. 運営と免責</h4>
+            <p class="leading-relaxed text-[13px]">本アプリは運営管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
           </section>
           <section>
-            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 2. データの精度について</h4>
-            <p class="leading-relaxed">本アプリに記載のハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれます。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。アプリ内の記載に誤りを発見した際はLINE等でお知らせください。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 2. データの精度について</h4>
+            <p class="leading-relaxed text-[13px]">本アプリに記載のハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれます。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。アプリ内の記載に誤りを発見した際はLINE等でお知らせください。</p>
           </section>
           <section>
-            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 3. 情報の取り扱いについて</h4>
-            <p class="leading-relaxed">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開・SNS等への投稿はお控えください。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 3. 情報の取り扱いについて</h4>
+            <p class="leading-relaxed text-[13px]">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開・SNS等への投稿はお控えください。</p>
           </section>
           <section>
-            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 4. システムの稼働について</h4>
-            <p class="leading-relaxed">本アプリは、GoogleやGitHubなどの無料インフラ、および各種AI・外部APIサービスを活用して構築されています。これら外部サービスの仕様変更やアクセス集中により、予告なく機能停止や読み込み遅延が発生する場合があります。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 4. システムの稼働について</h4>
+            <p class="leading-relaxed text-[13px]">本アプリは、GoogleやGitHubなどの無料インフラ、および各種AI・外部APIサービスを活用して構築されています。これら外部サービスの仕様変更やアクセス集中により、予告なく機能停止や読み込み遅延が発生する場合があります。</p>
           </section>
           <section>
-            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 5. サービスの継続性について</h4>
-            <p class="leading-relaxed">本アプリは管理者が個人で運営しており、管理者の都合により予告なくサービスを終了する場合があります。予め、ご了承ください。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 5. サービスの継続性について</h4>
+            <p class="leading-relaxed text-[13px]">本アプリは管理者が個人で運営しており、管理者の都合により予告なくサービスを終了する場合があります。予め、ご了承ください。</p>
           </section>
           <section>
-            <h4 class="font-bold text-gray-800 mb-1 flex items-center gap-1"><span class="text-green-600">■</span> 6. アカウントとセキュリティ</h4>
-            <p class="leading-relaxed">本アプリで利用しているパスワードは利用者の端末内で不可逆の暗号化処理（ハッシュ化）が施されてからサーバーに送信されるため、管理者を含む第三者が元のパスワードを知ることはできません。アプリ内への不正アクセス対策は可能な範囲で実施していますが、IDやパスワードの管理は各自で厳重にお願い致します。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 6. アカウントとセキュリティ</h4>
+            <p class="leading-relaxed text-[13px]">本アプリで利用しているパスワードは利用者の端末内で不可逆の暗号化処理（ハッシュ化）が施されてからサーバーに送信されるため、管理者を含む第三者が元のパスワードを知ることはできません。アプリ内への不正アクセス対策は可能な範囲で実施していますが、IDやパスワードの管理は各自で厳重にお願い致します。</p>
           </section>
         </div>
-        <div class="mt-5 pt-4 border-t text-center">
-          <button type="button" onclick="closeTermsModal()" class="bg-gray-100 text-gray-800 px-8 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors text-sm shadow-sm">確認して閉じる</button>
+        <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+          <button type="button" onclick="closeTermsModal()" class="w-full bg-slate-100 text-slate-700 p-3 rounded-xl font-bold hover:bg-slate-200 transition-colors shadow-sm">確認して閉じる</button>
         </div>
       </div>
     </div>
   </div>
       
-  <div id="forgotPwModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeForgotPwModal()">
+  <div id="forgotPwModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeForgotPwModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 text-center" onclick="event.stopPropagation()">
-        <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">ℹ️</div>
-        <h3 class="font-bold text-gray-800 text-lg mb-2">パスワードの再発行</h3>
-        <p class="text-sm text-gray-600 leading-relaxed mb-5 text-left">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" onclick="event.stopPropagation()">
+        <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">ℹ️</div>
+        <h3 class="font-black text-slate-800 text-lg mb-3">パスワードの再発行</h3>
+        <p class="text-[13px] text-slate-600 leading-relaxed mb-6 text-left">
           システムのセキュリティ上、パスワードの自動再発行はできません。<br><br>
           お手数ですが、ご本人確認のためシステム管理者までLINE等で直接ご連絡ください。新しいパスワードを発行してお伝えいたします。
         </p>
-        <button type="button" onclick="closeForgotPwModal()" class="w-full bg-gray-100 text-gray-800 p-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">閉じる</button>
+        <button type="button" onclick="closeForgotPwModal()" class="w-full bg-slate-100 text-slate-700 p-3 rounded-xl font-bold hover:bg-slate-200 transition-colors shadow-sm">閉じる</button>
       </div>
     </div>
   </div>
 
-  <div id="changePwModal" class="fixed inset-0 bg-black/50 hidden z-50 transition-opacity" onclick="closeChangePwModal()">
+  <div id="changePwModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeChangePwModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center border-b pb-2 mb-4">
-          <h3 class="font-bold text-gray-800 text-sm">⚙️ パスワードの変更</h3>
-          <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
+          <h3 class="font-black text-slate-800 text-base">🔑 パスワードの変更</h3>
+          <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-4">
           <div>
-            <label for="myCurrentPw" class="block text-xs font-bold text-gray-700 mb-1">現在のパスワード</label>
-            <input type="password" id="myCurrentPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+            <label for="myCurrentPw" class="block text-xs font-bold text-slate-700 mb-1.5">現在のパスワード</label>
+            <input type="password" id="myCurrentPw" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
           </div>
           <div>
-            <label for="myNewPw" class="block text-xs font-bold text-gray-700 mb-1">新しいパスワード <span class="text-gray-400 font-normal">(8文字以上)</span></label>
-            <input type="password" id="myNewPw" class="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-green-500">
+            <label for="myNewPw" class="block text-xs font-bold text-slate-700 mb-1.5">新しいパスワード <span class="text-slate-400 font-normal">(8文字以上)</span></label>
+            <input type="password" id="myNewPw" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
           </div>
-          <button type="button" id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-green-600 text-white text-sm font-bold p-2.5 rounded hover:bg-green-700 transition-colors shadow-sm">
+          <button type="button" id="myChangePwBtn" onclick="onChangeMyPassword()" class="w-full mt-2 bg-brand-600 text-white text-sm font-bold p-3.5 rounded-xl hover:bg-brand-700 transition-colors shadow-sm">
             パスワードを変更
           </button>
           <p id="myChangePwStatus" class="text-center"></p>
