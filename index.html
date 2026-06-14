@@ -710,7 +710,7 @@ function setupScheduleDisplay(res) {
       loadAllData();
     }
 
-    // 【完全維持】自動リトライ＆24時間キャッシュ＆破損修復ロジック
+    // 自動リトライ＆24時間キャッシュ＆破損修復ロジック
     async function loadAllData() {
       showSkeletons();
       try {
@@ -863,7 +863,7 @@ function setupScheduleDisplay(res) {
       }
     }
 
-    // 【完全維持】0件時ガード機能
+    // 0件時ガード機能
     function setupCompeResults() {
   const sel = document.getElementById('dateSelect');
   if (State.allScoreHistory.length === 0) {
@@ -901,7 +901,7 @@ function setupScheduleDisplay(res) {
       }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
     }
     
-    // 【完全維持】ランキングの0件時ヘッダー未初期化ガード
+    // ランキングの0件時ヘッダー未初期化ガード
     function setupRanking() {
       State.rankingByTerm = {};
       if (State.allScoreHistory.length === 0) {
@@ -984,7 +984,7 @@ function setupScheduleDisplay(res) {
           .map((m, i) => {
             const rank = i + 1;
             const isMe = m.name === State.currentUser;
-            // 【完全維持】XSS対策の data-name
+            // XSS対策の data-name
             return `<tr class="border-b border-slate-100 ${isMe ? 'bg-purple-50/40' : ''} text-sm">
               <td class="py-3 text-center text-xs ${rankStyle(rank)}">${rankBadge(rank)}</td>
               <td class="py-3 font-bold ${isMe ? 'text-purple-700' : 'text-slate-800'}">
@@ -1276,7 +1276,7 @@ function setupScheduleDisplay(res) {
         `;
       }
 
-      // 【完全維持】空配列チェックによる安全性向上
+      // 空配列チェックによる安全性向上
       let oldestDateText = '';
       if (State.allScoreHistory.length > 0) {
         const timestamps = State.allScoreHistory.map(r => new Date(r['日付']).getTime()).filter(t => !isNaN(t));
@@ -1298,17 +1298,15 @@ function setupScheduleDisplay(res) {
         return !isNaN(d) && d.getFullYear() === currentYear;
       }).length;
 
-      container.innerHTML = `
+          container.innerHTML = `
         <div class="mt-4 pt-4 border-t border-slate-100">
           <div class="flex justify-between items-end mb-4">
-
             <div class="overflow-hidden pr-2">
               <h4 class="font-bold text-slate-700 text-sm truncate">イーグル会 通算サマリー</h4>
               ${oldestDateText ? `<p class="text-[9px] text-slate-400 mt-0.5 truncate">※${oldestDateText}以降の集計</p>` : ''}
             </div>
             <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded shrink-0">参加: ${totalParticipation}回</span>
-          
-          <div class="flex justify-between items-start mb-4">
+          </div> <div class="flex justify-between items-start mb-4">
             <div class="text-center flex-1">
               <div class="text-[10px] text-slate-400 font-bold mb-0.5">平均GROSS</div>
               <div class="text-xl font-black text-slate-700">${avgGross}</div>
@@ -1335,7 +1333,6 @@ function setupScheduleDisplay(res) {
           </div>
         </div>
       `;
-    }
 
     // ==========================================
     // ACTION HANDLERS (ADMIN & MODALS)
