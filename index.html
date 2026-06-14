@@ -304,43 +304,50 @@
       `;
     }
 
-    function buildScheduleCard(res) {
+function buildScheduleCard(res) {
       return `
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative overflow-hidden">
-          <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-            <h3 class="font-black text-slate-800 text-lg flex items-center gap-2"><span class="text-xl">📅</span> スケジュール</h3>
-            <div id="scheduleToggleBtnContainer" class="hidden">
-              <button type="button" onclick="toggleFutureSchedules()" aria-label="今後のスケジュールを表示"
-                class="text-[10px] text-brand-600 font-bold bg-brand-50 hover:bg-brand-100 border border-brand-200 transition-colors px-2.5 py-1.5 rounded-lg shadow-sm flex items-center gap-1">
-                <span>今後の予定</span>
-                <span class="bg-white px-1.5 rounded-full text-brand-600 shadow-sm" id="futureScheduleCount">0</span>
-                <span>▾</span>
-              </button>
-            </div>
-          </div>
+        <div class="bg-gradient-to-br from-green-600 to-emerald-800 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
+          <!-- ゴルフコースを連想させる透過アイコン装飾 -->
+          <div class="absolute -bottom-6 -right-4 p-4 opacity-10 text-8xl pointer-events-none transform -rotate-12">⛳️</div>
           
-          <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
-            <p class="text-[10px] text-brand-600 font-bold mb-1">次回イーグル会 開催予定</p>
-            <p id="nextCompeDateDisplay" class="text-xl font-black text-slate-800 tracking-wide mb-2">未定</p>
-            <div id="nextClubCompeBadge" class="hidden">
-              <span class="inline-block bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
-                🏆 公式競技: <span id="nextClubCompeName"></span>
+          <div class="relative z-10">
+            <p class="text-xs font-bold opacity-90 mb-2.5 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              次回スケジュール
+            </p>
+            
+            <!-- 日付と時間を縦に分離 -->
+            <div class="flex flex-col gap-1.5 mb-3">
+              <p id="nextCompeDateDisplay" class="text-xl sm:text-2xl font-black tracking-wide leading-tight">未定</p>
+              <p id="nextCompeTimeDisplay" class="text-sm font-bold text-green-100 hidden"></p>
+            </div>
+            
+            <div id="nextClubCompeBadge" class="hidden mb-1">
+              <span class="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md border border-white/30 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm">
+                <span class="text-amber-300">🏆</span> 公式競技: <span id="nextClubCompeName"></span>
               </span>
             </div>
-          </div>
-          
-          <div id="futureSchedulesSection" class="hidden mt-4 pt-3 border-t border-dashed border-slate-200 max-h-40 overflow-y-auto">
-            <div id="futureSchedulesList" class="space-y-3"></div>
+            
+            <div id="scheduleToggleBtnContainer" class="hidden mt-5 pt-4 border-t border-white/20">
+              <button type="button" onclick="toggleFutureSchedules()" class="text-xs font-bold flex items-center gap-1.5 opacity-90 hover:opacity-100 transition-opacity focus:outline-none w-full">
+                <span>今後の予定を見る</span>
+                <span class="bg-white/20 px-2 py-0.5 rounded-full text-[10px]" id="futureScheduleCount">0</span>
+                <span class="ml-auto">▾</span>
+              </button>
+            </div>
+            
+            <div id="futureSchedulesSection" class="hidden mt-4 max-h-48 overflow-y-auto pr-1">
+              <div id="futureSchedulesList" class="space-y-2.5"></div>
+            </div>
           </div>
         </div>`;
     }
-
     function buildMyDashboardCard(res) {
       return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
           <div class="flex items-center gap-2 mb-4">
             <span class="text-lg">⛳</span>
-            <h3 class="font-black text-slate-800 text-lg">マイダッシュボード</h3>
+            <h3 class="font-black text-slate-800 text-lg">My Status</h3>
           </div>
           
           <div class="grid grid-cols-2 gap-3 mb-5">
@@ -394,7 +401,7 @@
           <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
               <span class="text-lg">🏆</span>
-              <h3 class="font-black text-slate-800 text-lg">コンペリザルト</h3>
+              <h3 class="font-black text-slate-800 text-lg">イーグル会結果</h3>
             </div>
             <select id="dateSelect" onchange="renderScoresByDate()" aria-label="開催日選択"
               class="text-xs border border-slate-200 rounded-lg p-1.5 font-bold text-slate-600 bg-slate-50 focus:outline-none focus:border-brand-400 hidden">
@@ -505,7 +512,7 @@
               <h4 class="font-bold text-slate-800 mb-2 text-xs">🔑 パスワードリセット</h4>
               <div class="space-y-2 mb-3">
                 <input type="text" id="resetTargetId" placeholder="対象ログインID" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
-                <input type="password" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                <input type="text" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
               </div>
               <button type="button" onclick="onResetPassword()" id="resetPasswordBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">リセット実行</button>
               <p id="resetPasswordStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
@@ -558,31 +565,52 @@
     }
 
 function setupScheduleDisplay(res) {
+      const dateEl = document.getElementById('nextCompeDateDisplay');
+      const timeEl = document.getElementById('nextCompeTimeDisplay');
+      const clubCompeBadge = document.getElementById('nextClubCompeBadge');
+      const clubCompeName = document.getElementById('nextClubCompeName');
+
       if (res.nextCompe) {
-        document.getElementById('nextCompeDateDisplay').textContent =
-          `${res.nextCompe.dateText} ${res.nextCompe.timeText}`;
-        if (res.nextCompe.clubCompe) {
-          document.getElementById('nextClubCompeName').textContent = res.nextCompe.clubCompe;
-          document.getElementById('nextClubCompeBadge').classList.remove('hidden');
+        // 日付をセット
+        dateEl.textContent = res.nextCompe.dateText;
+        
+        // 時間が存在する場合のみ表示
+        if (res.nextCompe.timeText && res.nextCompe.timeText !== '時間未定') {
+          timeEl.textContent = res.nextCompe.timeText;
+          timeEl.classList.remove('hidden');
+        } else {
+          timeEl.classList.add('hidden');
         }
+
+        // 競技名が存在する場合のみ表示
+        if (res.nextCompe.clubCompe) {
+          clubCompeName.textContent = res.nextCompe.clubCompe;
+          clubCompeBadge.classList.remove('hidden');
+        } else {
+          clubCompeBadge.classList.add('hidden');
+        }
+      } else {
+        dateEl.textContent = '未定';
+        timeEl.classList.add('hidden');
+        clubCompeBadge.classList.add('hidden');
       }
 
       const listContainer = document.getElementById('futureSchedulesList');
       if (res.futureSchedules && res.futureSchedules.length > 0) {
         document.getElementById('futureScheduleCount').textContent = res.futureSchedules.length;
         document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
-        // スマホで詰まらないように縦積みに戻し、デザインを調整
+        
+        // 今後の予定も縦並びの美しいカード風リスト
         listContainer.innerHTML = res.futureSchedules.map(s => `
-          <div class="flex flex-col border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-            <div class="flex justify-between items-center text-xs mb-1">
-              <span class="font-bold text-slate-800">${escapeHtml(s.dateText)}</span>
-              <span class="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded shadow-sm">${escapeHtml(s.timeText)}</span>
+          <div class="flex flex-col bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/5 shadow-sm">
+            <span class="font-bold text-white text-[13px] tracking-wide">${escapeHtml(s.dateText)}</span>
+            <div class="flex flex-wrap items-center gap-2 mt-1.5">
+              <span class="text-[10px] font-medium text-green-50 bg-black/20 px-2 py-0.5 rounded-md">${escapeHtml(s.timeText)}</span>
+              ${s.clubCompe ? `<span class="text-[10px] font-bold text-amber-300 bg-black/20 px-2 py-0.5 rounded-md">🏆 ${escapeHtml(s.clubCompe)}</span>` : ''}
             </div>
-            ${s.clubCompe ? `<div class="text-[10px] text-amber-600 font-bold mt-1">🏆 公式競技: ${escapeHtml(s.clubCompe)}</div>` : ''}
           </div>`).join('');
       }
     }
-
     
     function toggleFutureSchedules() {
       document.getElementById('futureSchedulesSection').classList.toggle('hidden');
@@ -769,11 +797,11 @@ function setupScheduleDisplay(res) {
 
     // 【完全維持】0件時ガード機能
     function setupCompeResults() {
-      const sel = document.getElementById('dateSelect');
-      if (State.allScoreHistory.length === 0) {
-        document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
-        return;
-      }
+  const sel = document.getElementById('dateSelect');
+  if (State.allScoreHistory.length === 0) {
+    document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+    return;
+  }
       const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort((a, b) => new Date(b) - new Date(a));
       sel.innerHTML = dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(formatYearMonth(d))}</option>`).join('');
       sel.classList.remove('hidden');
@@ -880,7 +908,7 @@ function setupScheduleDisplay(res) {
             <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
             <th scope="col" class="py-2 font-bold">名前</th>
             <th scope="col" class="py-2 text-right font-bold">公式HD</th>
-            <th scope="col" class="py-2 pr-2 text-right font-bold text-[10px]">イ会HD</th>
+            <th scope="col" class="py-2 pr-4 text-right font-bold text-[10px]">イ会HD</th>
           </tr>`;
           
         tbody.innerHTML = State.memberList
@@ -897,7 +925,7 @@ function setupScheduleDisplay(res) {
                 </button>
               </td>
               <td class="py-3 text-right font-black text-purple-600">${escapeHtml(String(m.hdcp))}</td>
-              <td class="py-3 pr-2 text-right font-bold text-sky-600 text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
+              <td class="py-3 pr-4 text-right font-bold text-sky-600 text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
             </tr>`;
           }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
 
@@ -907,7 +935,7 @@ function setupScheduleDisplay(res) {
             <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
             <th scope="col" class="py-2 font-bold">名前</th>
             <th scope="col" class="py-2 text-right font-bold">平均NET</th>
-            <th scope="col" class="py-2 pr-2 text-right font-bold text-[10px]">参戦</th>
+            <th scope="col" class="py-2 pr-4 text-right font-bold text-[10px]">参戦</th>
           </tr>`;
           
         const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
@@ -929,7 +957,7 @@ function setupScheduleDisplay(res) {
               </span>
             </td>
             <td class="py-3 text-right font-black text-brand-600">${escapeHtml(String(m.avg))}</td>
-            <td class="py-3 pr-2 text-right text-slate-400 text-xs font-medium">${escapeHtml(String(m.count))}回</td>
+            <td class="py-3 pr-4 text-right text-slate-400 text-xs font-medium">${escapeHtml(String(m.count))}回</td>
           </tr>`;
         }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
       }
@@ -1040,7 +1068,7 @@ function setupScheduleDisplay(res) {
             <td class="py-2 text-slate-500 text-xs font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
             <td class="py-2 text-center ${myColor}">${r.myGross}</td>
             <td class="py-2 text-center ${opColor}">${r.opGross}</td>
-            <td class="py-2 pr-2 text-right">${badge}</td>
+            <td class="py-2 pr-4 text-right">${badge}</td>
           </tr>`;
         }).join('');
 
@@ -1054,7 +1082,7 @@ function setupScheduleDisplay(res) {
                   <th scope="col" class="py-2 font-bold">日付</th>
                   <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
                   <th scope="col" class="py-2 text-center font-bold text-slate-600">相手</th>
-                  <th scope="col" class="py-2 pr-2 text-right font-bold">結果</th>
+                  <th scope="col" class="py-2 pr-4 text-right font-bold">結果</th>
                 </tr>
               </thead>
               <tbody>${tableRows}</tbody>
@@ -1127,7 +1155,7 @@ function setupScheduleDisplay(res) {
           <td class="py-2 text-slate-500 text-xs font-medium">${escapeHtml(formatYearMonth(row.date))}</td>
           <td class="py-2 text-right ${rankStyle}">${rankText}</td>
           <td class="py-2 text-right text-slate-800 font-black">${escapeHtml(String(row.gross))}</td>
-          <td class="py-2 pr-2 text-right text-brand-600 font-black">${escapeHtml(String(row.net))}</td>
+          <td class="py-2 pr-4 text-right text-brand-600 font-black">${escapeHtml(String(row.net))}</td>
         </tr>`;
       }).join('');
     }
@@ -1209,7 +1237,7 @@ function setupScheduleDisplay(res) {
               <h4 class="font-bold text-slate-700 text-sm">通算サマリー</h4>
               ${oldestDateText ? `<p class="text-[9px] text-slate-400 mt-0.5">※${oldestDateText}以降の集計</p>` : ''}
             </div>
-            <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">参加: ${totalParticipation}回</span>
+            <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">通算参加回数: ${totalParticipation}回</span>
           </div>
           
           <div class="flex justify-between items-start mb-4">
@@ -1244,23 +1272,30 @@ function setupScheduleDisplay(res) {
     // ==========================================
     // ACTION HANDLERS (ADMIN & MODALS)
     // ==========================================
-    async function onUserManualSync(btnElement) {
+async function onUserManualSync(btnElement) {
       const originalHtml = btnElement.innerHTML;
       btnElement.disabled = true;
       btnElement.innerHTML = `<svg class="animate-spin h-4 w-4 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+      
       try {
         localStorage.removeItem('eagle_data_cache');
         localStorage.removeItem('eagle_cache_timestamp');
+        
+        // データの再取得（内部エラー時は loadAllData 内で showErrorAndRetry() が呼ばれる）
         await loadAllData();
       } catch (e) {
         console.error('手動更新エラー', e);
-        alert('データの取得に失敗しました。');
+        // 【修正】ネイティブダイアログ(alert)を削除し、一貫したUI処理へフォールバック
+        showErrorAndRetry(); 
       } finally {
-        btnElement.disabled = false;
-        btnElement.innerHTML = originalHtml;
+        // 【追加】エラー画面へ遷移してボタンが消滅した場合のJSエラーを防止
+        if (document.body.contains(btnElement)) {
+          btnElement.disabled = false;
+          btnElement.innerHTML = originalHtml;
+        }
       }
     }
-
+    
     async function onUpload() {
       const fileInput  = document.getElementById('imageFile');
       const statusText = document.getElementById('uploadStatus');
