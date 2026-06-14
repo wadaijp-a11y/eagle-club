@@ -256,7 +256,7 @@
           err.classList.remove('hidden');
         }
       } catch {
-        // 【修正】エラーメッセージを具体化し、メンテナンスの可能性を示唆
+        // エラーメッセージを具体化し、メンテナンスの可能性を示唆
         err.innerHTML = '通信エラーが発生しました。<br>システムメンテナンス中、またはネットワークが不安定な可能性があります。<br>しばらく時間をおいてお試しください。';
         err.classList.remove('hidden');
       } finally {
@@ -1334,7 +1334,7 @@ function setupScheduleDisplay(res) {
           </div>
         </div>
       `;
-
+}
     // ==========================================
     // ACTION HANDLERS (ADMIN & MODALS)
     // ==========================================
