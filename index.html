@@ -83,7 +83,7 @@
   <main id="mainSection" class="w-full max-w-md hidden space-y-5 pb-20 pt-6 px-4"></main>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwTedJVubv0ITuOHIqCiWIzBq_1NRuh_RSt9KOJ-D8Yz02uh4TOxIUpaCQv3V4Ri1QHRA/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwESVC-fBydJ13hrwbvGupZwLUpbSKD5Y5lRlek47K5PQGV9o2RqQm-q0mS5K_cKPNjhA/exec";
 
     const SPINNER_SVG = `
       <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current inline-block align-text-bottom" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -133,7 +133,7 @@
       return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
-    // 自動リトライ機能付きAPIコール（指数バックオフ）
+// 自動リトライ機能付きAPIコール（指数バックオフ＆強制ログアウト対応）
     async function callGasApi(action, data = {}, retries = 3) {
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
@@ -156,9 +156,41 @@
           throw new Error('GAS Overload');
         }
         
-        return await res.json();
+        const result = await res.json();
+
+        // バックエンドから「強制ログアウト」の指示を受けた場合の処理
+        if (result.forceLogout) {
+          // すべてのローカルキャッシュと自動ログイン情報を即座に破棄
+          localStorage.removeItem('eagle_auto_login');
+          localStorage.removeItem('eagle_data_cache');
+          localStorage.removeItem('eagle_cache_timestamp');
+          
+          State.authToken   = null;
+          State.currentUser = null;
+          State.authRes     = null;
+
+          // 画面を初期化して強制的にログイン画面へ戻す
+          closeSettingsModal();
+          document.getElementById('mainSection').innerHTML = '';
+          document.getElementById('mainSection').classList.add('hidden');
+          document.getElementById('loginSection').classList.remove('hidden');
+          document.getElementById('loginId').value = '';
+          window.scrollTo(0, 0);
+
+          // メンテナンスなどの理由をユーザーに通知
+          alert(result.error || 'セッションが切れました。再度ログインしてください。');
+          
+          // 後続の処理を止めるための内部エラー
+          throw new Error('Force Logout');
+        }
+
+        return result;
       } catch (error) {
         clearTimeout(timeoutId);
+        
+        // 強制ログアウトの場合はリトライせずにそのままエラーを投げる
+        if (error.message === 'Force Logout') throw error;
+
         if (retries > 0) {
           const delay = (Math.pow(2, 3 - retries) * 1000) + (Math.random() * 500);
           console.warn(`[イーグル会] API通信再試行: ${Math.round(delay)}ms待機 (残り${retries - 1}回)`);
@@ -171,7 +203,7 @@
         throw error;
       }
     }
-
+    
     // ==========================================
     // AUTHENTICATION
     // ==========================================
@@ -206,6 +238,7 @@
         if (res.success) {
           State.loginId = id;
           document.getElementById('loginPw').value = '';
+          localStorage.setItem('eagle_auto_login', JSON.stringify({ id, hashedPw }));
           initSession(res);
         } else {
           err.textContent = res.error || 'IDまたはパスワードが違います';
@@ -236,6 +269,7 @@ async function onLogout(btnElement) {
       
       localStorage.removeItem('eagle_data_cache');
       localStorage.removeItem('eagle_cache_timestamp');
+      localStorage.removeItem('eagle_auto_login');
 
       closeSettingsModal();
       document.getElementById('mainSection').innerHTML = '';
@@ -1434,6 +1468,7 @@ async function onUserManualSync(btnElement) {
         statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
         statusText.className   = `mt-3 text-xs font-bold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
         if (res.success) {
+          localStorage.setItem('eagle_auto_login', JSON.stringify({ id: State.loginId, hashedPw: hashedNew }));
           document.getElementById('myCurrentPw').value = ''; document.getElementById('myNewPw').value = '';
           setTimeout(closeChangePwModal, 2000);
         }
@@ -1531,6 +1566,44 @@ async function onUserManualSync(btnElement) {
         ['settingsModal', 'memberHdcpModal', 'memberCompeModal', 'termsModal', 'forgotPwModal', 'changePwModal'].forEach(id => {
           document.getElementById(id)?.classList.add('hidden');
         });
+      }
+    });
+    
+    // ==========================================
+    // INITIALIZATION (自動ログイン処理)
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      const autoLoginStr = localStorage.getItem('eagle_auto_login');
+      if (autoLoginStr) {
+        try {
+          const { id, hashedPw } = JSON.parse(autoLoginStr);
+          const btn = document.getElementById('loginBtn');
+          const err = document.getElementById('loginError');
+          
+          // ログインボタンをローディング状態にして画面操作をロック
+          btn.disabled = true;
+          btn.innerHTML = `${SPINNER_SVG}自動ログイン中...`;
+          
+          // 裏側で認証を実行
+          const res = await callGasApi('checkLogin', { id, password: hashedPw });
+          
+          if (res.success) {
+            State.loginId = id;
+            initSession(res); // 成功すればそのままメイン画面へ
+          } else {
+            // 管理者によるPWリセット等で弾かれた場合は情報をクリアして手動入力を促す
+            localStorage.removeItem('eagle_auto_login');
+            btn.disabled = false;
+            btn.textContent = 'ログイン';
+            err.textContent = 'セッションが切れました。再度ログインしてください。';
+            err.classList.remove('hidden');
+          }
+        } catch (e) {
+          console.error('自動ログインに失敗しました', e);
+          const btn = document.getElementById('loginBtn');
+          btn.disabled = false;
+          btn.textContent = 'ログイン';
+        }
       }
     });
   </script>
