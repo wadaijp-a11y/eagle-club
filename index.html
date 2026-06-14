@@ -259,7 +259,7 @@
       loadAllData();
     }
 
-    // ==========================================
+// ==========================================
     // UI BUILDERS (スタイリッシュな新構成)
     // ==========================================
     function buildMainUI(res) {
@@ -274,7 +274,7 @@
         ${buildRankingCard()}
         ${buildMyRecordCard()}
         ${buildVersusCard()}
-        ${isAdmin ? buildAdminSection(res) : ''}
+        ${isAdmin ? buildAdminSection() : ''}
         ${buildFooter()}
       `;
       CourseHdcp.render();
@@ -286,7 +286,7 @@
         <header class="flex justify-between items-center mb-6 px-1">
           <div class="flex items-center gap-3">
             <div class="bg-brand-100 text-brand-700 w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-inner font-bold">
-              ${escapeHtml(res.name).charAt(0)}
+              🏌️
             </div>
             <div>
               <h2 class="text-lg font-black text-slate-800 tracking-wide">${escapeHtml(res.name)} <span class="text-xs text-slate-500 font-normal ml-0.5">さん</span></h2>
@@ -306,27 +306,31 @@
 
     function buildScheduleCard(res) {
       return `
-        <div class="bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
-          <div class="absolute -top-2 -right-2 p-4 opacity-10 text-8xl pointer-events-none">📅</div>
-          <div class="relative z-10">
-            <p class="text-xs font-bold opacity-90 mb-1">次回スケジュール</p>
-            <p id="nextCompeDateDisplay" class="text-2xl font-black tracking-wide mb-2">未定</p>
-            <div id="nextClubCompeBadge" class="hidden">
-              <span class="inline-block bg-white/20 backdrop-blur-md border border-white/30 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                🏆 公式競技: <span id="nextClubCompeName"></span>
-              </span>
-            </div>
-            
-            <div id="scheduleToggleBtnContainer" class="hidden mt-5 pt-4 border-t border-white/20">
-              <button type="button" onclick="toggleFutureSchedules()" class="text-xs font-bold flex items-center gap-1.5 opacity-90 hover:opacity-100 transition-opacity focus:outline-none">
-                <span>今後の予定を見る</span>
-                <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px]" id="futureScheduleCount">0</span>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative overflow-hidden">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+            <h3 class="font-black text-slate-800 text-lg flex items-center gap-2"><span class="text-xl">📅</span> スケジュール</h3>
+            <div id="scheduleToggleBtnContainer" class="hidden">
+              <button type="button" onclick="toggleFutureSchedules()" aria-label="今後のスケジュールを表示"
+                class="text-[10px] text-brand-600 font-bold bg-brand-50 hover:bg-brand-100 border border-brand-200 transition-colors px-2.5 py-1.5 rounded-lg shadow-sm flex items-center gap-1">
+                <span>今後の予定</span>
+                <span class="bg-white px-1.5 rounded-full text-brand-600 shadow-sm" id="futureScheduleCount">0</span>
                 <span>▾</span>
               </button>
             </div>
-            <div id="futureSchedulesSection" class="hidden mt-3 max-h-40 overflow-y-auto space-y-2">
-              <div id="futureSchedulesList"></div>
+          </div>
+          
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center">
+            <p class="text-[10px] text-brand-600 font-bold mb-1">次回イーグル会 開催予定</p>
+            <p id="nextCompeDateDisplay" class="text-xl font-black text-slate-800 tracking-wide mb-2">未定</p>
+            <div id="nextClubCompeBadge" class="hidden">
+              <span class="inline-block bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                🏆 公式競技: <span id="nextClubCompeName"></span>
+              </span>
             </div>
+          </div>
+          
+          <div id="futureSchedulesSection" class="hidden mt-4 pt-3 border-t border-dashed border-slate-200 max-h-40 overflow-y-auto">
+            <div id="futureSchedulesList" class="space-y-3"></div>
           </div>
         </div>`;
     }
@@ -340,16 +344,31 @@
           </div>
           
           <div class="grid grid-cols-2 gap-3 mb-5">
-            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center text-center">
-              <p class="text-[10px] text-slate-500 font-bold mb-1">イーグル会 HDCP</p>
-              <p class="text-3xl font-black text-brand-600">${escapeHtml(String(res.eagleHdcp || '-'))}</p>
-              <p class="text-[9px] text-slate-400 mt-1">更新: ${escapeHtml(res.eagleUpdateDate || '')}</p>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-between text-center">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold mb-1">イーグル会 HDCP</p>
+                <p class="text-3xl font-black text-brand-600">${escapeHtml(String(res.eagleHdcp || '-'))}</p>
+                <p class="text-[9px] text-slate-400 mt-1">更新: ${escapeHtml(res.eagleUpdateDate || '')}</p>
+              </div>
+              <div class="mt-2">
+                <span class="inline-block bg-white border border-brand-200 text-brand-600 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm w-full">
+                  ⛳ ティー: ${escapeHtml(res.eagleTee || '未設定')}
+                </span>
+              </div>
             </div>
-            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center text-center relative overflow-hidden transition-colors hover:bg-slate-100">
-              <p class="text-[10px] text-slate-500 font-bold mb-1">倶楽部公式 HDCP</p>
-              <p class="text-3xl font-black text-purple-600" id="officialHdcpDisplay">${escapeHtml(String(res.officialHdcp || '-'))}</p>
-              <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px]"></div>
-              <button onclick="toggleOfficialHdcpHistory()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="推移を見る"></button>
+            
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-between text-center">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold mb-1">倶楽部公式 HDCP</p>
+                <p class="text-3xl font-black text-purple-600" id="officialHdcpDisplay">${escapeHtml(String(res.officialHdcp || '-'))}</p>
+                <p class="text-[9px] text-slate-400 mt-1">更新: ${escapeHtml(res.officialUpdateDate || '')}</p>
+                <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px]"></div>
+              </div>
+              <div class="mt-2">
+                <button type="button" onclick="toggleOfficialHdcpHistory()" class="text-[10px] font-bold text-purple-600 bg-purple-100 hover:bg-purple-200 transition-colors py-1 px-2 rounded w-full shadow-sm">
+                  📊 推移を見る
+                </button>
+              </div>
             </div>
           </div>
           
@@ -388,7 +407,7 @@
                   <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
                   <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-[9px] font-normal font-sans">📈</span></th>
                   <th scope="col" class="py-2 text-right font-bold">GROSS</th>
-                  <th scope="col" class="py-2 pl-2 text-right font-bold">NET</th>
+                  <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
                 </tr>
               </thead>
               <tbody id="scoreContainer"></tbody>
@@ -438,7 +457,7 @@
                   <th scope="col" class="py-2 font-bold">日付</th>
                   <th scope="col" class="py-2 text-right font-bold">順位</th>
                   <th scope="col" class="py-2 text-right font-bold">GROSS</th>
-                  <th scope="col" class="py-2 pl-2 text-right font-bold">NET</th>
+                  <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
                 </tr>
               </thead>
               <tbody id="myScoreTableBody"></tbody>
@@ -466,7 +485,7 @@
         </div>`;
     }
 
-    function buildAdminSection(res) {
+    function buildAdminSection() {
       return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden mt-8">
           <button onclick="toggleAdminMenu()" class="w-full p-4 flex justify-between items-center bg-slate-800 text-white font-bold text-sm focus:outline-none hover:bg-slate-700 transition-colors">
@@ -486,7 +505,7 @@
               <h4 class="font-bold text-slate-800 mb-2 text-xs">🔑 パスワードリセット</h4>
               <div class="space-y-2 mb-3">
                 <input type="text" id="resetTargetId" placeholder="対象ログインID" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
-                <input type="text" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                <input type="password" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
               </div>
               <button type="button" onclick="onResetPassword()" id="resetPasswordBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">リセット実行</button>
               <p id="resetPasswordStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
@@ -527,6 +546,7 @@
       `;
     }
 
+    
     // ==========================================
     // LOGIC & DATA FETCHING
     // ==========================================
@@ -537,7 +557,7 @@
       icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
     }
 
-    function setupScheduleDisplay(res) {
+function setupScheduleDisplay(res) {
       if (res.nextCompe) {
         document.getElementById('nextCompeDateDisplay').textContent =
           `${res.nextCompe.dateText} ${res.nextCompe.timeText}`;
@@ -551,15 +571,19 @@
       if (res.futureSchedules && res.futureSchedules.length > 0) {
         document.getElementById('futureScheduleCount').textContent = res.futureSchedules.length;
         document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
+        // スマホで詰まらないように縦積みに戻し、デザインを調整
         listContainer.innerHTML = res.futureSchedules.map(s => `
-          <div class="flex justify-between items-center text-[11px] bg-white/10 p-2 rounded-lg backdrop-blur-sm">
-            <span class="font-bold">${escapeHtml(s.dateText)}</span>
-            <span class="opacity-90">${escapeHtml(s.timeText)}</span>
-            ${s.clubCompe ? `<span class="text-amber-300 font-bold ml-1 text-[10px]">🏆 ${escapeHtml(s.clubCompe)}</span>` : ''}
+          <div class="flex flex-col border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+            <div class="flex justify-between items-center text-xs mb-1">
+              <span class="font-bold text-slate-800">${escapeHtml(s.dateText)}</span>
+              <span class="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded shadow-sm">${escapeHtml(s.timeText)}</span>
+            </div>
+            ${s.clubCompe ? `<div class="text-[10px] text-amber-600 font-bold mt-1">🏆 公式競技: ${escapeHtml(s.clubCompe)}</div>` : ''}
           </div>`).join('');
       }
     }
 
+    
     function toggleFutureSchedules() {
       document.getElementById('futureSchedulesSection').classList.toggle('hidden');
     }
@@ -765,10 +789,9 @@
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
       const rankStyle = (r) => r === 1 ? 'text-amber-500 font-black' : r === 2 ? 'text-slate-400 font-black' : r === 3 ? 'text-amber-700 font-black' : 'text-slate-600 font-bold';
 
-      document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
+　　　document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
         const rank = Number(row['順位']);
         const isMe = row['名前'] === State.currentUser;
-        // 【完全維持】XSS対策の data-name
         return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
           <td class="py-3 text-center whitespace-nowrap ${rankStyle(rank)} text-xs">${rankBadge(rank)}</td>
           <td class="py-3 font-bold ${isMe ? 'text-brand-700' : 'text-slate-800'}">
@@ -777,11 +800,11 @@
             </button>
           </td>
           <td class="py-3 text-right text-slate-500 font-medium whitespace-nowrap">${escapeHtml(String(row['GROSS']))}</td>
-          <td class="py-3 pl-2 text-right text-brand-600 font-black whitespace-nowrap">${escapeHtml(String(row['NET']))}</td>
+          <td class="py-3 pr-4 text-right text-brand-600 font-black whitespace-nowrap">${escapeHtml(String(row['NET']))}</td>
         </tr>`;
       }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
     }
-
+    
     // 【完全維持】ランキングの0件時ヘッダー未初期化ガード
     function setupRanking() {
       State.rankingByTerm = {};
@@ -1469,8 +1492,8 @@
     });
   </script>
 
-  <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeSettingsModal()">
-    <div class="flex items-end sm:items-center justify-center min-h-screen p-4 pb-10">
+<div id="settingsModal" class="fixed inset-0 bg-slate-900/40 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeSettingsModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onclick="event.stopPropagation()">
         <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 class="font-bold text-slate-700 text-sm">設定・メニュー</h3>
@@ -1491,7 +1514,7 @@
       </div>
     </div>
   </div>
-
+  
   <div id="memberHdcpModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeMemberHdcpModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onclick="event.stopPropagation()">
