@@ -220,12 +220,15 @@
       }
     }
 
-    async function onLogout(btnElement) {
+async function onLogout(btnElement) {
+      let originalHtml = '';
       if (btnElement) {
+        originalHtml = btnElement.innerHTML;
         btnElement.disabled = true;
         btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
       }
-      await callGasApi('logout').catch(() => {});
+
+      callGasApi('logout').catch(() => {});
       
       State.authToken   = null;
       State.currentUser = null;
@@ -240,8 +243,13 @@
       document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('loginId').value = '';
       window.scrollTo(0, 0);
+      if (btnElement) {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalHtml;
+      }
     }
 
+    
     function initSession(res) {
       State.authRes                 = res;
       State.currentUser             = res.name;
