@@ -225,7 +225,7 @@
         .map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    async function onLogin(event) {
+     async function onLogin(event) {
       event.preventDefault();
       const id  = document.getElementById('loginId').value.trim();
       const pw  = document.getElementById('loginPw').value;
@@ -256,7 +256,8 @@
           err.classList.remove('hidden');
         }
       } catch {
-        err.textContent = '通信エラー、またはシステム制限です。時間をおいてお試しください。';
+        // 【修正】エラーメッセージを具体化し、メンテナンスの可能性を示唆
+        err.innerHTML = '通信エラーが発生しました。<br>システムメンテナンス中、またはネットワークが不安定な可能性があります。<br>しばらく時間をおいてお試しください。';
         err.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -1605,7 +1606,8 @@ async function onUserManualSync(btnElement) {
           
           if (btn) btn.disabled = true; // 裏側のボタンをロック
           
-          const res = await callGasApi('checkLogin', { id, password: hashedPw });
+          // 【修正】自動ログイン時のフリーズを防ぐため、第3引数に「0(リトライなし)」を指定
+          const res = await callGasApi('checkLogin', { id, password: hashedPw }, 0);
           
           if (res.success) {
             State.loginId = id;
@@ -1613,27 +1615,37 @@ async function onUserManualSync(btnElement) {
             
             if (btn) btn.disabled = false;
             
-            // 【追加】通信成功後、ローダーをフェードアウトさせて裏のメイン画面を見せる
+            // 通信成功後、ローダーをフェードアウトさせて裏のメイン画面を見せる
             const loader = document.getElementById('appLoader');
             if (loader) {
               loader.classList.add('opacity-0');
               setTimeout(() => { loader.style.display = 'none'; }, 300);
             }
           } else {
+            // パスワード変更などで認証に弾かれた場合は自動ログイン情報を破棄
             localStorage.removeItem('eagle_auto_login');
             if (btn) btn.disabled = false;
             if (err) {
-              err.textContent = 'セッションが切れました。再度ログインしてください。';
+              err.textContent = res.error || 'セッションが切れました。再度ログインしてください。';
               err.classList.remove('hidden');
             }
-            // 失敗時はローダーを消してログイン画面を見せる
+            // ローダーを消してログイン画面を見せる
             document.getElementById('appLoader').style.display = 'none';
           }
         } catch (e) {
           console.error('自動ログインに失敗しました', e);
+          
+          // 【追加】一定時間応答がない、または通信エラーの場合は強制的に完全ログアウト状態にする
+          localStorage.removeItem('eagle_auto_login');
+          
           const btn = document.getElementById('loginBtn');
+          const err = document.getElementById('loginError');
           if (btn) btn.disabled = false;
-          // エラー時もローダーを消す
+          if (err) {
+            err.innerHTML = '自動ログインに失敗しました。<br>現在システムメンテナンス中、または通信環境が不安定な可能性があります。<br>しばらく待ってから手動でログインをお試しください。';
+            err.classList.remove('hidden');
+          }
+          // ローダーを消して、手動ログイン画面を表示する
           document.getElementById('appLoader').style.display = 'none';
         }
       }
