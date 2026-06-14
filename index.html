@@ -253,7 +253,7 @@
       }
     }
 
-async function onLogout(btnElement) {
+      async function onLogout(btnElement) {
       let originalHtml = '';
       if (btnElement) {
         originalHtml = btnElement.innerHTML;
@@ -261,6 +261,7 @@ async function onLogout(btnElement) {
         btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
       }
 
+      // サーバーのログアウト処理は裏で投げっぱなしにする
       callGasApi('logout').catch(() => {});
       
       State.authToken   = null;
@@ -269,20 +270,32 @@ async function onLogout(btnElement) {
       
       localStorage.removeItem('eagle_data_cache');
       localStorage.removeItem('eagle_cache_timestamp');
-      localStorage.removeItem('eagle_auto_login');
+      localStorage.removeItem('eagle_auto_login'); // 自動ログイン情報を完全に破棄
 
       closeSettingsModal();
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
+      
+      // ログイン画面の完全リセット
       document.getElementById('loginId').value = '';
+      document.getElementById('loginPw').value = '';
+      document.getElementById('loginError').classList.add('hidden');
+      
+      const mainLoginBtn = document.getElementById('loginBtn');
+      if (mainLoginBtn) {
+        mainLoginBtn.disabled = false;
+        mainLoginBtn.textContent = 'ログイン';
+      }
+
       window.scrollTo(0, 0);
-      if (btnElement) {
+
+      // メニューのログアウトボタンを元の状態に戻す
+      if (btnElement && document.body.contains(btnElement)) {
         btnElement.disabled = false;
         btnElement.innerHTML = originalHtml;
       }
     }
-
     
     function initSession(res) {
       State.authRes                 = res;
@@ -301,7 +314,7 @@ async function onLogout(btnElement) {
       loadAllData();
     }
 
-// ==========================================
+    // ==========================================
     // UI BUILDERS (スタイリッシュな新構成)
     // ==========================================
     function buildMainUI(res) {
@@ -1580,18 +1593,20 @@ async function onUserManualSync(btnElement) {
           const btn = document.getElementById('loginBtn');
           const err = document.getElementById('loginError');
           
-          // ログインボタンをローディング状態にして画面操作をロック
           btn.disabled = true;
           btn.innerHTML = `${SPINNER_SVG}自動ログイン中...`;
           
-          // 裏側で認証を実行
           const res = await callGasApi('checkLogin', { id, password: hashedPw });
           
           if (res.success) {
             State.loginId = id;
-            initSession(res); // 成功すればそのままメイン画面へ
+            initSession(res); 
+            
+            // 自動ログイン成功後、裏側に隠れるボタンを元の状態に戻しておく
+            btn.disabled = false;
+            btn.textContent = 'ログイン';
+            
           } else {
-            // 管理者によるPWリセット等で弾かれた場合は情報をクリアして手動入力を促す
             localStorage.removeItem('eagle_auto_login');
             btn.disabled = false;
             btn.textContent = 'ログイン';
@@ -1601,11 +1616,14 @@ async function onUserManualSync(btnElement) {
         } catch (e) {
           console.error('自動ログインに失敗しました', e);
           const btn = document.getElementById('loginBtn');
-          btn.disabled = false;
-          btn.textContent = 'ログイン';
+          if (btn) {
+             btn.disabled = false;
+             btn.textContent = 'ログイン';
+          }
         }
       }
     });
+  
   </script>
 
 <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeSettingsModal()">
