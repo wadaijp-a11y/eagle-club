@@ -44,7 +44,18 @@
 </head>
 
 <body class="bg-slate-50 min-h-screen flex flex-col items-center justify-start text-slate-800 font-sans antialiased">
-
+  <div id="appLoader" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-50 transition-opacity duration-300">
+    <svg class="animate-spin h-10 w-10 text-brand-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+    <p id="appLoaderText" class="text-sm font-bold text-slate-500 tracking-wider">読み込み中...</p>
+  </div>
+  <script>
+    // 画面が描画される前に判定し、自動ログイン不要ならローダーを即座に消す
+    if (!localStorage.getItem('eagle_auto_login')) {
+      document.getElementById('appLoader').style.display = 'none';
+    } else {
+      document.getElementById('appLoaderText').textContent = '自動ログイン中...';
+    }
+  </script>
   <section id="loginSection" class="w-full max-w-md mt-12 px-4">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-7">
       <h1 class="text-2xl font-black mb-8 text-center text-brand-600 tracking-widest">イーグル会</h1>
@@ -1590,11 +1601,10 @@ async function onUserManualSync(btnElement) {
       if (autoLoginStr) {
         try {
           const { id, hashedPw } = JSON.parse(autoLoginStr);
-          const btn = document.getElementById('loginBtn');
           const err = document.getElementById('loginError');
+          const btn = document.getElementById('loginBtn');
           
-          btn.disabled = true;
-          btn.innerHTML = `${SPINNER_SVG}自動ログイン中...`;
+          if (btn) btn.disabled = true; // 裏側のボタンをロック
           
           const res = await callGasApi('checkLogin', { id, password: hashedPw });
           
@@ -1602,24 +1612,30 @@ async function onUserManualSync(btnElement) {
             State.loginId = id;
             initSession(res); 
             
-            // 自動ログイン成功後、裏側に隠れるボタンを元の状態に戻しておく
-            btn.disabled = false;
-            btn.textContent = 'ログイン';
+            if (btn) btn.disabled = false;
             
+            // 【追加】通信成功後、ローダーをフェードアウトさせて裏のメイン画面を見せる
+            const loader = document.getElementById('appLoader');
+            if (loader) {
+              loader.classList.add('opacity-0');
+              setTimeout(() => { loader.style.display = 'none'; }, 300);
+            }
           } else {
             localStorage.removeItem('eagle_auto_login');
-            btn.disabled = false;
-            btn.textContent = 'ログイン';
-            err.textContent = 'セッションが切れました。再度ログインしてください。';
-            err.classList.remove('hidden');
+            if (btn) btn.disabled = false;
+            if (err) {
+              err.textContent = 'セッションが切れました。再度ログインしてください。';
+              err.classList.remove('hidden');
+            }
+            // 失敗時はローダーを消してログイン画面を見せる
+            document.getElementById('appLoader').style.display = 'none';
           }
         } catch (e) {
           console.error('自動ログインに失敗しました', e);
           const btn = document.getElementById('loginBtn');
-          if (btn) {
-             btn.disabled = false;
-             btn.textContent = 'ログイン';
-          }
+          if (btn) btn.disabled = false;
+          // エラー時もローダーを消す
+          document.getElementById('appLoader').style.display = 'none';
         }
       }
     });
