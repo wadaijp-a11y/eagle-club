@@ -328,7 +328,7 @@ localStorage.removeItem('eagle_user_profile');
     }
 
     // ==========================================
-    // UI BUILDERS (スタイリッシュな新構成)
+    // UI BUILDERS
     // ==========================================
     function buildMainUI(res) {
       const isAdmin = res.role === '管理者';
@@ -432,23 +432,28 @@ function buildScheduleCard(res) {
                 </span>
               </div>
             </div>
-            
-            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-between text-center">
-              <div>
+
+            <button type="button" onclick="toggleOfficialHdcpHistory()" class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-between text-center hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-300 relative w-full h-full">
+              <div class="w-full">
                 <p class="text-[10px] text-slate-500 font-bold mb-1">倶楽部公式 HDCP</p>
                 <p class="text-3xl font-black text-purple-600" id="officialHdcpDisplay">${escapeHtml(String(res.officialHdcp || '-'))}</p>
                 <p class="text-[9px] text-slate-400 mt-1">更新: ${escapeHtml(res.officialUpdateDate || '')}</p>
-                <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px]"></div>
+                <!-- メイン画面用のコンパクト表示（既存維持） -->
+                <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px] w-full"></div>
               </div>
-              <div class="mt-2">
-                <button type="button" onclick="toggleOfficialHdcpHistory()" class="text-[10px] font-bold text-purple-600 bg-purple-100 hover:bg-purple-200 transition-colors py-1 px-2 rounded w-full shadow-sm">
-                  📊 推移を見る
-                </button>
+              <div class="mt-2 text-[10px] font-bold text-purple-600 w-full flex justify-center items-center gap-1 opacity-80">
+                詳細・推移 <svg id="officialHdcpToggleIcon" class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
               </div>
-            </div>
+            </button>
           </div>
           
           <div id="officialHdcpHistorySection" class="hidden mb-5 pt-3 border-t border-slate-100">
+            <!-- 展開時用の見やすいコースHDCP表示を追加 -->
+            <div class="mb-4 bg-purple-50/50 rounded-xl p-3 border border-purple-100">
+               <p class="text-[10px] font-bold text-purple-800 mb-2 text-center">各色ティーの換算HDCP</p>
+               <div id="courseHdcpContainerLarge" class="grid grid-cols-5 gap-1.5"></div>
+            </div>
+            
             <p class="text-xs font-bold text-slate-600 mb-2 text-center">公式HDCPの推移</p>
             <div class="py-1"><canvas id="officialHdcpChart"></canvas></div>
             <div class="max-h-32 overflow-y-auto mt-2 -mx-1 px-1">
@@ -794,17 +799,34 @@ function setupScheduleDisplay(res) {
       calc(index, sr, cr, par) {
         return isNaN(index) ? '-' : Math.round((index * sr / 113) + (cr - par));
       },
-      render() {
+            render() {
         const container = document.getElementById('courseHdcpContainer');
-        if (!container) return;
+        const largeContainer = document.getElementById('courseHdcpContainerLarge');
         const index = parseFloat(State.myOfficialHdcp);
-        if (isNaN(index)) { container.innerHTML = ''; return; }
-        container.innerHTML = this.RATINGS[State.gender].map(r => `
-          <span class="px-1.5 py-0.5 ${r.bg} rounded text-[10px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
-            <span class="opacity-90">${r.name}</span><span class="text-xs">${this.calc(index, r.sr, r.cr, r.par)}</span>
-          </span>`).join('');
+        
+        if (isNaN(index)) {
+          if (container) container.innerHTML = '';
+          if (largeContainer) largeContainer.innerHTML = '';
+          return;
+        }
+
+        // メイン画面用（コンパクト）
+        if (container) {
+          container.innerHTML = this.RATINGS[State.gender].map(r => `
+            <span class="px-1.5 py-0.5 ${r.bg} rounded text-[10px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
+              <span class="opacity-90">${r.name}</span><span class="text-xs">${this.calc(index, r.sr, r.cr, r.par)}</span>
+            </span>`).join('');
+        }
+
+        // 展開時用（大きく見やすい表示）
+        if (largeContainer) {
+          largeContainer.innerHTML = this.RATINGS[State.gender].map(r => `
+            <div class="${r.bg} rounded-lg p-1.5 shadow-sm flex flex-col items-center justify-center">
+              <span class="text-[10px] font-bold opacity-90">${r.name}</span>
+              <span class="text-base font-black leading-none mt-0.5">${this.calc(index, r.sr, r.cr, r.par)}</span>
+            </div>`).join('');
+        }
       },
-    };
 
     // ==========================================
     // 各種レンダリングロジック
@@ -812,6 +834,9 @@ function setupScheduleDisplay(res) {
     function toggleOfficialHdcpHistory() {
       const section = document.getElementById('officialHdcpHistorySection');
       section.classList.toggle('hidden');
+if (icon) {
+        icon.style.transform = section.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
       if (!section.classList.contains('hidden') && !State.isOfficialHistoryLoaded) {
         loadOfficialHdcpHistory();
       }
@@ -1782,7 +1807,7 @@ async function onUserManualSync(btnElement) {
           
           <section>
             <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 6. セキュリティとアカウント管理</h4>
-            <p class="leading-relaxed text-[13px]">不正アクセス対策は可能な範囲で実装していますが、完全なセキュリティを保証するものではありません。各メンバーに割り当てられたログインIDおよびパスワードは、各自の責任において厳重に管理してください。なお、パスワードを失念した場合はシステム上で再発行（リセット）を行いますので、管理者までご連絡ください。</p>
+            <p class="leading-relaxed text-[13px]">不正アクセス対策は可能な範囲で実装していますが、完全なセキュリティを保証するものではありません。各メンバーに割り当てられたログインIDおよびパスワードは、各自の責任において厳重に管理してください。</p>
           </section>
         </div>
         
