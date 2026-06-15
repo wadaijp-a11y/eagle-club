@@ -250,6 +250,7 @@
           State.loginId = id;
           document.getElementById('loginPw').value = '';
           localStorage.setItem('eagle_auto_login', JSON.stringify({ id, hashedPw }));
+localStorage.setItem('eagle_user_profile', JSON.stringify(res));
           initSession(res);
         } else {
           err.textContent = res.error || 'IDまたはパスワードが違います';
@@ -279,11 +280,10 @@
       State.authToken   = null;
       State.currentUser = null;
       State.authRes     = null;
-      
       localStorage.removeItem('eagle_data_cache');
-      localStorage.removeItem('eagle_cache_timestamp');
-      localStorage.removeItem('eagle_auto_login'); // 自動ログイン情報を完全に破棄
-
+localStorage.removeItem('eagle_cache_timestamp');
+localStorage.removeItem('eagle_auto_login'); 
+localStorage.removeItem('eagle_user_profile');
       closeSettingsModal();
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
@@ -1598,54 +1598,79 @@ async function onUserManualSync(btnElement) {
     // ==========================================
     document.addEventListener('DOMContentLoaded', async () => {
       const autoLoginStr = localStorage.getItem('eagle_auto_login');
+      const userProfileStr = localStorage.getItem('eagle_user_profile');
+      
       if (autoLoginStr) {
         try {
           const { id, hashedPw } = JSON.parse(autoLoginStr);
-          const err = document.getElementById('loginError');
-          const btn = document.getElementById('loginBtn');
           
-          if (btn) btn.disabled = true; // 裏側のボタンをロック
-          
-          // 自動ログイン時のフリーズを防ぐため、第3引数に「0(リトライなし)」を指定
-          const res = await callGasApi('checkLogin', { id, password: hashedPw }, 0);
-          
-          if (res.success) {
+          if (userProfileStr) {
+            // ▼ パターンA：プロフィール記憶あり（0秒で画面を描画）
+            const userProfile = JSON.parse(userProfileStr);
             State.loginId = id;
-            initSession(res); 
             
-            if (btn) btn.disabled = false;
+            // GASを待たずに即座にセッションを開始して画面を描画
+            initSession(userProfile);
             
-            // 通信成功後、ローダーをフェードアウトさせて裏のメイン画面を見せる
+            // ローダーを即座に消す（待ち時間ゼロ）
             const loader = document.getElementById('appLoader');
-            if (loader) {
-              loader.classList.add('opacity-0');
-              setTimeout(() => { loader.style.display = 'none'; }, 300);
-            }
+            if (loader) loader.style.display = 'none';
+
+            // 裏側でこっそりGASと通信し、セッションの有効性を確認
+            callGasApi('checkLogin', { id, password: hashedPw }, 0).then(res => {
+              if (res.success) {
+                // プロフィールが更新されているかもしれないのでローカルを最新化
+                localStorage.setItem('eagle_user_profile', JSON.stringify(res));
+                // もし管理者が裏でメンテナンスモードに入れた場合は画面に反映
+                if (res.maintenanceMode !== State.maintenanceMode) {
+                   State.maintenanceMode = res.maintenanceMode;
+                   buildMainUI(res);
+                }
+              } else {
+                throw new Error(res.error);
+              }
+            }).catch(e => {
+              // 裏側の認証で弾かれた場合（パスワード変更やシステム停止など）
+              console.error('バックグラウンド認証エラー:', e);
+              localStorage.removeItem('eagle_auto_login');
+              localStorage.removeItem('eagle_user_profile');
+              alert('セッションが切れました。再度ログインしてください。');
+              window.location.reload(); // ページをリロードして強制的にログイン画面へ戻す
+            });
+
           } else {
-            // パスワード変更などで認証に弾かれた場合は自動ログイン情報を破棄
-            localStorage.removeItem('eagle_auto_login');
-            if (btn) btn.disabled = false;
-            if (err) {
-              err.textContent = res.error || 'セッションが切れました。再度ログインしてください。';
-              err.classList.remove('hidden');
+            // ▼ パターンB：プロフィール記憶なし（従来通り待機）
+            const err = document.getElementById('loginError');
+            const btn = document.getElementById('loginBtn');
+            if (btn) btn.disabled = true; 
+            
+            const res = await callGasApi('checkLogin', { id, password: hashedPw }, 0);
+            
+            if (res.success) {
+              State.loginId = id;
+              localStorage.setItem('eagle_user_profile', JSON.stringify(res));
+              initSession(res); 
+              
+              if (btn) btn.disabled = false;
+              const loader = document.getElementById('appLoader');
+              if (loader) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => { loader.style.display = 'none'; }, 300);
+              }
+            } else {
+              localStorage.removeItem('eagle_auto_login');
+              if (btn) btn.disabled = false;
+              if (err) {
+                err.textContent = res.error || 'セッションが切れました。再度ログインしてください。';
+                err.classList.remove('hidden');
+              }
+              document.getElementById('appLoader').style.display = 'none';
             }
-            // ローダーを消してログイン画面を見せる
-            document.getElementById('appLoader').style.display = 'none';
           }
         } catch (e) {
-          console.error('自動ログインに失敗しました', e);
-          
-          // 一定時間応答がない、または通信エラーの場合は強制的に完全ログアウト状態にする
+          console.error('自動ログイン初期化エラー', e);
           localStorage.removeItem('eagle_auto_login');
-          
-          const btn = document.getElementById('loginBtn');
-          const err = document.getElementById('loginError');
-          if (btn) btn.disabled = false;
-          if (err) {
-            err.innerHTML = '自動ログインに失敗しました。<br>現在システムメンテナンス中、または通信環境が不安定な可能性があります。<br>しばらく待ってから手動でログインをお試しください。';
-            err.classList.remove('hidden');
-          }
-          // ローダーを消して、手動ログイン画面を表示する
+          localStorage.removeItem('eagle_user_profile');
           document.getElementById('appLoader').style.display = 'none';
         }
       }
