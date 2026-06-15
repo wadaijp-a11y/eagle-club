@@ -1731,42 +1731,62 @@ async function onUserManualSync(btnElement) {
     </div>
   </div>
 
+
   <div id="termsModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeTermsModal()">
     <div class="flex items-center justify-center min-h-screen p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-5">
-          <h3 class="font-black text-slate-800 text-lg">免責事項・利用のルール</h3>
+        
+        <!-- モーダルヘッダー -->
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-5 shrink-0">
+          <h3 class="font-black text-slate-800 text-lg">利用ルール・免責事項</h3>
           <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none">&times;</button>
         </div>
+        
+        <!-- モーダルコンテンツ（スクロール領域） -->
         <div class="overflow-y-auto pr-2 text-sm text-slate-600 space-y-6">
-          <section>
-            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 1. 運営と免責</h4>
-            <p class="leading-relaxed text-[13px]">本アプリは運営管理者が無償で独自に開発・運用しています。バグや不具合、データ消失によって生じた不利益について、管理者は一切の責任を負いかねます。</p>
+          
+          <!-- アプリ概要のハイライトボックス -->
+          <section class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h4 class="font-bold text-slate-800 mb-2 text-[13px] text-center">【本アプリについて】</h4>
+            <p class="leading-relaxed text-[12px] text-slate-600">本アプリは、イーグル会メンバー専用の成績・ハンディキャップ管理アプリです。過去のラウンド結果や公式・独自HDCPの推移を整理・管理することを目的としています。</p>
           </section>
+
           <section>
-            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 2. データの精度について</h4>
-            <p class="leading-relaxed text-[13px]">本アプリに記載のハンディキャップおよびイーグル会の成績は、AIによる画像認識（OCR）を用いて自動登録しています。そのため、読み取り誤りが含まれます。記載されているハンディキャップの正確性は補償いたしませんので、実際の競技の際は、各自で最新の公式ハンディキャップを必ずご確認ください。アプリ内の記載に誤りを発見した際はLINE等でお知らせください。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 1. 運営と免責について</h4>
+            <p class="leading-relaxed text-[13px]">本アプリは、管理者が独自に開発・運用しています。バグや不具合、システム停止、データ消失によって生じた直接的・間接的な不利益について、管理者は一切の責任を負いかねます。</p>
           </section>
+          
           <section>
-            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 3. 情報の取り扱いについて</h4>
-            <p class="leading-relaxed text-[13px]">本アプリ内の情報は、倶楽部のメンバーサイトおよびイーグル会の成績表を元にしています。メンバー以外への共有・公開・SNS等への投稿はお控えください。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 2. データ精度に関する注意</h4>
+            <p class="leading-relaxed text-[13px]">本アプリ内の成績やハンディキャップは、AI（画像認識・OCR）を用いて自動登録されているため、読み取り精度による誤りが含まれる可能性があります。記載データの正確性を完全に保証するものではありませんので、実際の競技に参加される際は、必ず各自で最新の公式ハンディキャップをご確認ください。万が一、データに誤りを発見した場合は、LINE等で管理者までお知らせください。</p>
           </section>
+          
           <section>
-            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 4. システムの稼働について</h4>
-            <p class="leading-relaxed text-[13px]">本アプリは、GoogleやGitHubなどの無料インフラ、および各種AI・外部APIサービスを活用して構築されています。これら外部サービスの仕様変更やアクセス集中により、予告なく機能停止や読み込み遅延が発生する場合があります。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 3. 情報の取り扱い（機密性）</h4>
+            <p class="leading-relaxed text-[13px]">本アプリ内に掲載されている情報は、倶楽部メンバーサイトおよびイーグル会の成績表に基づくプライベートなデータです。スクリーンショットのSNS投稿を含め、イーグル会メンバー以外への共有・公開はお控えください。</p>
           </section>
+          
           <section>
-            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 5. サービスの継続性について</h4>
-            <p class="leading-relaxed text-[13px]">本アプリは管理者が個人で運営しており、管理者の都合により予告なくサービスを終了する場合があります。予め、ご了承ください。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 4. システム稼働と外部サービス依存</h4>
+            <p class="leading-relaxed text-[13px]">本アプリは、GoogleやGitHubが提供する無料インフラ、および各種AI・外部APIサービスを組み合わせて構築しています。そのため、外部サービスの仕様変更、障害、またはアクセス集中による制限などにより、予告なく機能の停止や読み込み遅延が発生する場合があります。</p>
           </section>
+          
           <section>
-            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 6. アカウントとセキュリティ</h4>
-            <p class="leading-relaxed text-[13px]">アプリ内への不正アクセス対策は可能な範囲で実施していますが、アカウントIDやパスワードの管理は各自で厳重にお願い致します。</p>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 5. サービスの継続性</h4>
+            <p class="leading-relaxed text-[13px]">個人による運営のため、管理者の都合やインフラ維持の観点から、事前の予告なくサービスの提供を中断・終了する場合があります。あらかじめご了承ください。</p>
+          </section>
+          
+          <section>
+            <h4 class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-brand-500 text-xs">■</span> 6. セキュリティとアカウント管理</h4>
+            <p class="leading-relaxed text-[13px]">不正アクセス対策は可能な範囲で実装していますが、完全なセキュリティを保証するものではありません。各メンバーに割り当てられたログインIDおよびパスワードは、各自の責任において厳重に管理してください。</p>
           </section>
         </div>
-        <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+        
+        <!-- モーダルフッター -->
+        <div class="mt-6 pt-5 border-t border-slate-100 text-center shrink-0">
           <button type="button" onclick="closeTermsModal()" class="w-full bg-slate-100 text-slate-700 p-3 rounded-xl font-bold hover:bg-slate-200 transition-colors shadow-sm">確認して閉じる</button>
         </div>
+        
       </div>
     </div>
   </div>
