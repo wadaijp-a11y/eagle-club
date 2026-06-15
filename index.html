@@ -819,6 +819,7 @@ function setupScheduleDisplay(res) {
         }
 
         // 展開時用（大きく見やすい表示）
+                // 展開時用（大きく見やすい表示）
         if (largeContainer) {
           largeContainer.innerHTML = this.RATINGS[State.gender].map(r => `
             <div class="${r.bg} rounded-lg p-1.5 shadow-sm flex flex-col items-center justify-center">
@@ -826,17 +827,22 @@ function setupScheduleDisplay(res) {
               <span class="text-base font-black leading-none mt-0.5">${this.calc(index, r.sr, r.cr, r.par)}</span>
             </div>`).join('');
         }
-      },
+      }
+    };
 
     // ==========================================
     // 各種レンダリングロジック
     // ==========================================
     function toggleOfficialHdcpHistory() {
       const section = document.getElementById('officialHdcpHistorySection');
+      const icon = document.getElementById('officialHdcpToggleIcon');
+      
       section.classList.toggle('hidden');
-if (icon) {
+
+      if (icon) {
         icon.style.transform = section.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
       }
+      
       if (!section.classList.contains('hidden') && !State.isOfficialHistoryLoaded) {
         loadOfficialHdcpHistory();
       }
@@ -895,7 +901,7 @@ if (icon) {
     function setupCompeResults() {
   const sel = document.getElementById('dateSelect');
   if (State.allScoreHistory.length === 0) {
-    document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
     return;
   }
       const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort((a, b) => new Date(b) - new Date(a));
