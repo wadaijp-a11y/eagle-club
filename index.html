@@ -447,19 +447,25 @@ function buildScheduleCard(res) {
             </button>
           </div>
           
-          <div id="officialHdcpHistorySection" class="hidden mb-5 pt-3 border-t border-slate-100">
-            <!-- 展開時用の見やすいコースHDCP表示を追加 -->
-            <div class="mb-4 bg-purple-50/50 rounded-xl p-3 border border-purple-100">
+                    <div id="officialHdcpHistorySection" class="hidden mt-4 mb-2 p-3 bg-purple-50/50 rounded-xl border border-purple-100 shadow-inner cursor-pointer" onclick="toggleOfficialHdcpHistory()">
+            <div class="mb-4 bg-white rounded-lg p-3 border border-purple-50 shadow-sm pointer-events-none">
                <p class="text-[10px] font-bold text-purple-800 mb-2 text-center">各色ティーの換算HDCP</p>
                <div id="courseHdcpContainerLarge" class="grid grid-cols-5 gap-1.5"></div>
             </div>
             
-            <p class="text-xs font-bold text-slate-600 mb-2 text-center">公式HDCPの推移</p>
-            <div class="py-1"><canvas id="officialHdcpChart"></canvas></div>
-            <div class="max-h-32 overflow-y-auto mt-2 -mx-1 px-1">
-              <table class="w-full text-left border-collapse text-xs">
-                <tbody id="officialHdcpTableBody"></tbody>
-              </table>
+            <div class="bg-white rounded-lg p-3 border border-purple-50 shadow-sm">
+              <p class="text-xs font-bold text-purple-800 mb-2 text-center pointer-events-none">公式HDCPの推移</p>
+              <div class="py-1 pointer-events-none"><canvas id="officialHdcpChart"></canvas></div>
+              
+              <div class="max-h-32 overflow-y-auto mt-3 -mx-1 px-1 cursor-default" onclick="event.stopPropagation()">
+                <table class="w-full text-left border-collapse text-xs">
+                  <tbody id="officialHdcpTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div class="text-center mt-2.5 mb-0.5">
+              <span class="text-[10px] font-bold text-purple-500/80 tracking-wide">▲ タップして閉じる</span>
             </div>
           </div>
 
@@ -856,7 +862,7 @@ function setupScheduleDisplay(res) {
         const history = State.allOfficialHdcpHistory.filter(r => r.name === myNameNorm);
 
         if (!history || history.length === 0) {
-          tbody.innerHTML = `<tr><td class="text-center py-4 text-slate-400 text-xs">履歴データがありません</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-slate-400 text-xs">履歴データがありません</td></tr>`;
           return;
         }
 
@@ -887,9 +893,9 @@ function setupScheduleDisplay(res) {
 
         tbody.innerHTML = [...history].reverse().map(r => {
           const hdcp = r.hdcp === '不明' ? '<span class="text-red-500">不明</span>' : escapeHtml(String(r.hdcp));
-          return `<tr class="border-b border-slate-100 last:border-0">
-            <td class="py-2 text-slate-500 font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
-            <td class="py-2 text-right font-bold text-purple-600">${hdcp}</td>
+          return `<tr class="border-b border-purple-50/50 last:border-0">
+            <td class="py-2 pl-2 text-slate-500 font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
+            <td class="py-2 pr-4 text-right font-bold text-purple-600">${hdcp}</td>
           </tr>`;
         }).join('');
       } catch {
