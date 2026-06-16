@@ -1,0 +1,30 @@
+name: Deploy to GAS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run ESLint (Syntax Check)
+        run: npm run lint
+
+      - name: Deploy to GAS via Clasp
+        env:
+          CLASP_TOKEN: ${{ secrets.CLASP_TOKEN }}
+        run: |
+          echo "$CLASP_TOKEN" > ~/.clasprc.json
+          npx @google/clasp push -f

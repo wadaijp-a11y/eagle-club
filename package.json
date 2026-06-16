@@ -1,0 +1,11 @@
+{
+  "name": "eagle-club-app",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "eslint src/**/*.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-plugin-googleappsscript": "^1.0.5"
+  }
+}
