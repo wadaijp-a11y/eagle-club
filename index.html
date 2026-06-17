@@ -112,6 +112,7 @@
       currentUser:           null,
       loginId:               null,
       authToken:             null,
+      reAuthPromise:         null,
       allScoreHistory:       [],
       rankingByTerm:         {},
       availableRankingTerms: [],
@@ -145,8 +146,57 @@
       return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
     }
 
-// 自動リトライ機能付きAPIコール（指数バックオフ＆強制ログアウト対応）
-    async function callGasApi(action, data = {}, retries = 3) {
+    // ==========================================
+    // セッション自動復旧（多重実行防止ロック付き）
+    // ==========================================
+    async function performReAuth() {
+      if (State.reAuthPromise) return State.reAuthPromise;
+
+      const autoLoginStr = localStorage.getItem('eagle_auto_login');
+      if (!autoLoginStr) {
+        return { success: false, error: '自動ログイン情報がありません。' };
+      }
+
+      State.reAuthPromise = (async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          const { id, hashedPw } = JSON.parse(autoLoginStr);
+          const res = await fetch(GAS_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'checkLogin', id, password: hashedPw }),
+            redirect: 'follow',
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) {
+            return { success: false, error: 'サーバーが混雑しています。時間をおいて再度お試しください。' };
+          }
+          
+          const result = await res.json();
+          if (result.success) {
+            State.authToken = result.token;
+            localStorage.setItem('eagle_user_profile', JSON.stringify(result));
+          }
+          return result;
+        } catch (e) {
+          clearTimeout(timeoutId);
+          const msg = e.name === 'AbortError' ? '再認証がタイムアウトしました。' : '再認証中に通信エラーが発生しました。';
+          return { success: false, error: msg };
+        } finally {
+          State.reAuthPromise = null;
+        }
+      })();
+      return State.reAuthPromise;
+    }
+
+    // ==========================================
+    // 自動リトライ機能付きAPIコール（指数バックオフ＆セッション自動復旧対応）
+    // ==========================================
+    async function callGasApi(action, data = {}, retries = 3, isReauthRetry = false) {
       const payload = { action, ...data };
       if (State.authToken) payload.token = State.authToken;
       
@@ -159,29 +209,41 @@
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(payload),
           redirect: 'follow',
-          signal: controller.signal
+          signal: controller.signal,
         });
         clearTimeout(timeoutId);
         
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("text/html")) {
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
           throw new Error('GAS Overload');
         }
         
         const result = await res.json();
 
-        // バックエンドから「強制ログアウト」の指示を受けた場合の処理
+        // ▼ セッション切れの判定（エラーコード判定を優先）
+        const isSessionExpired = result.errorCode === 'SESSION_EXPIRED' || result.error === 'セッションが無効または期限切れです。';
+        
+        if (isSessionExpired && !isReauthRetry) {
+          console.warn('[イーグル会] セッション切れを検知。バックグラウンドで自動復旧します...');
+          const reAuthRes = await performReAuth();
+          if (reAuthRes.success) {
+            return callGasApi(action, data, retries, true);
+          }
+          result.forceLogout = true;
+          result.error = reAuthRes.error || '認証の有効期限が切れました。再度ログインしてください。';
+        }
+
+        // ▼ 強制ログアウト処理
         if (result.forceLogout) {
-          // すべてのローカルキャッシュと自動ログイン情報を即座に破棄
           localStorage.removeItem('eagle_auto_login');
           localStorage.removeItem('eagle_data_cache');
           localStorage.removeItem('eagle_cache_timestamp');
+          localStorage.removeItem('eagle_user_profile');
           
           State.authToken   = null;
           State.currentUser = null;
           State.authRes     = null;
 
-          // 画面を初期化して強制的にログイン画面へ戻す
           closeSettingsModal();
           document.getElementById('mainSection').innerHTML = '';
           document.getElementById('mainSection').classList.add('hidden');
@@ -189,25 +251,20 @@
           document.getElementById('loginId').value = '';
           window.scrollTo(0, 0);
 
-          // メンテナンスなどの理由をユーザーに通知
-          alert(result.error || 'セッションが切れました。再度ログインしてください。');
-          
-          // 後続の処理を止めるための内部エラー
+          if (result.error) alert(result.error);
           throw new Error('Force Logout');
         }
 
         return result;
       } catch (error) {
         clearTimeout(timeoutId);
-        
-        // 強制ログアウトの場合はリトライせずにそのままエラーを投げる
         if (error.message === 'Force Logout') throw error;
 
         if (retries > 0) {
           const delay = (Math.pow(2, 3 - retries) * 1000) + (Math.random() * 500);
           console.warn(`[イーグル会] API通信再試行: ${Math.round(delay)}ms待機 (残り${retries - 1}回)`);
           await new Promise(resolve => setTimeout(resolve, delay));
-          return callGasApi(action, data, retries - 1);
+          return callGasApi(action, data, retries - 1, isReauthRetry);
         }
         if (error.name === 'AbortError') {
           throw new Error('通信がタイムアウトしました');
