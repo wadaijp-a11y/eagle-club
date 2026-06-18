@@ -1635,7 +1635,7 @@ async function onUserManualSync(btnElement) {
           const res = await callGasApi('uploadAndProcessImage', {
             base64Data: reader.result.split(',')[1],
             mimeType:   fileInput.files[0].type,
-          });
+          }, 0, 300000);
           statusText.textContent = res.success ? `成功！ ${res.count}件のデータを登録しました。` : `エラー: ${res.error}`;
           if (res.success) {
             localStorage.removeItem('eagle_data_cache');
