@@ -432,7 +432,6 @@ localStorage.removeItem('eagle_user_profile');
       `;
       CourseHdcp.render();
       setupScheduleDisplay(res);
-    }
 if (isAdmin) renderSyncOfficialHdcpCard();
     }
         function buildHeader(res) {
@@ -1003,7 +1002,7 @@ function setupScheduleDisplay(res) {
     function setupCompeResults() {
   const sel = document.getElementById('dateSelect');
   if (State.allScoreHistory.length === 0) {
-document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+  document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
     return;
   }
       const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort((a, b) => new Date(b) - new Date(a));
@@ -1020,8 +1019,7 @@ document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class
 
       const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
       const rankStyle = (r) => r === 1 ? 'text-amber-500 font-black' : r === 2 ? 'text-slate-400 font-black' : r === 3 ? 'text-amber-700 font-black' : 'text-slate-600 font-bold';
-
-　　　document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
+  document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
         const rank = Number(row['順位']);
         const isMe = row['名前'] === State.currentUser;
         return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
