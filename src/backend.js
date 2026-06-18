@@ -161,6 +161,12 @@ const ADMIN_ACTIONS = {
   resetMemberPassword:   (req)          => resetMemberPassword(req.targetId, req.newPassword),
   clearSystemCache:      (req)          => forceClearCache(),
   toggleMaintenance:     (req)          => toggleMaintenanceMode(req.state),
+checkOfficialHdcpFiles: ()            => checkOfficialHdcpFiles(),
+  syncOfficialHdcp:       ()            => {
+    processOfficialHandicapPDF();
+    return { success: true, message: '公式HDCP同期が完了しました。最新データを読み込みました。' };
+  }
+
 };
 
 // メンテナンスモードの切替処理
@@ -548,7 +554,37 @@ function processOfficialHandicapPDF() {
     file.moveTo(archiveFolder);
     Utilities.sleep(2000);
   }
-
+const allHdcpData = historySheet.getDataRange().getValues();
+  if (allHdcpData.length > 1) {
+    const headers = allHdcpData[0];
+    const records = allHdcpData.slice(1);
+    const uniqueRecords = [];
+    const seen = new Set();
+    
+    // 後ろ（最新の追記分）から確認し、初めて出た「年月＋名前」だけを残す
+    for (let i = records.length - 1; i >= 0; i--) {
+      const r = records[i];
+      const d = new Date(r[0]);
+      if (isNaN(d)) {
+        uniqueRecords.unshift(r); 
+        continue;
+      }
+      const yearMonth = `${d.getFullYear()}-${d.getMonth()}`;
+      const name = normalizeName(r[1]);
+      const key = `${yearMonth}_${name}`;
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueRecords.unshift(r); 
+      }
+    }
+    // 重複を排除したクリーンなデータでシートを上書き
+    historySheet.clearContents();
+    historySheet.appendRow(headers);
+    if (uniqueRecords.length > 0) {
+      historySheet.getRange(2, 1, uniqueRecords.length, headers.length).setValues(uniqueRecords);
+    }
+  }
   const latestMap = {};
   historySheet.getDataRange().getValues().slice(1).forEach(r => {
     const d = new Date(r[0]);
@@ -691,4 +727,31 @@ function checkCacheSize() {
   // JSON文字列化した際のバイト数を概算計算
   const sizeBytes = Utilities.newBlob(JSON.stringify(data)).getBytes().length;
   Logger.log(`成績履歴JSONサイズ: ${sizeBytes} bytes (CacheService上限: 約100,000 bytes)`);
+}
+
+
+// ==========================================
+// 公式HDCP ファイル確認用関数
+// ==========================================
+function checkOfficialHdcpFiles() {
+  try {
+    const folderName = 'イーグル会公式HDCP';
+    const folders = DriveApp.getFoldersByName(folderName);
+    
+    if (!folders.hasNext()) {
+      return { success: true, files: [] };
+    }
+    
+    const folder = folders.next();
+    const files = folder.getFilesByType(MimeType.PDF);
+    const fileNames = [];
+    
+    while (files.hasNext()) {
+      fileNames.push(files.next().getName());
+    }
+    
+    return { success: true, files: fileNames };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
 }
