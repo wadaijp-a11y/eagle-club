@@ -190,8 +190,7 @@ function doPost(e) {
     if (PUBLIC_ACTIONS[action]) return jsonResponse(PUBLIC_ACTIONS[action](req));
 
     const session = validateSession(req.token);
-    // セッション切れの場合はフロントに強制ログアウトを指示
-    if (!session) return jsonResponse({ success: false, error: 'セッションが無効または期限切れです。', forceLogout: true });
+    if (!session) return jsonResponse({ success: false, error: 'セッションが無効または期限切れです。', errorCode: 'SESSION_EXPIRED' });
 
     // すでにログイン済みのユーザーに対するメンテナンスモード強制シャットアウト
     if (action !== 'logout') {
