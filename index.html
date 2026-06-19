@@ -255,9 +255,17 @@
             return callGasApi(action, data, retries, timeoutMs, true);
           }
 
-          // 復旧失敗 → 強制ログアウト（具体的な失敗理由を保持して通知する）
+          // ▼ ここから変更：通信エラー時はログアウトさせない ▼
+          const errorMsg = reAuthRes.error || '';
+          
+          // エラー内容が「電波不良・タイムアウト・GAS過負荷」の場合は、ログアウトさせずにエラーとして弾く
+          if (errorMsg.includes('通信エラー') || errorMsg.includes('タイムアウト') || errorMsg.includes('混雑')) {
+            throw new Error('通信環境が不安定なため処理を中断しました。少し待ってから再度お試しください。');
+          }
+
+          // パスワード変更など「本当の認証拒否」だった場合のみ、強制ログアウトのフラグを立てる
           result.forceLogout = true;
-          result.error = reAuthRes.error || '認証の有効期限が切れました。再度ログインしてください。';
+          result.error = errorMsg || '認証の有効期限が切れました。再度ログインしてください。';
         }
 
         // ▼ 強制ログアウト処理
@@ -1864,7 +1872,7 @@ async function onUserManualSync(btnElement) {
           const { id, hashedPw } = JSON.parse(autoLoginStr);
           
           if (userProfileStr) {
-            // ▼ パターンA：プロフィール記憶あり（0秒で画面を描画）
+         // ▼ パターンA：プロフィール記憶あり（0秒で画面を描画）
             const userProfile = JSON.parse(userProfileStr);
             State.loginId = id;
             
@@ -1875,8 +1883,8 @@ async function onUserManualSync(btnElement) {
             const loader = document.getElementById('appLoader');
             if (loader) loader.style.display = 'none';
 
-            // 裏側でこっそりGASと通信し、セッションの有効性を確認
-            callGasApi('checkLogin', { id, password: hashedPw }, 0).then(res => {
+            // 裏側でこっそりGASと通信し、セッションの有効性を確認 (リトライ2回でコールドスタートを吸収)
+            callGasApi('checkLogin', { id, password: hashedPw }, 2).then(res => {
               if (res.success) {
                 // プロフィールが更新されているかもしれないのでローカルを最新化
                 localStorage.setItem('eagle_user_profile', JSON.stringify(res));
@@ -1886,15 +1894,16 @@ async function onUserManualSync(btnElement) {
                    buildMainUI(res);
                 }
               } else {
-                throw new Error(res.error);
+                // ▼ サーバーが明示的に認証拒否した場合のみログアウト (パスワード変更など)
+                console.warn('[イーグル会] バックグラウンド認証失敗:', res.error);
+                localStorage.removeItem('eagle_auto_login');
+                localStorage.removeItem('eagle_user_profile');
+                alert(res.error || 'セッションが切れました。再度ログインしてください。');
+                window.location.reload();
               }
             }).catch(e => {
-              // 裏側の認証で弾かれた場合（パスワード変更やシステム停止など）
-              console.error('バックグラウンド認証エラー:', e);
-              localStorage.removeItem('eagle_auto_login');
-              localStorage.removeItem('eagle_user_profile');
-              alert('セッションが切れました。再度ログインしてください。');
-              window.location.reload(); // ページをリロードして強制的にログイン画面へ戻す
+              // ▼ ネットワークエラー・タイムアウト・GAS過負荷は通信失敗として静かに無視する
+              console.warn('[イーグル会] バックグラウンド認証の通信エラー（無視）:', e.message);
             });
 
           } else {
