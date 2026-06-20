@@ -95,339 +95,361 @@
   <main id="mainSection" class="w-full max-w-md hidden space-y-5 pb-20 pt-6 px-4"></main>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwLPXhqekeLFgp1AM5yiBp5JR4o5kjNJpBi7LK4USrYuYoVsgC0P6D4-WQFabfsZ1vtTw/exec";
+    const GAS_API_URL =
+  'https://script.google.com/macros/s/AKfycbwLPXhqekeLFgp1AM5yiBp5JR4o5kjNJpBi7LK4USrYuYoVsgC0P6D4-WQFabfsZ1vtTw/exec';
 
-    const SPINNER_SVG = `
+const SPINNER_SVG = `
       <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current inline-block align-text-bottom" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
     `;
 
-    // ==========================================
-    // STATE
-    // ==========================================
-    const State = {
-      authRes:               null,
-      currentUser:           null,
-      loginId:               null,
-      authToken:             null,
-      allScoreHistory:       [],
-      rankingByTerm:         {},
-      availableRankingTerms: [],
-      currentRankingTab:     'official',
-      isOfficialHistoryLoaded: false,
-      officialChartInstance: null,
-      myChartInstance:       null,
-      versusChartInstance:   null,
-      gender:                'male',
-      myOfficialHdcp:        '-',
-      memberList:            [],
-      allOfficialHdcpHistory: [],
-      memberHdcpChartInstance: null,
-      memberCompeChartInstance: null,
-      maintenanceMode:       false,
-      // ▼公式HDCP同期機能用の状態管理
-      isSyncingOfficialHdcp:    false,
-      syncOfficialHdcpResult:   null,
-      officialHdcpFilesPending: null,
-      syncStartTime:            null,
-      // ▼セッション自動復旧の多重実行防止ロック
-      reAuthPromise:            null,
-    };
+// ==========================================
+// STATE
+// ==========================================
+const State = {
+  authRes: null,
+  currentUser: null,
+  loginId: null,
+  authToken: null,
+  allScoreHistory: [],
+  rankingByTerm: {},
+  availableRankingTerms: [],
+  currentRankingTab: 'official',
+  isOfficialHistoryLoaded: false,
+  officialChartInstance: null,
+  myChartInstance: null,
+  versusChartInstance: null,
+  gender: 'male',
+  myOfficialHdcp: '-',
+  memberList: [],
+  allOfficialHdcpHistory: [],
+  memberHdcpChartInstance: null,
+  memberCompeChartInstance: null,
+  maintenanceMode: false,
+  // 公式HDCP同期（Drive上のPDF解析）の進行状態
+  isSyncingOfficialHdcp: false,
+  syncOfficialHdcpResult: null,
+  officialHdcpFilesPending: null,
+  syncStartTime: null,
+  // セッション再認証の多重実行を防ぐロック（performReAuthが使用）
+  reAuthPromise: null,
+};
 
-    // ==========================================
-    // UTILS
-    // ==========================================
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, s =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s])
-      );
-    }
+// ==========================================
+// UTILS
+// ==========================================
+function escapeHtml(str) {
+  return String(str).replace(
+    /[&<>"']/g,
+    s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]
+  );
+}
 
-    function formatYearMonth(dateStr) {
-      if (!dateStr) return '';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return String(dateStr);
-      return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
-    }
+function formatYearMonth(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return String(dateStr);
+  return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
+}
 
-    // ==========================================
-    // セッション自動復旧（多重実行防止ロック付き）
-    // ==========================================
-    // 複数のAPI呼び出しが同時にトークン切れを検知しても、
-    // 再ログインのfetchは1回だけ実行され、他の呼び出しはその結果を共有して待つ。
-    async function performReAuth() {
-      if (State.reAuthPromise) return State.reAuthPromise;
+// ==========================================
+// セッション自動復旧（多重実行防止ロック付き）
+// ==========================================
+// 複数のAPI呼び出しが同時にトークン切れを検知しても、
+// 再ログインのfetchは1回だけ実行され、他の呼び出しはその結果を共有して待つ。
+async function performReAuth() {
+  if (State.reAuthPromise) return State.reAuthPromise;
 
-      const autoLoginStr = localStorage.getItem('eagle_auto_login');
-      if (!autoLoginStr) {
-        return { success: false, error: '自動ログイン情報がありません。' };
+  const autoLoginStr = localStorage.getItem('eagle_auto_login');
+  if (!autoLoginStr) {
+    return { success: false, error: '自動ログイン情報がありません。' };
+  }
+
+  State.reAuthPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+      const { id, hashedPw } = JSON.parse(autoLoginStr);
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'checkLogin', id, password: hashedPw }),
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        return {
+          success: false,
+          error: 'サーバーが混雑しています。時間をおいて再度お試しください。',
+        };
       }
 
-      State.reAuthPromise = (async () => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        try {
-          const { id, hashedPw } = JSON.parse(autoLoginStr);
-          const res = await fetch(GAS_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action: 'checkLogin', id, password: hashedPw }),
-            redirect: 'follow',
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
+      const result = await res.json();
+      if (result.success) {
+        State.authToken = result.token;
+        // メンテナンスモード等、再認証時点の最新状態をStateに反映
+        // （画面の再描画は呼び出し元の責務とし、ここではStateの同期のみ行う）
+        State.maintenanceMode = result.maintenanceMode || false;
+        State.authRes = result;
+        localStorage.setItem('eagle_user_profile', JSON.stringify(result));
+      }
+      return result;
+    } catch (e) {
+      clearTimeout(timeoutId);
+      const msg =
+        e.name === 'AbortError'
+          ? '再認証がタイムアウトしました。'
+          : '再認証中に通信エラーが発生しました。';
+      return { success: false, error: msg };
+    } finally {
+      // 完了後はロックを解除し、次回切れた際に再度再認証できるようにする
+      State.reAuthPromise = null;
+    }
+  })();
 
-          const contentType = res.headers.get('content-type');
-          if (contentType && contentType.includes('text/html')) {
-            return { success: false, error: 'サーバーが混雑しています。時間をおいて再度お試しください。' };
-          }
+  return State.reAuthPromise;
+}
 
-          const result = await res.json();
-          if (result.success) {
-            State.authToken = result.token;
-            // メンテナンスモード等、再認証時点の最新状態をStateに反映
-            // （画面の再描画は呼び出し元の責務とし、ここではStateの同期のみ行う）
-            State.maintenanceMode = result.maintenanceMode || false;
-            State.authRes = result;
-            localStorage.setItem('eagle_user_profile', JSON.stringify(result));
-          }
-          return result;
-        } catch (e) {
-          clearTimeout(timeoutId);
-          const msg = e.name === 'AbortError' ? '再認証がタイムアウトしました。' : '再認証中に通信エラーが発生しました。';
-          return { success: false, error: msg };
-        } finally {
-          // 完了後はロックを解除し、次回切れた際に再度再認証できるようにする
-          State.reAuthPromise = null;
-        }
-      })();
+// ==========================================
+// 自動リトライ機能付きAPIコール
+// （個別タイムアウト ＆ セッション自動復旧対応）
+// ==========================================
+// isReauthRetry: 再認証後の再送であることを示す内部フラグ
+// （このフラグが立っている呼び出しでは再認証を二重に試みず、無限ループを防ぐ）
+async function callGasApi(
+  action,
+  data = {},
+  retries = 3,
+  timeoutMs = 15000,
+  isReauthRetry = false
+) {
+  const payload = { action, ...data };
+  if (State.authToken) payload.token = State.authToken;
 
-      return State.reAuthPromise;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      throw new Error('GAS Overload');
     }
 
-    // ==========================================
-    // 自動リトライ機能付きAPIコール
-    // （個別タイムアウト ＆ セッション自動復旧対応）
-    // ==========================================
-    // isReauthRetry: 再認証後の再送であることを示す内部フラグ
-    // （このフラグが立っている呼び出しでは再認証を二重に試みず、無限ループを防ぐ）
-    async function callGasApi(action, data = {}, retries = 3, timeoutMs = 15000, isReauthRetry = false) {
-      const payload = { action, ...data };
-      if (State.authToken) payload.token = State.authToken;
+    const result = await res.json();
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    // セッション切れの判定。errorCodeを優先し、文言一致はサーバー側の
+    // メッセージ変更に影響されないためのフォールバックとして残している。
+    const isSessionExpired =
+      result.errorCode === 'SESSION_EXPIRED' ||
+      result.error === 'セッションが無効または期限切れです。';
 
-      try {
-        const res = await fetch(GAS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload),
-          redirect: 'follow',
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+    if (isSessionExpired && !isReauthRetry) {
+      console.warn('[イーグル会] セッション切れを検知。バックグラウンドで自動復旧します...');
+      const reAuthRes = await performReAuth();
 
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("text/html")) {
-          throw new Error('GAS Overload');
-        }
-
-        const result = await res.json();
-
-        // ▼ セッション切れの判定
-        // 推奨: バックエンド側で result.errorCode = 'SESSION_EXPIRED' を返すようにすると、
-        // 文言変更に強くなる（下記は両対応のフォールバック実装）
-        const isSessionExpired =
-          result.errorCode === 'SESSION_EXPIRED' ||
-          result.error === 'セッションが無効または期限切れです。';
-
-        if (isSessionExpired && !isReauthRetry) {
-          console.warn('[イーグル会] セッション切れを検知。バックグラウンドで自動復旧します...');
-          const reAuthRes = await performReAuth();
-
-          if (reAuthRes.success) {
-            // 新トークンで元のリクエストを1回だけ再送。
-            // callGasApi自身を再帰呼び出しすることで、HTML応答検知やforceLogout処理など
-            // 既存の安全チェックをすべてそのまま再利用する。
-            return callGasApi(action, data, retries, timeoutMs, true);
-          }
-
-          // ▼ ここから変更：通信エラー時はログアウトさせない ▼
-          const errorMsg = reAuthRes.error || '';
-          
-          // エラー内容が「電波不良・タイムアウト・GAS過負荷」の場合は、ログアウトさせずにエラーとして弾く
-          if (errorMsg.includes('通信エラー') || errorMsg.includes('タイムアウト') || errorMsg.includes('混雑')) {
-            throw new Error('通信環境が不安定なため処理を中断しました。少し待ってから再度お試しください。');
-          }
-
-          // パスワード変更など「本当の認証拒否」だった場合のみ、強制ログアウトのフラグを立てる
-          result.forceLogout = true;
-          result.error = errorMsg || '認証の有効期限が切れました。再度ログインしてください。';
-        }
-
-        // ▼ 強制ログアウト処理
-        if (result.forceLogout) {
-          localStorage.removeItem('eagle_auto_login');
-          localStorage.removeItem('eagle_data_cache');
-          localStorage.removeItem('eagle_cache_timestamp');
-          localStorage.removeItem('eagle_user_profile');
-
-          State.authToken   = null;
-          State.currentUser = null;
-          State.authRes     = null;
-
-          closeSettingsModal();
-          document.getElementById('mainSection').innerHTML = '';
-          document.getElementById('mainSection').classList.add('hidden');
-          document.getElementById('loginSection').classList.remove('hidden');
-          document.getElementById('loginId').value = '';
-          window.scrollTo(0, 0);
-
-          alert(result.error || 'セッションが切れました。再度ログインしてください。');
-          throw new Error('Force Logout');
-        }
-
-        return result;
-      } catch (error) {
-        clearTimeout(timeoutId);
-
-        if (error.message === 'Force Logout') throw error;
-
-        if (retries > 0) {
-          const delay = (Math.pow(2, 3 - retries) * 1000) + (Math.random() * 500);
-          console.warn(`[イーグル会] API通信再試行: ${Math.round(delay)}ms待機 (残り${retries - 1}回)`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return callGasApi(action, data, retries - 1, timeoutMs, isReauthRetry); // リトライ時もタイムアウト・フラグを維持
-        }
-        if (error.name === 'AbortError') {
-          throw new Error('通信がタイムアウトしました');
-        }
-        throw error;
+      if (reAuthRes.success) {
+        // 新トークンで元のリクエストを1回だけ再送。
+        // callGasApi自身を再帰呼び出しすることで、HTML応答検知やforceLogout処理など
+        // 既存の安全チェックをすべてそのまま再利用する。
+        return callGasApi(action, data, retries, timeoutMs, true);
       }
-    }
-    
-    // ==========================================
-    // AUTHENTICATION
-    // ==========================================
-    async function hashPassword(plainText) {
-      const msgBuffer  = new TextEncoder().encode(plainText);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // 再認証に失敗した場合、通信障害（電波不良・タイムアウト・GAS過負荷）と
+      // 本当の認証拒否（パスワード変更・メンテナンス等）を区別する。
+      // 前者でログアウトさせると、不安定な回線のユーザーが理由もなく
+      // セッションを失う体験になるため、エラーとして弾くだけに留める。
+      const errorMsg = reAuthRes.error || '';
+      if (
+        errorMsg.includes('通信エラー') ||
+        errorMsg.includes('タイムアウト') ||
+        errorMsg.includes('混雑')
+      ) {
+        throw new Error(
+          '通信環境が不安定なため処理を中断しました。少し待ってから再度お試しください。'
+        );
+      }
+
+      // 通信障害ではないと判断できた場合のみ、強制ログアウトのフラグを立てる
+      result.forceLogout = true;
+      result.error = errorMsg || '認証の有効期限が切れました。再度ログインしてください。';
     }
 
-     async function onLogin(event) {
-      event.preventDefault();
-      const id  = document.getElementById('loginId').value.trim();
-      const pw  = document.getElementById('loginPw').value;
-      const err = document.getElementById('loginError');
-      const btn = document.getElementById('loginBtn');
-
-      if (!id || !pw) {
-        err.textContent = 'IDとパスワードを入力してください';
-        err.classList.remove('hidden');
-        return;
-      }
-
-      err.classList.add('hidden');
-      btn.disabled = true;
-      btn.textContent = '認証中...';
-
-      try {
-        const hashedPw = await hashPassword(pw);
-        const res = await callGasApi('checkLogin', { id, password: hashedPw });
-
-        if (res.success) {
-          State.loginId = id;
-          document.getElementById('loginPw').value = '';
-          localStorage.setItem('eagle_auto_login', JSON.stringify({ id, hashedPw }));
-localStorage.setItem('eagle_user_profile', JSON.stringify(res));
-          initSession(res);
-        } else {
-          err.textContent = res.error || 'IDまたはパスワードが違います';
-          err.classList.remove('hidden');
-        }
-      } catch {
-        // エラーメッセージを具体化し、メンテナンスの可能性を示唆
-        err.innerHTML = '通信エラーが発生しました。<br>システムメンテナンス中、またはネットワークが不安定な可能性があります。<br>しばらく時間をおいてお試しください。';
-        err.classList.remove('hidden');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'ログイン';
-      }
-    }
-
-      async function onLogout(btnElement) {
-      let originalHtml = '';
-      if (btnElement) {
-        originalHtml = btnElement.innerHTML;
-        btnElement.disabled = true;
-        btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
-      }
-
-      // サーバーのログアウト処理は裏で投げっぱなしにする
-      callGasApi('logout').catch(() => {});
-      
-      State.authToken   = null;
-      State.currentUser = null;
-      State.authRes     = null;
+    // 強制ログアウト処理：ローカル状態とキャッシュを破棄してログイン画面へ戻す
+    if (result.forceLogout) {
+      localStorage.removeItem('eagle_auto_login');
       localStorage.removeItem('eagle_data_cache');
-localStorage.removeItem('eagle_cache_timestamp');
-localStorage.removeItem('eagle_auto_login'); 
-localStorage.removeItem('eagle_user_profile');
+      localStorage.removeItem('eagle_cache_timestamp');
+      localStorage.removeItem('eagle_user_profile');
+
+      State.authToken = null;
+      State.currentUser = null;
+      State.authRes = null;
+
       closeSettingsModal();
       document.getElementById('mainSection').innerHTML = '';
       document.getElementById('mainSection').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
-      
-      // ログイン画面の完全リセット
       document.getElementById('loginId').value = '';
-      document.getElementById('loginPw').value = '';
-      document.getElementById('loginError').classList.add('hidden');
-      
-      const mainLoginBtn = document.getElementById('loginBtn');
-      if (mainLoginBtn) {
-        mainLoginBtn.disabled = false;
-        mainLoginBtn.textContent = 'ログイン';
-      }
-
       window.scrollTo(0, 0);
 
-      // メニューのログアウトボタンを元の状態に戻す
-      if (btnElement && document.body.contains(btnElement)) {
-        btnElement.disabled = false;
-        btnElement.innerHTML = originalHtml;
-      }
-    }
-    
-    function initSession(res) {
-      State.authRes                 = res;
-      State.currentUser             = res.name;
-      State.authToken               = res.token;
-      State.gender                  = res.gender || 'male';
-      State.myOfficialHdcp          = res.officialHdcp || '-';
-      State.isOfficialHistoryLoaded = false;
-      State.maintenanceMode         = res.maintenanceMode || false;
-
-      buildMainUI(res);
-
-      document.getElementById('loginSection').classList.add('hidden');
-      document.getElementById('mainSection').classList.remove('hidden');
-
-      loadAllData();
+      alert(result.error || 'セッションが切れました。再度ログインしてください。');
+      throw new Error('Force Logout');
     }
 
-    // ==========================================
-    // UI BUILDERS
-    // ==========================================
-    function buildMainUI(res) {
-      const isAdmin = res.role === '管理者';
-      const main    = document.getElementById('mainSection');
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
 
-      main.innerHTML = `
+    if (error.message === 'Force Logout') throw error;
+
+    if (retries > 0) {
+      const delay = Math.pow(2, 3 - retries) * 1000 + Math.random() * 500;
+      console.warn(`[イーグル会] API通信再試行: ${Math.round(delay)}ms待機 (残り${retries - 1}回)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callGasApi(action, data, retries - 1, timeoutMs, isReauthRetry); // リトライ時もタイムアウト・フラグを維持
+    }
+    if (error.name === 'AbortError') {
+      throw new Error('通信がタイムアウトしました');
+    }
+    throw error;
+  }
+}
+
+// ==========================================
+// AUTHENTICATION
+// ==========================================
+async function hashPassword(plainText) {
+  const msgBuffer = new TextEncoder().encode(plainText);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function onLogin(event) {
+  event.preventDefault();
+  const id = document.getElementById('loginId').value.trim();
+  const pw = document.getElementById('loginPw').value;
+  const err = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+
+  if (!id || !pw) {
+    err.textContent = 'IDとパスワードを入力してください';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  err.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = '認証中...';
+
+  try {
+    const hashedPw = await hashPassword(pw);
+    const res = await callGasApi('checkLogin', { id, password: hashedPw });
+
+    if (res.success) {
+      State.loginId = id;
+      document.getElementById('loginPw').value = '';
+      localStorage.setItem('eagle_auto_login', JSON.stringify({ id, hashedPw }));
+      localStorage.setItem('eagle_user_profile', JSON.stringify(res));
+      initSession(res);
+    } else {
+      err.textContent = res.error || 'IDまたはパスワードが違います';
+      err.classList.remove('hidden');
+    }
+  } catch {
+    // エラーメッセージを具体化し、メンテナンスの可能性を示唆
+    err.innerHTML =
+      '通信エラーが発生しました。<br>システムメンテナンス中、またはネットワークが不安定な可能性があります。<br>しばらく時間をおいてお試しください。';
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'ログイン';
+  }
+}
+
+async function onLogout(btnElement) {
+  let originalHtml = '';
+  if (btnElement) {
+    originalHtml = btnElement.innerHTML;
+    btnElement.disabled = true;
+    btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
+  }
+
+  // サーバーのログアウト処理は裏で投げっぱなしにする
+  callGasApi('logout').catch(() => {});
+
+  State.authToken = null;
+  State.currentUser = null;
+  State.authRes = null;
+  localStorage.removeItem('eagle_data_cache');
+  localStorage.removeItem('eagle_cache_timestamp');
+  localStorage.removeItem('eagle_auto_login');
+  localStorage.removeItem('eagle_user_profile');
+  closeSettingsModal();
+  document.getElementById('mainSection').innerHTML = '';
+  document.getElementById('mainSection').classList.add('hidden');
+  document.getElementById('loginSection').classList.remove('hidden');
+
+  // ログイン画面の完全リセット
+  document.getElementById('loginId').value = '';
+  document.getElementById('loginPw').value = '';
+  document.getElementById('loginError').classList.add('hidden');
+
+  const mainLoginBtn = document.getElementById('loginBtn');
+  if (mainLoginBtn) {
+    mainLoginBtn.disabled = false;
+    mainLoginBtn.textContent = 'ログイン';
+  }
+
+  window.scrollTo(0, 0);
+
+  // メニューのログアウトボタンを元の状態に戻す
+  if (btnElement && document.body.contains(btnElement)) {
+    btnElement.disabled = false;
+    btnElement.innerHTML = originalHtml;
+  }
+}
+
+function initSession(res) {
+  State.authRes = res;
+  State.currentUser = res.name;
+  State.authToken = res.token;
+  State.gender = res.gender || 'male';
+  State.myOfficialHdcp = res.officialHdcp || '-';
+  State.isOfficialHistoryLoaded = false;
+  State.maintenanceMode = res.maintenanceMode || false;
+
+  buildMainUI(res);
+
+  document.getElementById('loginSection').classList.add('hidden');
+  document.getElementById('mainSection').classList.remove('hidden');
+
+  loadAllData();
+}
+
+// ==========================================
+// UI BUILDERS
+// ==========================================
+function buildMainUI(res) {
+  const isAdmin = res.role === '管理者';
+  const main = document.getElementById('mainSection');
+
+  main.innerHTML = `
         ${buildHeader(res)}
         ${buildScheduleCard(res)}
         ${buildMyDashboardCard(res)}
@@ -438,12 +460,12 @@ localStorage.removeItem('eagle_user_profile');
         ${isAdmin ? buildAdminSection() : ''}
         ${buildFooter()}
       `;
-      CourseHdcp.render();
-      setupScheduleDisplay(res);
-if (isAdmin) renderSyncOfficialHdcpCard();
-    }
-        function buildHeader(res) {
-      return `
+  CourseHdcp.render();
+  setupScheduleDisplay(res);
+  if (isAdmin) renderSyncOfficialHdcpCard();
+}
+function buildHeader(res) {
+  return `
         <header class="flex justify-between items-center mb-6 px-1">
           <div class="flex items-center gap-3">
             <div class="bg-brand-100 text-brand-700 w-11 h-11 rounded-full flex items-center justify-center text-xl shadow-inner font-bold shrink-0">
@@ -466,9 +488,9 @@ if (isAdmin) renderSyncOfficialHdcpCard();
           </div>
         </header>
       `;
-    }
+}
 function buildScheduleCard(res) {
-      return `
+  return `
         <div class="bg-gradient-to-br from-green-600 to-emerald-800 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
           <div class="absolute -bottom-6 -right-4 p-4 opacity-10 text-8xl pointer-events-none transform -rotate-12">⛳️</div>
           
@@ -503,9 +525,9 @@ function buildScheduleCard(res) {
             </div>
           </div>
         </div>`;
-    }
-    function buildMyDashboardCard(res) {
-      return `
+}
+function buildMyDashboardCard(res) {
+  return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
           <div class="flex items-center gap-2 mb-4">
             <span class="text-lg">⛳</span>
@@ -566,10 +588,10 @@ function buildScheduleCard(res) {
             <div class="animate-pulse flex space-x-4"><div class="flex-1 space-y-4 py-1"><div class="h-16 bg-slate-100 rounded-xl"></div></div></div>
           </div>
         </div>`;
-    }
+}
 
-    function buildCompeResultCard() {
-      return `
+function buildCompeResultCard() {
+  return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
           <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
@@ -594,10 +616,10 @@ function buildScheduleCard(res) {
             </table>
           </div>
         </div>`;
-    }
+}
 
-    function buildRankingCard() {
-      return `
+function buildRankingCard() {
+  return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
           <div class="flex items-center gap-2 mb-4">
             <span class="text-lg">🏅</span>
@@ -613,10 +635,10 @@ function buildScheduleCard(res) {
             </table>
           </div>
         </div>`;
-    }
+}
 
-    function buildMyRecordCard() {
-      return `
+function buildMyRecordCard() {
+  return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
           <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
@@ -644,10 +666,10 @@ function buildScheduleCard(res) {
             </table>
           </div>
         </div>`;
-    }
+}
 
-    function buildVersusCard() {
-      return `
+function buildVersusCard() {
+  return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
           <div class="flex items-center gap-2 mb-4">
             <span class="text-lg">⚔️</span>
@@ -663,10 +685,10 @@ function buildScheduleCard(res) {
             <div class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</div>
           </div>
         </div>`;
-    }
+}
 
-    function buildAdminSection() {
-      return `
+function buildAdminSection() {
+  return `
         <div class="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden mt-8">
           <button onclick="toggleAdminMenu()" class="w-full p-4 flex justify-between items-center bg-slate-800 text-white font-bold text-sm focus:outline-none hover:bg-slate-700 transition-colors">
             <span class="flex items-center gap-2">👨‍💻 管理者メニュー</span>
@@ -717,11 +739,11 @@ function buildScheduleCard(res) {
             </div>
           </div>
         </div>`;
-    }
+}
 
-       function buildFooter() {
-      const currentYear = new Date().getFullYear();
-      return `
+function buildFooter() {
+  const currentYear = new Date().getFullYear();
+  return `
         <footer class="mt-8 mb-6 flex flex-col items-center gap-5">
           <a href="https://sengaricc.com/" target="_blank" rel="noopener noreferrer" 
              class="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors">
@@ -731,305 +753,381 @@ function buildScheduleCard(res) {
           <p class="text-[10px] text-slate-400">&copy; ${currentYear} イーグル会. All rights reserved.</p>
         </footer>
       `;
-    }
+}
 
-    
-    // ==========================================
-    // LOGIC & DATA FETCHING
-    // ==========================================
-    function toggleAdminMenu() {
-      const content = document.getElementById('adminMenuContent');
-      const icon = document.getElementById('adminMenuIcon');
-      content.classList.toggle('hidden');
-      icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-    }
+// ==========================================
+// LOGIC & DATA FETCHING
+// ==========================================
+function toggleAdminMenu() {
+  const content = document.getElementById('adminMenuContent');
+  const icon = document.getElementById('adminMenuIcon');
+  content.classList.toggle('hidden');
+  icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+}
 
 function setupScheduleDisplay(res) {
-      const dateEl = document.getElementById('nextCompeDateDisplay');
-      const timeEl = document.getElementById('nextCompeTimeDisplay');
-      const clubCompeBadge = document.getElementById('nextClubCompeBadge');
-      const clubCompeName = document.getElementById('nextClubCompeName');
+  const dateEl = document.getElementById('nextCompeDateDisplay');
+  const timeEl = document.getElementById('nextCompeTimeDisplay');
+  const clubCompeBadge = document.getElementById('nextClubCompeBadge');
+  const clubCompeName = document.getElementById('nextClubCompeName');
 
-      if (res.nextCompe) {
-        // 日付をセット
-        dateEl.textContent = res.nextCompe.dateText;
-        
-        // 時間が存在する場合のみ表示
-        if (res.nextCompe.timeText && res.nextCompe.timeText !== '時間未定') {
-          timeEl.textContent = res.nextCompe.timeText;
-          timeEl.classList.remove('hidden');
-        } else {
-          timeEl.classList.add('hidden');
-        }
+  if (res.nextCompe) {
+    // 日付をセット
+    dateEl.textContent = res.nextCompe.dateText;
 
-        // 競技名が存在する場合のみ表示
-        if (res.nextCompe.clubCompe) {
-          clubCompeName.textContent = res.nextCompe.clubCompe;
-          clubCompeBadge.classList.remove('hidden');
-        } else {
-          clubCompeBadge.classList.add('hidden');
-        }
-      } else {
-        dateEl.textContent = '未定';
-        timeEl.classList.add('hidden');
-        clubCompeBadge.classList.add('hidden');
-      }
+    // 時間が存在する場合のみ表示
+    if (res.nextCompe.timeText && res.nextCompe.timeText !== '時間未定') {
+      timeEl.textContent = res.nextCompe.timeText;
+      timeEl.classList.remove('hidden');
+    } else {
+      timeEl.classList.add('hidden');
+    }
 
-      const listContainer = document.getElementById('futureSchedulesList');
-      if (res.futureSchedules && res.futureSchedules.length > 0) {
-        document.getElementById('futureScheduleCount').textContent = res.futureSchedules.length;
-        document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
-        
-        // 今後の予定も縦並びの美しいカード風リスト
-        listContainer.innerHTML = res.futureSchedules.map(s => `
+    // 競技名が存在する場合のみ表示
+    if (res.nextCompe.clubCompe) {
+      clubCompeName.textContent = res.nextCompe.clubCompe;
+      clubCompeBadge.classList.remove('hidden');
+    } else {
+      clubCompeBadge.classList.add('hidden');
+    }
+  } else {
+    dateEl.textContent = '未定';
+    timeEl.classList.add('hidden');
+    clubCompeBadge.classList.add('hidden');
+  }
+
+  const listContainer = document.getElementById('futureSchedulesList');
+  if (res.futureSchedules && res.futureSchedules.length > 0) {
+    document.getElementById('futureScheduleCount').textContent = res.futureSchedules.length;
+    document.getElementById('scheduleToggleBtnContainer').classList.remove('hidden');
+
+    // 今後の予定も縦並びの美しいカード風リスト
+    listContainer.innerHTML = res.futureSchedules
+      .map(
+        s => `
           <div class="flex flex-col bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/5 shadow-sm">
             <span class="font-bold text-white text-[13px] tracking-wide">${escapeHtml(s.dateText)}</span>
             <div class="flex flex-wrap items-center gap-2 mt-1.5">
               <span class="text-[10px] font-medium text-green-50 bg-black/20 px-2 py-0.5 rounded-md">${escapeHtml(s.timeText)}</span>
               ${s.clubCompe ? `<span class="text-[10px] font-bold text-amber-300 bg-black/20 px-2 py-0.5 rounded-md">🏆 ${escapeHtml(s.clubCompe)}</span>` : ''}
             </div>
-          </div>`).join('');
-      }
-    }
-    
-    function toggleFutureSchedules() {
-      document.getElementById('futureSchedulesSection').classList.toggle('hidden');
-    }
+          </div>`
+      )
+      .join('');
+  }
+}
 
-    function showSkeletons() {
-      const row = `<tr class="animate-pulse border-b border-slate-100"><td class="py-3"><div class="h-3 bg-slate-100 rounded w-3/4 mx-auto"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-full"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-1/2 ml-auto"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-1/2 ml-auto"></div></td></tr>`.repeat(5);
-      ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = row;
-      });
-    }
+function toggleFutureSchedules() {
+  document.getElementById('futureSchedulesSection').classList.toggle('hidden');
+}
 
-    function showErrorAndRetry() {
-      const main = document.getElementById('mainSection');
-      if (main) {
-        main.innerHTML = `
+function showSkeletons() {
+  const row =
+    `<tr class="animate-pulse border-b border-slate-100"><td class="py-3"><div class="h-3 bg-slate-100 rounded w-3/4 mx-auto"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-full"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-1/2 ml-auto"></div></td><td class="py-3"><div class="h-3 bg-slate-100 rounded w-1/2 ml-auto"></div></td></tr>`.repeat(
+      5
+    );
+  ['scoreContainer', 'rankingTableBody', 'myScoreTableBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = row;
+  });
+}
+
+function showErrorAndRetry() {
+  const main = document.getElementById('mainSection');
+  if (main) {
+    main.innerHTML = `
           <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-red-100 mt-10">
             <p class="text-red-500 font-bold mb-2">データの取得に失敗しました</p>
             <p class="text-xs text-slate-500 mb-5 leading-relaxed">通信環境が不安定か、アクセス制限に達しています。<br>しばらく時間をおいて再試行してください。</p>
             <button type="button" onclick="retryLoadAllData()" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold shadow-sm hover:bg-slate-900 transition-colors">再読み込み</button>
           </div>`;
-      }
-    }
+  }
+}
 
-    function retryLoadAllData() {
-      if (!State.authRes || !State.authToken) { onLogout(); return; }
-      buildMainUI(State.authRes);
-      loadAllData();
-    }
+function retryLoadAllData() {
+  if (!State.authRes || !State.authToken) {
+    onLogout();
+    return;
+  }
+  buildMainUI(State.authRes);
+  loadAllData();
+}
 
-    // 自動リトライ＆24時間キャッシュ＆破損修復ロジック
-    async function loadAllData() {
-      showSkeletons();
+// 自動リトライ＆24時間キャッシュ＆破損修復ロジック
+async function loadAllData() {
+  showSkeletons();
+  try {
+    let history, members, hdcpHistory;
+    let usedCache = false;
+
+    const cachedStr = localStorage.getItem('eagle_data_cache');
+    const cacheTime = localStorage.getItem('eagle_cache_timestamp');
+    const now = new Date().getTime();
+
+    if (cachedStr && cacheTime && now - Number(cacheTime) < 24 * 60 * 60 * 1000) {
       try {
-        let history, members, hdcpHistory;
-        let usedCache = false;
-        
-        const cachedStr = localStorage.getItem('eagle_data_cache');
-        const cacheTime = localStorage.getItem('eagle_cache_timestamp');
-        const now = new Date().getTime();
-        
-        if (cachedStr && cacheTime && (now - Number(cacheTime) < 24 * 60 * 60 * 1000)) {
-          try {
-            const cached = JSON.parse(cachedStr);
-            history     = cached.history;
-            members     = cached.members;
-            hdcpHistory = cached.hdcpHistory;
-            usedCache   = true;
-          } catch (e) {
-            console.warn('[イーグル会] キャッシュの破損を検知しました。破棄して再取得します。');
-            localStorage.removeItem('eagle_data_cache');
-            localStorage.removeItem('eagle_cache_timestamp');
-          }
-        }
-
-        if (!usedCache) {
-          [history, members, hdcpHistory] = await Promise.all([
-            callGasApi('getScoreHistory'),
-            callGasApi('getMemberList'),
-            callGasApi('getAllOfficialHdcpHistory')
-          ]);
-          localStorage.setItem('eagle_data_cache', JSON.stringify({ history, members, hdcpHistory }));
-          localStorage.setItem('eagle_cache_timestamp', String(now));
-        }
-
-        if (members && members.length > 0) State.memberList = members;
-        if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory;
-        if (history) State.allScoreHistory = history;
-
-        setupCompeResults();
-        setupRanking();
-        Versus.setup();
-        renderDashboardSummary();
-
-        if (history && history.length > 0) {
-          const myHistory = history
-            .filter(r => r['名前'] === State.currentUser)
-            .map(r => ({ date: r['日付'], rank: r['順位'], gross: r['GROSS'], hdcp: r['HDCP'], net: r['NET'] }));
-          loadMyChart(myHistory);
-        } else {
-          loadMyChart([]);
-        }
+        const cached = JSON.parse(cachedStr);
+        history = cached.history;
+        members = cached.members;
+        hdcpHistory = cached.hdcpHistory;
+        usedCache = true;
       } catch (e) {
-        console.error(e);
-        showErrorAndRetry();
+        console.warn('[イーグル会] キャッシュの破損を検知しました。破棄して再取得します。');
+        localStorage.removeItem('eagle_data_cache');
+        localStorage.removeItem('eagle_cache_timestamp');
       }
     }
 
-    // ==========================================
-    // コースHDCP計算
-    // ==========================================
-    const CourseHdcp = {
-      RATINGS: {
-        male: [
-          { name: '黒', sr: 135, cr: 72.0, par: 72, bg: 'bg-slate-800 text-white' },
-          { name: '青', sr: 133, cr: 70.7, par: 72, bg: 'bg-blue-600 text-white' },
-          { name: '白', sr: 131, cr: 69.4, par: 72, bg: 'bg-white text-slate-800 border border-slate-300' },
-          { name: '金', sr: 126, cr: 67.0, par: 72, bg: 'bg-amber-400 text-slate-900 border border-amber-500' },
-          { name: '緑', sr: 120, cr: 64.5, par: 72, bg: 'bg-brand-600 text-white' },
-        ],
-        female: [
-          { name: '黒', sr: 140, cr: 78.5, par: 72, bg: 'bg-slate-800 text-white' },
-          { name: '青', sr: 138, cr: 77.0, par: 72, bg: 'bg-blue-600 text-white' },
-          { name: '白', sr: 135, cr: 75.5, par: 72, bg: 'bg-white text-slate-800 border border-slate-300' },
-          { name: '金', sr: 129, cr: 72.5, par: 72, bg: 'bg-amber-400 text-slate-900 border border-amber-500' },
-          { name: '緑', sr: 122, cr: 69.5, par: 72, bg: 'bg-brand-600 text-white' },
-        ],
-      },
-      calc(index, sr, cr, par) {
-        return isNaN(index) ? '-' : Math.round((index * sr / 113) + (cr - par));
-      },
-            render() {
-        const container = document.getElementById('courseHdcpContainer');
-        const largeContainer = document.getElementById('courseHdcpContainerLarge');
-        const index = parseFloat(State.myOfficialHdcp);
-        
-        if (isNaN(index)) {
-          if (container) container.innerHTML = '';
-          if (largeContainer) largeContainer.innerHTML = '';
-          return;
-        }
+    if (!usedCache) {
+      [history, members, hdcpHistory] = await Promise.all([
+        callGasApi('getScoreHistory'),
+        callGasApi('getMemberList'),
+        callGasApi('getAllOfficialHdcpHistory'),
+      ]);
+      localStorage.setItem('eagle_data_cache', JSON.stringify({ history, members, hdcpHistory }));
+      localStorage.setItem('eagle_cache_timestamp', String(now));
+    }
 
-        // メイン画面用（コンパクト）
-        if (container) {
-          container.innerHTML = this.RATINGS[State.gender].map(r => `
+    if (members && members.length > 0) State.memberList = members;
+    if (hdcpHistory) State.allOfficialHdcpHistory = hdcpHistory;
+    if (history) State.allScoreHistory = history;
+
+    setupCompeResults();
+    setupRanking();
+    Versus.setup();
+    renderDashboardSummary();
+
+    if (history && history.length > 0) {
+      const myHistory = history
+        .filter(r => r['名前'] === State.currentUser)
+        .map(r => ({
+          date: r['日付'],
+          rank: r['順位'],
+          gross: r['GROSS'],
+          hdcp: r['HDCP'],
+          net: r['NET'],
+        }));
+      loadMyChart(myHistory);
+    } else {
+      loadMyChart([]);
+    }
+  } catch (e) {
+    console.error(e);
+    showErrorAndRetry();
+  }
+}
+
+// ==========================================
+// コースHDCP計算
+// ==========================================
+const CourseHdcp = {
+  RATINGS: {
+    male: [
+      { name: '黒', sr: 135, cr: 72.0, par: 72, bg: 'bg-slate-800 text-white' },
+      { name: '青', sr: 133, cr: 70.7, par: 72, bg: 'bg-blue-600 text-white' },
+      {
+        name: '白',
+        sr: 131,
+        cr: 69.4,
+        par: 72,
+        bg: 'bg-white text-slate-800 border border-slate-300',
+      },
+      {
+        name: '金',
+        sr: 126,
+        cr: 67.0,
+        par: 72,
+        bg: 'bg-amber-400 text-slate-900 border border-amber-500',
+      },
+      { name: '緑', sr: 120, cr: 64.5, par: 72, bg: 'bg-brand-600 text-white' },
+    ],
+    female: [
+      { name: '黒', sr: 140, cr: 78.5, par: 72, bg: 'bg-slate-800 text-white' },
+      { name: '青', sr: 138, cr: 77.0, par: 72, bg: 'bg-blue-600 text-white' },
+      {
+        name: '白',
+        sr: 135,
+        cr: 75.5,
+        par: 72,
+        bg: 'bg-white text-slate-800 border border-slate-300',
+      },
+      {
+        name: '金',
+        sr: 129,
+        cr: 72.5,
+        par: 72,
+        bg: 'bg-amber-400 text-slate-900 border border-amber-500',
+      },
+      { name: '緑', sr: 122, cr: 69.5, par: 72, bg: 'bg-brand-600 text-white' },
+    ],
+  },
+  calc(index, sr, cr, par) {
+    return isNaN(index) ? '-' : Math.round((index * sr) / 113 + (cr - par));
+  },
+  render() {
+    const container = document.getElementById('courseHdcpContainer');
+    const largeContainer = document.getElementById('courseHdcpContainerLarge');
+    const index = parseFloat(State.myOfficialHdcp);
+
+    if (isNaN(index)) {
+      if (container) container.innerHTML = '';
+      if (largeContainer) largeContainer.innerHTML = '';
+      return;
+    }
+
+    // メイン画面用（コンパクト）
+    if (container) {
+      container.innerHTML = this.RATINGS[State.gender]
+        .map(
+          r => `
             <span class="px-1.5 py-0.5 ${r.bg} rounded text-[10px] font-bold shadow-sm flex items-baseline gap-0.5 leading-none">
               <span class="opacity-90">${r.name}</span><span class="text-xs">${this.calc(index, r.sr, r.cr, r.par)}</span>
-            </span>`).join('');
-        }
+            </span>`
+        )
+        .join('');
+    }
 
-        // 展開時用（大きく見やすい表示）
-                // 展開時用（大きく見やすい表示）
-        if (largeContainer) {
-          largeContainer.innerHTML = this.RATINGS[State.gender].map(r => `
+    // 展開時用（大きく見やすい表示）
+    // 展開時用（大きく見やすい表示）
+    if (largeContainer) {
+      largeContainer.innerHTML = this.RATINGS[State.gender]
+        .map(
+          r => `
             <div class="${r.bg} rounded-lg p-1.5 shadow-sm flex flex-col items-center justify-center">
               <span class="text-[10px] font-bold opacity-90">${r.name}</span>
               <span class="text-base font-black leading-none mt-0.5">${this.calc(index, r.sr, r.cr, r.par)}</span>
-            </div>`).join('');
-        }
-      }
-    };
+            </div>`
+        )
+        .join('');
+    }
+  },
+};
 
-    // ==========================================
-    // 各種レンダリングロジック
-    // ==========================================
-       function toggleOfficialHdcpHistory() {
-      const section = document.getElementById('officialHdcpHistorySection');
-      const icon = document.getElementById('officialHdcpToggleIcon');
-      
-      section.classList.toggle('hidden');
+// ==========================================
+// 各種レンダリングロジック
+// ==========================================
+function toggleOfficialHdcpHistory() {
+  const section = document.getElementById('officialHdcpHistorySection');
+  const icon = document.getElementById('officialHdcpToggleIcon');
 
-      if (icon) {
-        icon.style.transform = section.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-      }
-      
-      if (!section.classList.contains('hidden')) {
-        if (!State.isOfficialHistoryLoaded) {
-          loadOfficialHdcpHistory();
-        } else if (State.officialChartInstance) {
-          // 既にデータ読込済みで非表示から表示に切り替えた場合、サイズを再計算
-          State.officialChartInstance.resize();
-        }
-      }
+  section.classList.toggle('hidden');
+
+  if (icon) {
+    icon.style.transform = section.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+  }
+
+  if (!section.classList.contains('hidden')) {
+    if (!State.isOfficialHistoryLoaded) {
+      loadOfficialHdcpHistory();
+    } else if (State.officialChartInstance) {
+      // 既にデータ読込済みで非表示から表示に切り替えた場合、サイズを再計算
+      State.officialChartInstance.resize();
+    }
+  }
+}
+
+async function loadOfficialHdcpHistory() {
+  try {
+    State.isOfficialHistoryLoaded = true;
+    const tbody = document.getElementById('officialHdcpTableBody');
+    const myNameNorm = State.currentUser.replace(/\s+/g, '');
+    const history = State.allOfficialHdcpHistory.filter(r => r.name === myNameNorm);
+
+    if (!history || history.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-slate-400 text-xs">履歴データがありません</td></tr>`;
+      return;
     }
 
-    async function loadOfficialHdcpHistory() {
-      try {
-        State.isOfficialHistoryLoaded = true;
-        const tbody = document.getElementById('officialHdcpTableBody');
-        const myNameNorm = State.currentUser.replace(/\s+/g, '');
-        const history = State.allOfficialHdcpHistory.filter(r => r.name === myNameNorm);
+    const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
+    const labels = valid.map(r => formatYearMonth(r.date));
+    const values = valid.map(r => Number(r.hdcp));
 
-        if (!history || history.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-slate-400 text-xs">履歴データがありません</td></tr>`;
-          return;
-        }
-
-        const valid  = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
-        const labels = valid.map(r => formatYearMonth(r.date));
-        const values = valid.map(r => Number(r.hdcp));
-
-        const ctx = document.getElementById('officialHdcpChart').getContext('2d');
-        if (State.officialChartInstance) State.officialChartInstance.destroy();
-        if (values.length > 0) {
-          State.officialChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{
-                label: '公式HDCP', data: values,
-                borderColor: 'rgb(147,51,234)', backgroundColor: 'rgba(147,51,234,0.1)',
-                borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147,51,234)', tension: 0.3,
-              }],
+    const ctx = document.getElementById('officialHdcpChart').getContext('2d');
+    if (State.officialChartInstance) State.officialChartInstance.destroy();
+    if (values.length > 0) {
+      State.officialChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '公式HDCP',
+              data: values,
+              borderColor: 'rgb(147,51,234)',
+              backgroundColor: 'rgba(147,51,234,0.1)',
+              borderWidth: 2,
+              pointRadius: 4,
+              pointBackgroundColor: 'rgb(147,51,234)',
+              tension: 0.3,
             },
-            options: {
-              responsive: true,
-              plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-              scales: { y: { reverse: true } },
-            },
-          });
-        }
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+          scales: { y: { reverse: true } },
+        },
+      });
+    }
 
-        tbody.innerHTML = [...history].reverse().map(r => {
-          const hdcp = r.hdcp === '不明' ? '<span class="text-red-500">不明</span>' : escapeHtml(String(r.hdcp));
-          return `<tr class="border-b border-purple-50/50 last:border-0">
+    tbody.innerHTML = [...history]
+      .reverse()
+      .map(r => {
+        const hdcp =
+          r.hdcp === '不明' ? '<span class="text-red-500">不明</span>' : escapeHtml(String(r.hdcp));
+        return `<tr class="border-b border-purple-50/50 last:border-0">
             <td class="py-2 pl-2 text-slate-500 font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
             <td class="py-2 pr-4 text-right font-bold text-purple-600">${hdcp}</td>
           </tr>`;
-        }).join('');
-      } catch {
-        document.getElementById('officialHdcpTableBody').innerHTML = `<tr><td class="text-center py-4 text-red-400 text-xs">エラーが発生しました</td></tr>`;
-      }
-    }
+      })
+      .join('');
+  } catch {
+    document.getElementById('officialHdcpTableBody').innerHTML =
+      `<tr><td class="text-center py-4 text-red-400 text-xs">エラーが発生しました</td></tr>`;
+  }
+}
 
-    // 0件時ガード機能
-    function setupCompeResults() {
+// 0件時ガード機能
+function setupCompeResults() {
   const sel = document.getElementById('dateSelect');
   if (State.allScoreHistory.length === 0) {
-  document.getElementById('scoreContainer').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+    document.getElementById('scoreContainer').innerHTML =
+      `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
     return;
   }
-      const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort((a, b) => new Date(b) - new Date(a));
-      sel.innerHTML = dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(formatYearMonth(d))}</option>`).join('');
-      sel.classList.remove('hidden');
-      renderScoresByDate();
-    }
+  const dates = [...new Set(State.allScoreHistory.map(r => r['日付']))].sort(
+    (a, b) => new Date(b) - new Date(a)
+  );
+  sel.innerHTML = dates
+    .map(d => `<option value="${escapeHtml(d)}">${escapeHtml(formatYearMonth(d))}</option>`)
+    .join('');
+  sel.classList.remove('hidden');
+  renderScoresByDate();
+}
 
-    function renderScoresByDate() {
-      const target   = document.getElementById('dateSelect').value;
-      const filtered = State.allScoreHistory
-        .filter(r => r['日付'] === target)
-        .sort((a, b) => Number(a['順位']) - Number(b['順位']));
+function renderScoresByDate() {
+  const target = document.getElementById('dateSelect').value;
+  const filtered = State.allScoreHistory
+    .filter(r => r['日付'] === target)
+    .sort((a, b) => Number(a['順位']) - Number(b['順位']));
 
-      const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
-      const rankStyle = (r) => r === 1 ? 'text-amber-500 font-black' : r === 2 ? 'text-slate-400 font-black' : r === 3 ? 'text-amber-700 font-black' : 'text-slate-600 font-bold';
-  document.getElementById('scoreContainer').innerHTML = filtered.map(row => {
+  const rankBadge = r => (r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`);
+  const rankStyle = r =>
+    r === 1
+      ? 'text-amber-500 font-black'
+      : r === 2
+        ? 'text-slate-400 font-black'
+        : r === 3
+          ? 'text-amber-700 font-black'
+          : 'text-slate-600 font-bold';
+  document.getElementById('scoreContainer').innerHTML =
+    filtered
+      .map(row => {
         const rank = Number(row['順位']);
         const isMe = row['名前'] === State.currentUser;
+        // 名前をonclick文字列に直接埋め込むと、引用符などを含む名前で
+        // コード注入が起きうるため、escapeHtmlした値をdata-name属性に置き、
+        // クリック時にdataset経由でJS側から読み出す（他の名前リンクも同じ方式）
         return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
           <td class="py-3 text-center whitespace-nowrap ${rankStyle(rank)} text-xs">${rankBadge(rank)}</td>
           <td class="py-3 font-bold ${isMe ? 'text-brand-700' : 'text-slate-800'}">
@@ -1040,94 +1138,112 @@ function setupScheduleDisplay(res) {
           <td class="py-3 text-right text-slate-500 font-medium whitespace-nowrap">${escapeHtml(String(row['GROSS']))}</td>
           <td class="py-3 pr-4 text-right text-brand-600 font-black whitespace-nowrap">${escapeHtml(String(row['NET']))}</td>
         </tr>`;
-      }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+      })
+      .join('') ||
+    `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+}
+
+// ランキングの0件時ヘッダー未初期化ガード
+function setupRanking() {
+  State.rankingByTerm = {};
+  if (State.allScoreHistory.length === 0) {
+    State.availableRankingTerms = [];
+    renderRankingTabs();
+    changeRankingTab('official');
+    return;
+  }
+
+  State.allScoreHistory.forEach(row => {
+    const d = new Date(row['日付']);
+    if (isNaN(d.getTime())) return;
+    const year = String(d.getFullYear()).slice(-2);
+    const month = d.getMonth() + 1;
+    const termKey = `${year}年${month >= 7 ? '下期' : '上期'}`;
+    if (!State.rankingByTerm[termKey]) State.rankingByTerm[termKey] = {};
+    const net = Number(row['NET']);
+    if (row['名前'] && !isNaN(net)) {
+      if (!State.rankingByTerm[termKey][row['名前']])
+        State.rankingByTerm[termKey][row['名前']] = [];
+      State.rankingByTerm[termKey][row['名前']].push(net);
     }
-    
-    // ランキングの0件時ヘッダー未初期化ガード
-    function setupRanking() {
-      State.rankingByTerm = {};
-      if (State.allScoreHistory.length === 0) {
-        State.availableRankingTerms = [];
-        renderRankingTabs();
-        changeRankingTab('official');
-        return;
-      }
-      
-      State.allScoreHistory.forEach(row => {
-        const d = new Date(row['日付']);
-        if (isNaN(d.getTime())) return;
-        const year    = String(d.getFullYear()).slice(-2);
-        const month   = d.getMonth() + 1;
-        const termKey = `${year}年${month >= 7 ? '下期' : '上期'}`;
-        if (!State.rankingByTerm[termKey]) State.rankingByTerm[termKey] = {};
-        const net = Number(row['NET']);
-        if (row['名前'] && !isNaN(net)) {
-          if (!State.rankingByTerm[termKey][row['名前']]) State.rankingByTerm[termKey][row['名前']] = [];
-          State.rankingByTerm[termKey][row['名前']].push(net);
-        }
-      });
+  });
 
-      const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
-        const ya = parseInt(a), la = a.includes('下期') ? 1 : 0;
-        const yb = parseInt(b), lb = b.includes('下期') ? 1 : 0;
-        return ya !== yb ? yb - ya : lb - la;
-      });
-      State.availableRankingTerms = terms.slice(0, 2);
+  const terms = Object.keys(State.rankingByTerm).sort((a, b) => {
+    const ya = parseInt(a),
+      la = a.includes('下期') ? 1 : 0;
+    const yb = parseInt(b),
+      lb = b.includes('下期') ? 1 : 0;
+    return ya !== yb ? yb - ya : lb - la;
+  });
+  State.availableRankingTerms = terms.slice(0, 2);
 
-      renderRankingTabs();
-      changeRankingTab('official');
-    }
+  renderRankingTabs();
+  changeRankingTab('official');
+}
 
-    function renderRankingTabs() {
-      const container = document.getElementById('rankingTabsContainer');
-      const tabClass  = 'flex-1 text-[11px] px-1 py-1.5 rounded-lg font-bold transition-all leading-tight';
-      container.innerHTML = `
+function renderRankingTabs() {
+  const container = document.getElementById('rankingTabsContainer');
+  const tabClass =
+    'flex-1 text-[11px] px-1 py-1.5 rounded-lg font-bold transition-all leading-tight';
+  container.innerHTML = `
         <button type="button" onclick="changeRankingTab('official')" id="tab_official" class="${tabClass} text-slate-500">公式HD 📊</button>
-        ${State.availableRankingTerms.map((term, i) => `
+        ${State.availableRankingTerms
+          .map(
+            (term, i) => `
           <button type="button" onclick="changeRankingTab('${escapeHtml(term)}')" id="tab_${escapeHtml(term)}" class="${tabClass} text-slate-500 text-center">
             ${i === 0 ? '今期' : '前期'} NET<br><span class="text-[9px] font-normal text-slate-400">(${escapeHtml(term)})</span>
-          </button>`).join('')}`;
-    }
+          </button>`
+          )
+          .join('')}`;
+}
 
-    function changeRankingTab(tabId) {
-      State.currentRankingTab = tabId;
-      const tabClass = 'flex-1 text-[11px] px-1 py-1.5 rounded-lg font-bold transition-all leading-tight';
-      const tabs     = document.getElementById('rankingTabsContainer').children;
-      for (const tab of tabs) tab.className = `${tabClass} text-slate-500`;
+function changeRankingTab(tabId) {
+  State.currentRankingTab = tabId;
+  const tabClass =
+    'flex-1 text-[11px] px-1 py-1.5 rounded-lg font-bold transition-all leading-tight';
+  const tabs = document.getElementById('rankingTabsContainer').children;
+  for (const tab of tabs) tab.className = `${tabClass} text-slate-500`;
 
-      const activeId = tabId === 'official' ? 'tab_official' : `tab_${tabId}`;
-      const activeEl = document.getElementById(activeId);
-      if (activeEl) {
-        const color = tabId === 'official' ? 'text-purple-600' : 'text-brand-600';
-        activeEl.className = `${tabClass} bg-white shadow-sm ${color}`;
-      }
-      renderRankingContent();
-    }
+  const activeId = tabId === 'official' ? 'tab_official' : `tab_${tabId}`;
+  const activeEl = document.getElementById(activeId);
+  if (activeEl) {
+    const color = tabId === 'official' ? 'text-purple-600' : 'text-brand-600';
+    activeEl.className = `${tabClass} bg-white shadow-sm ${color}`;
+  }
+  renderRankingContent();
+}
 
-    function renderRankingContent() {
-      const header = document.getElementById('rankingTableHeader');
-      const tbody  = document.getElementById('rankingTableBody');
-      if (!header || !tbody) return;
-      
-      const rankBadge = (r) => r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`;
-      const rankStyle = (r) => r === 1 ? 'text-amber-500 font-black' : r === 2 ? 'text-slate-400 font-black' : r === 3 ? 'text-amber-700 font-black' : 'text-slate-600 font-bold';
+function renderRankingContent() {
+  const header = document.getElementById('rankingTableHeader');
+  const tbody = document.getElementById('rankingTableBody');
+  if (!header || !tbody) return;
 
-      if (State.currentRankingTab === 'official') {
-        header.innerHTML = `
+  const rankBadge = r => (r === 1 ? '🥇 1位' : r === 2 ? '🥈 2位' : r === 3 ? '🥉 3位' : `${r}位`);
+  const rankStyle = r =>
+    r === 1
+      ? 'text-amber-500 font-black'
+      : r === 2
+        ? 'text-slate-400 font-black'
+        : r === 3
+          ? 'text-amber-700 font-black'
+          : 'text-slate-600 font-bold';
+
+  if (State.currentRankingTab === 'official') {
+    header.innerHTML = `
           <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
             <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
             <th scope="col" class="py-2 font-bold">名前</th>
             <th scope="col" class="py-2 text-right font-bold">公式HD</th>
             <th scope="col" class="py-2 pr-4 text-right font-bold text-[10px]">イ会HD</th>
           </tr>`;
-          
-        tbody.innerHTML = State.memberList
-          .filter(m => m.hdcp !== 999)
-          .map((m, i) => {
-            const rank = i + 1;
-            const isMe = m.name === State.currentUser;
-            // XSS対策の data-name
-            return `<tr class="border-b border-slate-100 ${isMe ? 'bg-purple-50/40' : ''} text-sm">
+
+    tbody.innerHTML =
+      State.memberList
+        .filter(m => m.hdcp !== 999)
+        .map((m, i) => {
+          const rank = i + 1;
+          const isMe = m.name === State.currentUser;
+          return `<tr class="border-b border-slate-100 ${isMe ? 'bg-purple-50/40' : ''} text-sm">
               <td class="py-3 text-center text-xs ${rankStyle(rank)}">${rankBadge(rank)}</td>
               <td class="py-3 font-bold ${isMe ? 'text-purple-700' : 'text-slate-800'}">
                 <button type="button" data-name="${escapeHtml(m.name)}" onclick="openMemberHdcpModal(this.dataset.name)" class="hover:text-purple-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
@@ -1137,26 +1253,30 @@ function setupScheduleDisplay(res) {
               <td class="py-3 text-right font-black text-purple-600">${escapeHtml(String(m.hdcp))}</td>
               <td class="py-3 pr-4 text-right font-bold text-sky-600 text-xs">${escapeHtml(String(m.eagleHdcp))}</td>
             </tr>`;
-          }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
-
-      } else {
-       header.innerHTML = `
+        })
+        .join('') ||
+      `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+  } else {
+    header.innerHTML = `
           <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
             <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
             <th scope="col" class="py-2 font-bold">名前</th>
             <th scope="col" class="py-2 text-right font-bold">平均NET</th>
             <th scope="col" class="py-2 pr-4 text-right font-bold text-[10px]">参戦</th>
           </tr>`;
-          
-        const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
-        const list = Object.entries(scoresObj)
-          .map(([name, scores]) => ({
-            name, count: scores.length,
-            avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10,
-          }))
-          .sort((a, b) => a.avg - b.avg);
-          
-        tbody.innerHTML = list.map((m, i) => {
+
+    const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
+    const list = Object.entries(scoresObj)
+      .map(([name, scores]) => ({
+        name,
+        count: scores.length,
+        avg: Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10,
+      }))
+      .sort((a, b) => a.avg - b.avg);
+
+    tbody.innerHTML =
+      list
+        .map((m, i) => {
           const rank = i + 1;
           const isMe = m.name === State.currentUser;
           return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
@@ -1169,82 +1289,102 @@ function setupScheduleDisplay(res) {
             <td class="py-3 text-right font-black text-brand-600">${escapeHtml(String(m.avg))}</td>
             <td class="py-3 pr-4 text-right text-slate-400 text-xs font-medium">${escapeHtml(String(m.count))}回</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
-      }
+        })
+        .join('') ||
+      `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+  }
+}
+
+const Versus = {
+  setup() {
+    const sel = document.getElementById('vsOpponentSelect');
+    const myHdcp = parseFloat(State.myOfficialHdcp);
+
+    if (State.allScoreHistory.length === 0) {
+      document.getElementById('versusContainer').innerHTML =
+        `<div class="text-center py-6 text-slate-400 text-xs">データがありません</div>`;
+      return;
     }
 
-    const Versus = {
-      setup() {
-        const sel    = document.getElementById('vsOpponentSelect');
-        const myHdcp = parseFloat(State.myOfficialHdcp);
-        
-        if (State.allScoreHistory.length === 0) {
-          document.getElementById('versusContainer').innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">データがありません</div>`;
-          return;
+    const dateMap = {};
+    State.allScoreHistory.forEach(r => {
+      if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
+      dateMap[r['日付']][r['名前']] = true;
+    });
+
+    let closest = null,
+      minDiff = Infinity,
+      maxGames = -1;
+    const options = State.memberList
+      .filter(m => m.name !== State.currentUser)
+      .map(m => {
+        if (!isNaN(myHdcp) && m.hdcp !== 999) {
+          const diff = Math.abs(myHdcp - m.hdcp);
+          const games = Object.values(dateMap).filter(
+            d => d[State.currentUser] && d[m.name]
+          ).length;
+          if (diff < minDiff || (diff === minDiff && games > maxGames)) {
+            minDiff = diff;
+            maxGames = games;
+            closest = m.name;
+          }
         }
+        return m;
+      });
 
-        const dateMap = {};
-        State.allScoreHistory.forEach(r => {
-          if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
-          dateMap[r['日付']][r['名前']] = true;
-        });
+    if (options.length === 0) {
+      document.getElementById('versusContainer').innerHTML =
+        `<div class="text-center py-6 text-slate-400 text-xs">対戦可能なメンバーがいません</div>`;
+      return;
+    }
 
-        let closest = null, minDiff = Infinity, maxGames = -1;
-        const options = State.memberList
-          .filter(m => m.name !== State.currentUser)
-          .map(m => {
-            if (!isNaN(myHdcp) && m.hdcp !== 999) {
-              const diff  = Math.abs(myHdcp - m.hdcp);
-              const games = Object.values(dateMap).filter(d => d[State.currentUser] && d[m.name]).length;
-              if (diff < minDiff || (diff === minDiff && games > maxGames)) {
-                minDiff = diff; maxGames = games; closest = m.name;
-              }
-            }
-            return m;
-          });
-
-        if (options.length === 0) {
-          document.getElementById('versusContainer').innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">対戦可能なメンバーがいません</div>`;
-          return;
-        }
-
-        sel.innerHTML = options.map(m =>
+    sel.innerHTML = options
+      .map(
+        m =>
           `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)} (HDCP: ${m.hdcp === 999 ? '-' : m.hdcp})</option>`
-        ).join('');
-        sel.classList.remove('hidden');
-        if (closest) sel.value = closest;
-        this.render();
-      },
+      )
+      .join('');
+    sel.classList.remove('hidden');
+    if (closest) sel.value = closest;
+    this.render();
+  },
 
-      render() {
-        const opName   = document.getElementById('vsOpponentSelect').value;
-        const myName   = State.currentUser;
-        const opMember = State.memberList.find(m => m.name === opName);
-        const opHdcp   = opMember && opMember.hdcp !== 999 ? opMember.hdcp : '-';
+  render() {
+    const opName = document.getElementById('vsOpponentSelect').value;
+    const myName = State.currentUser;
+    const opMember = State.memberList.find(m => m.name === opName);
+    const opHdcp = opMember && opMember.hdcp !== 999 ? opMember.hdcp : '-';
 
-        const dateMap = {};
-        State.allScoreHistory.forEach(r => {
-          if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
-          dateMap[r['日付']][r['名前']] = r;
-        });
+    const dateMap = {};
+    State.allScoreHistory.forEach(r => {
+      if (!dateMap[r['日付']]) dateMap[r['日付']] = {};
+      dateMap[r['日付']][r['名前']] = r;
+    });
 
-        let win = 0, lose = 0, draw = 0;
-        const versusData = Object.entries(dateMap)
-          .filter(([, d]) => d[myName] && d[opName])
-          .map(([date, d]) => {
-            const myG = Number(d[myName]['GROSS']), opG = Number(d[opName]['GROSS']);
-            if (isNaN(myG) || isNaN(opG)) return null;
-            let result = '引分';
-            if (myG < opG) { result = '勝利'; win++; }
-            else if (myG > opG) { result = '敗北'; lose++; }
-            else draw++;
-            return { date, myGross: myG, opGross: opG, result };
-          })
-          .filter(Boolean)
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+    let win = 0,
+      lose = 0,
+      draw = 0;
+    const versusData = Object.entries(dateMap)
+      .filter(([, d]) => d[myName] && d[opName])
+      .map(([date, d]) => {
+        const myG = Number(d[myName]['GROSS']),
+          opG = Number(d[opName]['GROSS']);
+        if (isNaN(myG) || isNaN(opG)) return null;
+        let result = '引分';
+        if (myG < opG) {
+          result = '勝利';
+          win++;
+        } else if (myG > opG) {
+          result = '敗北';
+          lose++;
+        } else draw++;
+        return { date, myGross: myG, opGross: opG, result };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        const container = document.getElementById('versusContainer');
-        const vsHeader  = `
+    const container = document.getElementById('versusContainer');
+    const vsHeader = `
           <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
             <div class="text-center w-1/3">
               <p class="text-[10px] text-slate-400 font-bold mb-1">あなた</p>
@@ -1253,11 +1393,13 @@ function setupScheduleDisplay(res) {
             </div>
             <div class="text-center w-1/3 flex flex-col items-center">
               <span class="text-[10px] font-black text-slate-300 italic mb-1.5">VS</span>
-              ${versusData.length > 0
-                ? `<span class="text-xs font-black px-2.5 py-1 rounded bg-white shadow-sm text-slate-700 whitespace-nowrap border border-slate-100">
+              ${
+                versusData.length > 0
+                  ? `<span class="text-xs font-black px-2.5 py-1 rounded bg-white shadow-sm text-slate-700 whitespace-nowrap border border-slate-100">
                     <span class="text-brand-600">${win}勝</span> <span class="text-red-500">${lose}敗</span> ${draw}分
                    </span>`
-                : `<span class="text-xs text-slate-400 font-bold">対戦なし</span>`}
+                  : `<span class="text-xs text-slate-400 font-bold">対戦なし</span>`
+              }
             </div>
             <div class="text-center w-1/3">
               <p class="text-[10px] text-slate-400 font-bold mb-1">ライバル</p>
@@ -1266,23 +1408,34 @@ function setupScheduleDisplay(res) {
             </div>
           </div>`;
 
-        if (versusData.length === 0) { container.innerHTML = vsHeader; return; }
+    if (versusData.length === 0) {
+      container.innerHTML = vsHeader;
+      return;
+    }
 
-        const tableRows = [...versusData].reverse().map(r => {
-          const badge   = r.result === '勝利' ? `<span class="bg-brand-500 text-white px-2 py-0.5 rounded text-[10px] font-bold">勝利</span>`
-                        : r.result === '敗北' ? `<span class="bg-red-400 text-white px-2 py-0.5 rounded text-[10px] font-bold">敗北</span>`
-                        : `<span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">引分</span>`;
-          const myColor = r.result === '勝利' ? 'text-brand-600 font-black' : 'text-slate-500 font-medium';
-          const opColor = r.result === '敗北' ? 'text-red-500 font-black' : 'text-slate-500 font-medium';
-          return `<tr class="border-b border-slate-100">
+    const tableRows = [...versusData]
+      .reverse()
+      .map(r => {
+        const badge =
+          r.result === '勝利'
+            ? `<span class="bg-brand-500 text-white px-2 py-0.5 rounded text-[10px] font-bold">勝利</span>`
+            : r.result === '敗北'
+              ? `<span class="bg-red-400 text-white px-2 py-0.5 rounded text-[10px] font-bold">敗北</span>`
+              : `<span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">引分</span>`;
+        const myColor =
+          r.result === '勝利' ? 'text-brand-600 font-black' : 'text-slate-500 font-medium';
+        const opColor =
+          r.result === '敗北' ? 'text-red-500 font-black' : 'text-slate-500 font-medium';
+        return `<tr class="border-b border-slate-100">
             <td class="py-2 text-slate-500 text-xs font-medium">${escapeHtml(formatYearMonth(r.date))}</td>
             <td class="py-2 text-center ${myColor}">${r.myGross}</td>
             <td class="py-2 text-center ${opColor}">${r.opGross}</td>
             <td class="py-2 pr-4 text-right">${badge}</td>
           </tr>`;
-        }).join('');
+      })
+      .join('');
 
-        container.innerHTML = `
+    container.innerHTML = `
           ${vsHeader}
           <div class="py-1"><canvas id="versusChart"></canvas></div>
           <div class="max-h-60 overflow-y-auto mt-4 -mx-1 px-1">
@@ -1299,153 +1452,215 @@ function setupScheduleDisplay(res) {
             </table>
           </div>`;
 
-        const recent = versusData.slice(-10);
-        const ctx    = document.getElementById('versusChart').getContext('2d');
-        if (State.versusChartInstance) State.versusChartInstance.destroy();
-        State.versusChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: recent.map(r => formatYearMonth(r.date)),
-            datasets: [
-              { label: 'あなた', data: recent.map(r => r.myGross), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#059669', tension: 0.3 },
-              { label: '相手',   data: recent.map(r => r.opGross), borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', borderWidth: 2, pointRadius: 4, borderDash: [5, 5], pointBackgroundColor: '#94a3b8', tension: 0.3 },
-            ],
+    const recent = versusData.slice(-10);
+    const ctx = document.getElementById('versusChart').getContext('2d');
+    if (State.versusChartInstance) State.versusChartInstance.destroy();
+    State.versusChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: recent.map(r => formatYearMonth(r.date)),
+        datasets: [
+          {
+            label: 'あなた',
+            data: recent.map(r => r.myGross),
+            borderColor: '#059669',
+            backgroundColor: 'rgba(5,150,105,0.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#059669',
+            tension: 0.3,
           },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }, tooltip: { mode: 'index', intersect: false } },
-            scales: { y: { reverse: true } },
+          {
+            label: '相手',
+            data: recent.map(r => r.opGross),
+            borderColor: '#94a3b8',
+            backgroundColor: 'rgba(148,163,184,0.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            borderDash: [5, 5],
+            pointBackgroundColor: '#94a3b8',
+            tension: 0.3,
           },
-        });
+        ],
       },
-    };
-
-    function loadMyChart(history) {
-      const sorted      = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
-      const recentMax10 = sorted.slice(0, 10);
-      const chartData   = [...recentMax10].reverse();
-
-      const emptyEl = document.getElementById('myScoreEmpty');
-      const chartEl = document.getElementById('scoreChartContainer');
-
-      if (chartData.length === 0) {
-        emptyEl.classList.remove('hidden');
-        chartEl.classList.add('hidden');
-        document.getElementById('myScoreTableBody').innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
-        return;
-      }
-
-      emptyEl.classList.add('hidden');
-      chartEl.classList.remove('hidden');
-
-      const ctx = document.getElementById('myChart').getContext('2d');
-      if (State.myChartInstance) State.myChartInstance.destroy();
-      State.myChartInstance = new Chart(ctx, {
-        type: chartData.length === 1 ? 'bar' : 'line',
-        data: {
-          labels: chartData.map(r => formatYearMonth(r.date)),
-          datasets: [{
-            label: 'GROSS', data: chartData.map(r => r.gross),
-            borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)',
-            borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#059669', tension: 0.3,
-          }],
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: { boxWidth: 12, font: { size: 10 } },
+          },
+          tooltip: { mode: 'index', intersect: false },
         },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-          scales: { y: { reverse: true } },
-        },
-      });
+        scales: { y: { reverse: true } },
+      },
+    });
+  },
+};
 
-      document.getElementById('myScoreTableBody').innerHTML = recentMax10.map(row => {
-        const rank      = Number(row.rank);
-        const rankText  = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
-        const rankStyle = rank === 1 ? 'text-amber-500 font-black' : rank === 2 ? 'text-slate-400 font-black' : rank === 3 ? 'text-amber-700 font-black' : 'text-slate-500 font-bold';
-        return `<tr class="border-b border-slate-100">
+function loadMyChart(history) {
+  const sorted = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const recentMax10 = sorted.slice(0, 10);
+  const chartData = [...recentMax10].reverse();
+
+  const emptyEl = document.getElementById('myScoreEmpty');
+  const chartEl = document.getElementById('scoreChartContainer');
+
+  if (chartData.length === 0) {
+    emptyEl.classList.remove('hidden');
+    chartEl.classList.add('hidden');
+    document.getElementById('myScoreTableBody').innerHTML =
+      `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
+    return;
+  }
+
+  emptyEl.classList.add('hidden');
+  chartEl.classList.remove('hidden');
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+  if (State.myChartInstance) State.myChartInstance.destroy();
+  State.myChartInstance = new Chart(ctx, {
+    type: chartData.length === 1 ? 'bar' : 'line',
+    data: {
+      labels: chartData.map(r => formatYearMonth(r.date)),
+      datasets: [
+        {
+          label: 'GROSS',
+          data: chartData.map(r => r.gross),
+          borderColor: '#059669',
+          backgroundColor: 'rgba(5,150,105,0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#059669',
+          tension: 0.3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      scales: { y: { reverse: true } },
+    },
+  });
+
+  document.getElementById('myScoreTableBody').innerHTML = recentMax10
+    .map(row => {
+      const rank = Number(row.rank);
+      const rankText =
+        rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
+      const rankStyle =
+        rank === 1
+          ? 'text-amber-500 font-black'
+          : rank === 2
+            ? 'text-slate-400 font-black'
+            : rank === 3
+              ? 'text-amber-700 font-black'
+              : 'text-slate-500 font-bold';
+      return `<tr class="border-b border-slate-100">
           <td class="py-2 text-slate-500 text-xs font-medium">${escapeHtml(formatYearMonth(row.date))}</td>
           <td class="py-2 text-right ${rankStyle}">${rankText}</td>
           <td class="py-2 text-right text-slate-800 font-black">${escapeHtml(String(row.gross))}</td>
           <td class="py-2 pr-4 text-right text-brand-600 font-black">${escapeHtml(String(row.net))}</td>
         </tr>`;
-      }).join('');
-    }
+    })
+    .join('');
+}
 
-        function toggleScoreView(view) {
-      const isChart = view === 'chart';
-      document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
-      document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
-      document.getElementById('btnChart').className = `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
-      document.getElementById('btnTable').className  = `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
+function toggleScoreView(view) {
+  const isChart = view === 'chart';
+  document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
+  document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
+  document.getElementById('btnChart').className =
+    `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
+  document.getElementById('btnTable').className =
+    `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
 
-      // グラフ表示タブに切り替えた際、インスタンスがあれば明示的にリサイズ
-      if (isChart && State.myChartInstance) {
-        State.myChartInstance.resize();
+  // グラフ表示タブに切り替えた際、インスタンスがあれば明示的にリサイズ
+  if (isChart && State.myChartInstance) {
+    State.myChartInstance.resize();
+  }
+}
+
+function renderDashboardSummary() {
+  const container = document.getElementById('dashboardSummaryContainer');
+  if (!container) return;
+
+  if (State.allScoreHistory.length === 0) {
+    container.innerHTML = `<div class="bg-slate-50 rounded-xl p-4 text-center text-sm text-slate-400">サマリーデータがありません</div>`;
+    return;
+  }
+
+  const myHistory = State.allScoreHistory.filter(r => r['名前'] === State.currentUser);
+  let totalGross = 0,
+    totalNet = 0,
+    validGrossCount = 0,
+    validNetCount = 0;
+  let bestGross = Infinity,
+    bestDate = '';
+
+  myHistory.forEach(r => {
+    const g = Number(r['GROSS']),
+      n = Number(r['NET']);
+    if (!isNaN(g)) {
+      totalGross += g;
+      validGrossCount++;
+      if (g < bestGross) {
+        bestGross = g;
+        bestDate = r['日付'];
+      } else if (g === bestGross) {
+        const d1 = new Date(r['日付']),
+          d2 = new Date(bestDate);
+        if (!isNaN(d1) && !isNaN(d2) && d1 > d2) bestDate = r['日付'];
       }
     }
+    if (!isNaN(n)) {
+      totalNet += n;
+      validNetCount++;
+    }
+  });
 
-    function renderDashboardSummary() {
-      const container = document.getElementById('dashboardSummaryContainer');
-      if (!container) return;
-      
-      if (State.allScoreHistory.length === 0) {
-        container.innerHTML = `<div class="bg-slate-50 rounded-xl p-4 text-center text-sm text-slate-400">サマリーデータがありません</div>`;
-        return;
-      }
+  const avgGross = validGrossCount > 0 ? (totalGross / validGrossCount).toFixed(1) : '-';
+  const avgNet = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
+  const totalParticipation = myHistory.length;
 
-      const myHistory = State.allScoreHistory.filter(r => r['名前'] === State.currentUser);
-      let totalGross = 0, totalNet = 0, validGrossCount = 0, validNetCount = 0;
-      let bestGross = Infinity, bestDate = '';
-
-      myHistory.forEach(r => {
-        const g = Number(r['GROSS']), n = Number(r['NET']);
-        if (!isNaN(g)) {
-          totalGross += g; validGrossCount++;
-          if (g < bestGross) { bestGross = g; bestDate = r['日付']; } 
-          else if (g === bestGross) {
-             const d1 = new Date(r['日付']), d2 = new Date(bestDate);
-             if(!isNaN(d1) && !isNaN(d2) && d1 > d2) bestDate = r['日付'];
-          }
-        }
-        if (!isNaN(n)) { totalNet += n; validNetCount++; }
-      });
-
-      const avgGross = validGrossCount > 0 ? (totalGross / validGrossCount).toFixed(1) : '-';
-      const avgNet   = validNetCount > 0 ? (totalNet / validNetCount).toFixed(1) : '-';
-      const totalParticipation = myHistory.length;
-      
-      let bestScoreHtml = `<span class="text-2xl font-black text-slate-300">-</span>`;
-      if (bestGross !== Infinity) {
-        const bd = new Date(bestDate);
-        const dateStr = !isNaN(bd) ? `${String(bd.getFullYear()).slice(-2)}年${bd.getMonth() + 1}月` : '';
-        bestScoreHtml = `
+  let bestScoreHtml = `<span class="text-2xl font-black text-slate-300">-</span>`;
+  if (bestGross !== Infinity) {
+    const bd = new Date(bestDate);
+    const dateStr = !isNaN(bd)
+      ? `${String(bd.getFullYear()).slice(-2)}年${bd.getMonth() + 1}月`
+      : '';
+    bestScoreHtml = `
           <span class="text-2xl font-black text-amber-500">${bestGross}</span>
           ${dateStr ? `<span class="text-[9px] text-slate-400 font-medium -mt-1">${dateStr}</span>` : ''}
         `;
-      }
+  }
 
-      // 空配列チェックによる安全性向上
-      let oldestDateText = '';
-      if (State.allScoreHistory.length > 0) {
-        const timestamps = State.allScoreHistory.map(r => new Date(r['日付']).getTime()).filter(t => !isNaN(t));
-        if (timestamps.length > 0) {
-          const minDate = new Date(Math.min(...timestamps));
-          oldestDateText = `${String(minDate.getFullYear()).slice(-2)}年${minDate.getMonth() + 1}月${minDate.getDate()}日`;
-        }
-      }
+  // 空配列チェックによる安全性向上
+  let oldestDateText = '';
+  if (State.allScoreHistory.length > 0) {
+    const timestamps = State.allScoreHistory
+      .map(r => new Date(r['日付']).getTime())
+      .filter(t => !isNaN(t));
+    if (timestamps.length > 0) {
+      const minDate = new Date(Math.min(...timestamps));
+      oldestDateText = `${String(minDate.getFullYear()).slice(-2)}年${minDate.getMonth() + 1}月${minDate.getDate()}日`;
+    }
+  }
 
-      const currentYear = new Date().getFullYear();
-      const thisYearDates = new Set();
-      State.allScoreHistory.forEach(r => {
-        const d = new Date(r['日付']);
-        if (!isNaN(d) && d.getFullYear() === currentYear) thisYearDates.add(r['日付']);
-      });
-      const totalCompes = thisYearDates.size;
-      const myCompes = myHistory.filter(r => {
-        const d = new Date(r['日付']);
-        return !isNaN(d) && d.getFullYear() === currentYear;
-      }).length;
+  const currentYear = new Date().getFullYear();
+  const thisYearDates = new Set();
+  State.allScoreHistory.forEach(r => {
+    const d = new Date(r['日付']);
+    if (!isNaN(d) && d.getFullYear() === currentYear) thisYearDates.add(r['日付']);
+  });
+  const totalCompes = thisYearDates.size;
+  const myCompes = myHistory.filter(r => {
+    const d = new Date(r['日付']);
+    return !isNaN(d) && d.getFullYear() === currentYear;
+  }).length;
 
-          container.innerHTML = `
+  container.innerHTML = `
         <div class="mt-4 pt-4 border-t border-slate-100">
           <div class="flex justify-between items-end mb-4">
             <div class="overflow-hidden pr-2">
@@ -1481,469 +1696,585 @@ function setupScheduleDisplay(res) {
         </div>
       `;
 }
-    // ==========================================
-    // ACTION HANDLERS (ADMIN & MODALS)
-    // ==========================================
+// ==========================================
+// ACTION HANDLERS（メンバー操作）
+// ==========================================
 
-    // === ▼ 公式HDCP同期の処理ロジック ▼ ===
-    let syncTimerInterval = null;
+async function onUserManualSync(btnElement) {
+  const originalHtml = btnElement.innerHTML;
+  btnElement.disabled = true;
+  btnElement.innerHTML = `<svg class="animate-spin h-4 w-4 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
-    function startSyncTimer() {
-      if (syncTimerInterval) clearInterval(syncTimerInterval);
-      State.syncStartTime = Date.now();
-      syncTimerInterval = setInterval(() => {
-        const el = document.getElementById('syncTimerDisp');
-        if (el) el.textContent = Math.floor((Date.now() - State.syncStartTime) / 1000);
-      }, 1000);
+  try {
+    localStorage.removeItem('eagle_data_cache');
+    localStorage.removeItem('eagle_cache_timestamp');
+
+    // データの再取得（内部エラー時は loadAllData 内で showErrorAndRetry() が呼ばれる）
+    await loadAllData();
+  } catch (e) {
+    console.error('手動更新エラー', e);
+    // ネイティブダイアログ(alert)を削除し、一貫したUI処理へフォールバック
+    showErrorAndRetry();
+  } finally {
+    // エラー画面へ遷移してボタンが消滅した場合のJSエラーを防止
+    if (document.body.contains(btnElement)) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = originalHtml;
     }
-    
-    function stopSyncTimer() {
-      if (syncTimerInterval) { clearInterval(syncTimerInterval); syncTimerInterval = null; }
+  }
+}
+
+async function onChangeMyPassword() {
+  const currentPw = document.getElementById('myCurrentPw').value;
+  const newPw = document.getElementById('myNewPw').value;
+  const statusText = document.getElementById('myChangePwStatus');
+  const btn = document.getElementById('myChangePwBtn');
+
+  if (!currentPw || !newPw) {
+    statusText.textContent = '両方のパスワードを入力してください。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500';
+    return;
+  }
+  if (newPw.length < 8) {
+    statusText.textContent = '新しいパスワードは8文字以上で入力してください。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}変更中...`;
+  statusText.textContent = '';
+  try {
+    const hashedCurrent = await hashPassword(currentPw);
+    const hashedNew = await hashPassword(newPw);
+    const res = await callGasApi('changeMyPassword', {
+      loginId: State.loginId,
+      currentPassword: hashedCurrent,
+      newPassword: hashedNew,
+    });
+
+    statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
+    statusText.className = `mt-3 text-xs font-bold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
+    if (res.success) {
+      localStorage.setItem(
+        'eagle_auto_login',
+        JSON.stringify({ id: State.loginId, hashedPw: hashedNew })
+      );
+      document.getElementById('myCurrentPw').value = '';
+      document.getElementById('myNewPw').value = '';
+      setTimeout(closeChangePwModal, 2000);
     }
+  } catch {
+    statusText.textContent = '通信エラーが発生しました。';
+    statusText.className = 'mt-3 text-xs font-bold text-red-500';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'パスワードを変更';
+  }
+}
 
-    function renderSyncOfficialHdcpCard() {
-      const container = document.getElementById('syncOfficialHdcpCardInner');
-      if (!container) return;
+// ==========================================
+// ACTION HANDLERS（管理者操作）
+// ==========================================
 
-      if (State.isSyncingOfficialHdcp) {
-        container.innerHTML = `
+async function onUpload() {
+  const fileInput = document.getElementById('imageFile');
+  const statusText = document.getElementById('uploadStatus');
+  const btn = document.getElementById('uploadBtn');
+
+  if (fileInput.files.length === 0) {
+    statusText.textContent = '画像ファイルを選択してください。';
+    return;
+  }
+
+  statusText.textContent = 'Geminiが画像を解析中...（最大数分）';
+  btn.disabled = true;
+
+  const reader = new FileReader();
+  reader.onloadend = async () => {
+    try {
+      const res = await callGasApi(
+        'uploadAndProcessImage',
+        {
+          base64Data: reader.result.split(',')[1],
+          mimeType: fileInput.files[0].type,
+        },
+        0,
+        300000
+      );
+      statusText.textContent = res.success
+        ? `成功！ ${res.count}件のデータを登録しました。`
+        : `エラー: ${res.error}`;
+      if (res.success) {
+        localStorage.removeItem('eagle_data_cache');
+        localStorage.removeItem('eagle_cache_timestamp');
+        loadAllData();
+      }
+    } catch {
+      statusText.textContent = '通信エラーが発生しました。';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+
+// 公式HDCP同期（Drive上のPDFをGeminiで解析して反映する）
+let syncTimerInterval = null;
+
+function startSyncTimer() {
+  if (syncTimerInterval) clearInterval(syncTimerInterval);
+  State.syncStartTime = Date.now();
+  syncTimerInterval = setInterval(() => {
+    const el = document.getElementById('syncTimerDisp');
+    if (el) el.textContent = Math.floor((Date.now() - State.syncStartTime) / 1000);
+  }, 1000);
+}
+
+function stopSyncTimer() {
+  if (syncTimerInterval) {
+    clearInterval(syncTimerInterval);
+    syncTimerInterval = null;
+  }
+}
+
+function renderSyncOfficialHdcpCard() {
+  const container = document.getElementById('syncOfficialHdcpCardInner');
+  if (!container) return;
+
+  if (State.isSyncingOfficialHdcp) {
+    container.innerHTML = `
           <p class="text-[10px] text-slate-500 mb-3 leading-relaxed">バックグラウンドで解析を実行中です。他の操作を行っても処理は継続されます。</p>
           <div class="bg-purple-50 rounded p-3 text-center border border-purple-100">
             <div class="text-purple-600 font-bold text-xs mb-1">${SPINNER_SVG} 処理中... <span id="syncTimerDisp">0</span>秒経過</div>
             <p class="text-[9px] text-purple-400">※最大5分かかります</p>
           </div>`;
-        return;
-      }
+    return;
+  }
 
-      if (State.syncOfficialHdcpResult) {
-        const isError = State.syncOfficialHdcpResult.error;
-        const msg = isError ? State.syncOfficialHdcpResult.error : State.syncOfficialHdcpResult.message;
-        const color = isError ? 'text-red-500' : 'text-brand-600';
-        container.innerHTML = `
+  if (State.syncOfficialHdcpResult) {
+    const isError = State.syncOfficialHdcpResult.error;
+    const msg = isError ? State.syncOfficialHdcpResult.error : State.syncOfficialHdcpResult.message;
+    const color = isError ? 'text-red-500' : 'text-brand-600';
+    container.innerHTML = `
           <p class="text-[11px] font-bold ${color} mb-3 text-center">${msg}</p>
           <button type="button" onclick="resetSyncOfficialHdcpCard()" class="w-full bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">戻る</button>`;
-        return;
-      }
+    return;
+  }
 
-      if (State.officialHdcpFilesPending) {
-        if (State.officialHdcpFilesPending.length === 0) {
-          container.innerHTML = `
+  if (State.officialHdcpFilesPending) {
+    if (State.officialHdcpFilesPending.length === 0) {
+      container.innerHTML = `
             <p class="text-[11px] font-bold text-amber-600 mb-3 text-center">対象フォルダにPDFファイルがありません。</p>
             <button type="button" onclick="resetSyncOfficialHdcpCard()" class="w-full bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">戻る</button>`;
-        } else {
-          const fileListHtml = State.officialHdcpFilesPending.map(f => `<div class="text-[10px] bg-slate-50 p-1.5 border border-slate-100 rounded truncate mb-1">📄 ${escapeHtml(f)}</div>`).join('');
-          container.innerHTML = `
+    } else {
+      const fileListHtml = State.officialHdcpFilesPending
+        .map(
+          f =>
+            `<div class="text-[10px] bg-slate-50 p-1.5 border border-slate-100 rounded truncate mb-1">📄 ${escapeHtml(f)}</div>`
+        )
+        .join('');
+      container.innerHTML = `
             <p class="text-[10px] text-slate-600 font-bold mb-2">以下のファイルを検出しました。同月データは上書きされます。同期を実行しますか？</p>
             <div class="mb-3 max-h-24 overflow-y-auto">${fileListHtml}</div>
             <div class="flex gap-2">
               <button type="button" onclick="resetSyncOfficialHdcpCard()" class="w-1/3 bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">やめる</button>
               <button type="button" onclick="startSyncOfficialHdcp()" class="w-2/3 bg-purple-600 hover:bg-purple-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">同期を実行する</button>
             </div>`;
-        }
-        return;
-      }
+    }
+    return;
+  }
 
-      container.innerHTML = `
+  container.innerHTML = `
         <p class="text-[10px] text-slate-500 mb-3 leading-relaxed">Googleドライブ内の公式HDCP(PDF)を解析し最新化します。</p>
         <button type="button" onclick="onCheckOfficialHdcpFiles(this)" class="w-full bg-purple-600 hover:bg-purple-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">対象ファイルを確認</button>
       `;
-    }
+}
 
-    function resetSyncOfficialHdcpCard() {
-      State.officialHdcpFilesPending = null;
-      State.syncOfficialHdcpResult = null;
+function resetSyncOfficialHdcpCard() {
+  State.officialHdcpFilesPending = null;
+  State.syncOfficialHdcpResult = null;
+  renderSyncOfficialHdcpCard();
+}
+
+async function onCheckOfficialHdcpFiles(btnElement) {
+  const originalHtml = btnElement.innerHTML;
+  btnElement.disabled = true;
+  btnElement.innerHTML = `${SPINNER_SVG}確認中...`;
+  try {
+    const res = await callGasApi('checkOfficialHdcpFiles');
+    if (res.success) {
+      State.officialHdcpFilesPending = res.files;
       renderSyncOfficialHdcpCard();
-    }
+    } else throw new Error(res.error);
+  } catch (e) {
+    alert('ファイル確認エラー: ' + e.message);
+    btnElement.disabled = false;
+    btnElement.innerHTML = originalHtml;
+  }
+}
 
-    async function onCheckOfficialHdcpFiles(btnElement) {
-      const originalHtml = btnElement.innerHTML;
-      btnElement.disabled = true;
-      btnElement.innerHTML = `${SPINNER_SVG}確認中...`;
-      try {
-        const res = await callGasApi('checkOfficialHdcpFiles');
-        if (res.success) {
-          State.officialHdcpFilesPending = res.files;
-          renderSyncOfficialHdcpCard();
-        } else throw new Error(res.error);
-      } catch (e) {
-        alert('ファイル確認エラー: ' + e.message);
-        btnElement.disabled = false;
-        btnElement.innerHTML = originalHtml;
-      }
-    }
+function startSyncOfficialHdcp() {
+  State.isSyncingOfficialHdcp = true;
+  renderSyncOfficialHdcpCard();
+  startSyncTimer();
 
-    function startSyncOfficialHdcp() {
-      State.isSyncingOfficialHdcp = true;
-      renderSyncOfficialHdcpCard();
-      startSyncTimer();
-      
-      // 非同期でバックグラウンド実行。この処理だけタイムアウトを5分(300,000ms)に設定。
-      callGasApi('syncOfficialHdcp', {}, 0, 300000)
-        .then(async (res) => {
-          stopSyncTimer();
-          State.isSyncingOfficialHdcp = false;
-          if (res.success) {
-            State.syncOfficialHdcpResult = { message: res.message };
-            localStorage.removeItem('eagle_data_cache');
-            localStorage.removeItem('eagle_cache_timestamp');
-            await loadAllData();
-          } else {
-            State.syncOfficialHdcpResult = { error: res.error };
-          }
-          renderSyncOfficialHdcpCard();
-        })
-        .catch(e => {
-          stopSyncTimer();
-          State.isSyncingOfficialHdcp = false;
-          State.syncOfficialHdcpResult = { error: 'タイムアウト、または予期せぬエラーが発生しました。' };
-          renderSyncOfficialHdcpCard();
-        });
-    }
-    // === ▲ 公式HDCP同期の処理ロジック ここまで ▲ ===
-
-
-
-async function onUserManualSync(btnElement) {
-      const originalHtml = btnElement.innerHTML;
-      btnElement.disabled = true;
-      btnElement.innerHTML = `<svg class="animate-spin h-4 w-4 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-      
-      try {
+  // 非同期でバックグラウンド実行。この処理だけタイムアウトを5分(300,000ms)に設定。
+  callGasApi('syncOfficialHdcp', {}, 0, 300000)
+    .then(async res => {
+      stopSyncTimer();
+      State.isSyncingOfficialHdcp = false;
+      if (res.success) {
+        State.syncOfficialHdcpResult = { message: res.message };
         localStorage.removeItem('eagle_data_cache');
         localStorage.removeItem('eagle_cache_timestamp');
-        
-        // データの再取得（内部エラー時は loadAllData 内で showErrorAndRetry() が呼ばれる）
         await loadAllData();
-      } catch (e) {
-        console.error('手動更新エラー', e);
-        // ネイティブダイアログ(alert)を削除し、一貫したUI処理へフォールバック
-        showErrorAndRetry(); 
-      } finally {
-        // エラー画面へ遷移してボタンが消滅した場合のJSエラーを防止
-        if (document.body.contains(btnElement)) {
-          btnElement.disabled = false;
-          btnElement.innerHTML = originalHtml;
-        }
+      } else {
+        State.syncOfficialHdcpResult = { error: res.error };
       }
-    }
-    
-    async function onUpload() {
-      const fileInput  = document.getElementById('imageFile');
-      const statusText = document.getElementById('uploadStatus');
-      const btn        = document.getElementById('uploadBtn');
-
-      if (fileInput.files.length === 0) { statusText.textContent = '画像ファイルを選択してください。'; return; }
-
-      statusText.textContent = 'Geminiが画像を解析中...（最大数分）';
-      btn.disabled = true;
-
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const res = await callGasApi('uploadAndProcessImage', {
-            base64Data: reader.result.split(',')[1],
-            mimeType:   fileInput.files[0].type,
-          }, 0, 300000);
-          statusText.textContent = res.success ? `成功！ ${res.count}件のデータを登録しました。` : `エラー: ${res.error}`;
-          if (res.success) {
-            localStorage.removeItem('eagle_data_cache');
-            localStorage.removeItem('eagle_cache_timestamp');
-            loadAllData();
-          }
-        } catch {
-          statusText.textContent = '通信エラーが発生しました。';
-        } finally {
-          btn.disabled = false;
-        }
+      renderSyncOfficialHdcpCard();
+    })
+    .catch(e => {
+      stopSyncTimer();
+      State.isSyncingOfficialHdcp = false;
+      State.syncOfficialHdcpResult = {
+        error: 'タイムアウト、または予期せぬエラーが発生しました。',
       };
-      reader.readAsDataURL(fileInput.files[0]);
-    }
-
-    async function onResetPassword() {
-      const targetId   = document.getElementById('resetTargetId').value.trim();
-      const newPw      = document.getElementById('resetNewPassword').value.trim();
-      const statusText = document.getElementById('resetPasswordStatus');
-      const btn        = document.getElementById('resetPasswordBtn');
-
-      if (!targetId || !newPw) { statusText.textContent = '入力してください。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500'; return; }
-
-      btn.disabled = true; btn.textContent = '処理中...'; statusText.textContent = '';
-      try {
-        const hashedNewPw = await hashPassword(newPw);
-        const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
-        statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
-        statusText.className   = `mt-2 text-xs font-semibold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
-        if (res.success) { document.getElementById('resetTargetId').value = ''; document.getElementById('resetNewPassword').value = ''; }
-      } catch {
-        statusText.textContent = '通信エラーが発生しました。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500';
-      } finally {
-        btn.disabled = false; btn.textContent = 'リセット実行';
-      }
-    }
-
-    async function onForceSync() {
-      const btn = document.getElementById('forceSyncBtn');
-      const statusText = document.getElementById('forceSyncStatus');
-      
-      btn.disabled = true;
-      btn.innerHTML = `${SPINNER_SVG}同期中...`;
-      statusText.classList.add('hidden');
-      
-      try {
-        const res = await callGasApi('clearSystemCache');
-        if (!res.success) throw new Error(res.error);
-        localStorage.removeItem('eagle_data_cache');
-        localStorage.removeItem('eagle_cache_timestamp');
-        await loadAllData();
-        statusText.textContent = 'システムを同期しました！';
-        statusText.className = 'mt-2 text-xs font-semibold text-brand-600 text-center';
-      } catch (e) {
-        statusText.textContent = '同期エラーが発生しました。';
-        statusText.className = 'mt-2 text-xs font-semibold text-red-500 text-center';
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'キャッシュ破棄＆同期';
-        statusText.classList.remove('hidden');
-        setTimeout(() => { if (statusText.classList.contains('text-brand-600')) statusText.classList.add('hidden'); }, 3000);
-      }
-    }
-
-    // メンテナンスモード切り替えと自動再描画
-    async function onToggleMaintenance(btnElement) {
-      const newState = !State.maintenanceMode;
-      const confirmMsg = newState 
-        ? "メンテナンスモードをオンにします。\n一般メンバーはログインできなくなります。よろしいですか？" 
-        : "通常稼働に戻します。\n一般メンバーのログインが可能になります。よろしいですか？";
-      if (!confirm(confirmMsg)) return;
-
-      btnElement.disabled = true;
-      btnElement.innerHTML = `${SPINNER_SVG}切替中...`;
-
-      try {
-        const res = await callGasApi('toggleMaintenance', { state: String(newState) });
-        if (res.success) {
-          State.maintenanceMode = res.maintenanceMode;
-          localStorage.removeItem('eagle_data_cache');
-          localStorage.removeItem('eagle_cache_timestamp');
-          buildMainUI(State.authRes);
-          await loadAllData();
-          alert(State.maintenanceMode ? '🚨 メンテナンスモードを開始しました。' : '🟢 通常稼働を再開しました。');
-        } else {
-          alert('エラーが発生しました: ' + res.error);
-        }
-      } catch (e) {
-        alert('通信エラーが発生しました。');
-      } finally {
-        const newBtn = document.getElementById('maintenanceBtn');
-        if (newBtn) newBtn.disabled = false;
-      }
-    }
-
-    async function onChangeMyPassword() {
-      const currentPw  = document.getElementById('myCurrentPw').value;
-      const newPw      = document.getElementById('myNewPw').value;
-      const statusText = document.getElementById('myChangePwStatus');
-      const btn        = document.getElementById('myChangePwBtn');
-
-      if (!currentPw || !newPw) { statusText.textContent = '両方のパスワードを入力してください。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500'; return; }
-      if (newPw.length < 8) { statusText.textContent = '新しいパスワードは8文字以上で入力してください。'; statusText.className = 'mt-2 text-xs font-semibold text-red-500'; return; }
-
-      btn.disabled = true; btn.innerHTML = `${SPINNER_SVG}変更中...`; statusText.textContent = '';
-      try {
-        const hashedCurrent = await hashPassword(currentPw);
-        const hashedNew     = await hashPassword(newPw);
-        const res = await callGasApi('changeMyPassword', { loginId: State.loginId, currentPassword: hashedCurrent, newPassword: hashedNew });
-
-        statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
-        statusText.className   = `mt-3 text-xs font-bold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
-        if (res.success) {
-          localStorage.setItem('eagle_auto_login', JSON.stringify({ id: State.loginId, hashedPw: hashedNew }));
-          document.getElementById('myCurrentPw').value = ''; document.getElementById('myNewPw').value = '';
-          setTimeout(closeChangePwModal, 2000);
-        }
-      } catch {
-        statusText.textContent = '通信エラーが発生しました。'; statusText.className = 'mt-3 text-xs font-bold text-red-500';
-      } finally {
-        btn.disabled = false; btn.innerHTML = 'パスワードを変更';
-      }
-    }
-
-    // Modal Controls
-    function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
-    function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
-
-    // XSS対策 data-name の取得フロー
-    function openMemberHdcpModal(memberName) {
-      document.getElementById('memberHdcpModalTitle').textContent = `${memberName} さんの公式HDCP推移`;
-      const noDataEl = document.getElementById('memberHdcpNoData');
-      const canvasEl = document.getElementById('memberHdcpChart');
-      
-      const targetNameNorm = memberName.replace(/\s+/g, '');
-      const history = State.allOfficialHdcpHistory.filter(r => r.name === targetNameNorm);
-      const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
-
-      if (State.memberHdcpChartInstance) State.memberHdcpChartInstance.destroy();
-
-      if (valid.length === 0) {
-        canvasEl.classList.add('hidden'); noDataEl.classList.remove('hidden');
-      } else {
-        canvasEl.classList.remove('hidden'); noDataEl.classList.add('hidden');
-        const ctx = canvasEl.getContext('2d');
-        State.memberHdcpChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: valid.map(r => formatYearMonth(r.date)),
-            datasets: [{
-              label: '公式HDCP', data: valid.map(r => Number(r.hdcp)),
-              borderColor: 'rgb(147,51,234)', backgroundColor: 'rgba(147,51,234,0.1)',
-              borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgb(147,51,234)', tension: 0.3,
-            }],
-          },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { y: { reverse: true } } },
-        });
-      }
-      document.getElementById('memberHdcpModal').classList.remove('hidden');
-    }
-
-    function closeMemberHdcpModal() { document.getElementById('memberHdcpModal').classList.add('hidden'); }
-
-    function openMemberCompeModal(memberName) {
-      document.getElementById('memberCompeModalTitle').textContent = `${memberName} さんの順位推移`;
-      const noDataEl = document.getElementById('memberCompeNoData');
-      const canvasEl = document.getElementById('memberCompeChart');
-      
-      const history = State.allScoreHistory.filter(r => r['名前'] === memberName && !isNaN(Number(r['順位']))).sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
-
-      if (State.memberCompeChartInstance) State.memberCompeChartInstance.destroy();
-
-      if (history.length === 0) {
-        canvasEl.classList.add('hidden'); noDataEl.classList.remove('hidden');
-      } else {
-        canvasEl.classList.remove('hidden'); noDataEl.classList.add('hidden');
-        const ctx = canvasEl.getContext('2d');
-        State.memberCompeChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: history.map(r => formatYearMonth(r['日付'])),
-            datasets: [{
-              label: '順位', data: history.map(r => Number(r['順位'])),
-              borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.1)',
-              borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#059669', tension: 0.3,
-            }],
-          },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } },
-        });
-      }
-      document.getElementById('memberCompeModal').classList.remove('hidden');
-    }
-
-    function closeMemberCompeModal() { document.getElementById('memberCompeModal').classList.add('hidden'); }
-    function openTermsModal() { document.getElementById('termsModal').classList.remove('hidden'); }
-    function closeTermsModal() { document.getElementById('termsModal').classList.add('hidden'); }
-    function openForgotPwModal() { document.getElementById('forgotPwModal').classList.remove('hidden'); }
-    function closeForgotPwModal() { document.getElementById('forgotPwModal').classList.add('hidden'); }
-    function openChangePwModal() { 
-      document.getElementById('myCurrentPw').value = ''; document.getElementById('myNewPw').value = ''; document.getElementById('myChangePwStatus').textContent = '';
-      closeSettingsModal();
-      document.getElementById('changePwModal').classList.remove('hidden'); 
-    }
-    function closeChangePwModal() { document.getElementById('changePwModal').classList.add('hidden'); }
-
-    // 【完全維持】Escapeキーでのモーダル一括クローズ
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        ['settingsModal', 'memberHdcpModal', 'memberCompeModal', 'termsModal', 'forgotPwModal', 'changePwModal'].forEach(id => {
-          document.getElementById(id)?.classList.add('hidden');
-        });
-      }
+      renderSyncOfficialHdcpCard();
     });
-    
-    // ==========================================
-    // INITIALIZATION (自動ログイン処理)
-    // ==========================================
-    document.addEventListener('DOMContentLoaded', async () => {
-      const yearEl = document.getElementById('loginCopyrightYear');
-      if (yearEl) yearEl.textContent = new Date().getFullYear();
-      const autoLoginStr = localStorage.getItem('eagle_auto_login');
-      const userProfileStr = localStorage.getItem('eagle_user_profile');
-      
-      if (autoLoginStr) {
-        try {
-          const { id, hashedPw } = JSON.parse(autoLoginStr);
-          
-          if (userProfileStr) {
-         // ▼ パターンA：プロフィール記憶あり（0秒で画面を描画）
-            const userProfile = JSON.parse(userProfileStr);
-            State.loginId = id;
-            
-            // GASを待たずに即座にセッションを開始して画面を描画
-            initSession(userProfile);
-            
-            // ローダーを即座に消す（待ち時間ゼロ）
-            const loader = document.getElementById('appLoader');
-            if (loader) loader.style.display = 'none';
+}
 
-            // 裏側でこっそりGASと通信し、セッションの有効性を確認 (リトライ2回でコールドスタートを吸収)
-            callGasApi('checkLogin', { id, password: hashedPw }, 2).then(res => {
-              if (res.success) {
-                // プロフィールが更新されているかもしれないのでローカルを最新化
-                localStorage.setItem('eagle_user_profile', JSON.stringify(res));
-                // もし管理者が裏でメンテナンスモードに入れた場合は画面に反映
-                if (res.maintenanceMode !== State.maintenanceMode) {
-                   State.maintenanceMode = res.maintenanceMode;
-                   buildMainUI(res);
-                }
-              } else {
-                // ▼ サーバーが明示的に認証拒否した場合のみログアウト (パスワード変更など)
-                console.warn('[イーグル会] バックグラウンド認証失敗:', res.error);
-                localStorage.removeItem('eagle_auto_login');
-                localStorage.removeItem('eagle_user_profile');
-                alert(res.error || 'セッションが切れました。再度ログインしてください。');
-                window.location.reload();
-              }
-            }).catch(e => {
-              // ▼ ネットワークエラー・タイムアウト・GAS過負荷は通信失敗として静かに無視する
-              console.warn('[イーグル会] バックグラウンド認証の通信エラー（無視）:', e.message);
-            });
+async function onResetPassword() {
+  const targetId = document.getElementById('resetTargetId').value.trim();
+  const newPw = document.getElementById('resetNewPassword').value.trim();
+  const statusText = document.getElementById('resetPasswordStatus');
+  const btn = document.getElementById('resetPasswordBtn');
 
-          } else {
-            // ▼ パターンB：プロフィール記憶なし（従来通り待機）
-            const err = document.getElementById('loginError');
-            const btn = document.getElementById('loginBtn');
-            if (btn) btn.disabled = true; 
-            
-            const res = await callGasApi('checkLogin', { id, password: hashedPw }, 0);
-            
+  if (!targetId || !newPw) {
+    statusText.textContent = '入力してください。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '処理中...';
+  statusText.textContent = '';
+  try {
+    const hashedNewPw = await hashPassword(newPw);
+    const res = await callGasApi('resetMemberPassword', { targetId, newPassword: hashedNewPw });
+    statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
+    statusText.className = `mt-2 text-xs font-semibold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
+    if (res.success) {
+      document.getElementById('resetTargetId').value = '';
+      document.getElementById('resetNewPassword').value = '';
+    }
+  } catch {
+    statusText.textContent = '通信エラーが発生しました。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'リセット実行';
+  }
+}
+
+async function onForceSync() {
+  const btn = document.getElementById('forceSyncBtn');
+  const statusText = document.getElementById('forceSyncStatus');
+
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}同期中...`;
+  statusText.classList.add('hidden');
+
+  try {
+    const res = await callGasApi('clearSystemCache');
+    if (!res.success) throw new Error(res.error);
+    localStorage.removeItem('eagle_data_cache');
+    localStorage.removeItem('eagle_cache_timestamp');
+    await loadAllData();
+    statusText.textContent = 'システムを同期しました！';
+    statusText.className = 'mt-2 text-xs font-semibold text-brand-600 text-center';
+  } catch (e) {
+    statusText.textContent = '同期エラーが発生しました。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500 text-center';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'キャッシュ破棄＆同期';
+    statusText.classList.remove('hidden');
+    setTimeout(() => {
+      if (statusText.classList.contains('text-brand-600')) statusText.classList.add('hidden');
+    }, 3000);
+  }
+}
+
+// メンテナンスモード切り替えと自動再描画
+async function onToggleMaintenance(btnElement) {
+  const newState = !State.maintenanceMode;
+  const confirmMsg = newState
+    ? 'メンテナンスモードをオンにします。\n一般メンバーはログインできなくなります。よろしいですか？'
+    : '通常稼働に戻します。\n一般メンバーのログインが可能になります。よろしいですか？';
+  if (!confirm(confirmMsg)) return;
+
+  btnElement.disabled = true;
+  btnElement.innerHTML = `${SPINNER_SVG}切替中...`;
+
+  try {
+    const res = await callGasApi('toggleMaintenance', { state: String(newState) });
+    if (res.success) {
+      State.maintenanceMode = res.maintenanceMode;
+      localStorage.removeItem('eagle_data_cache');
+      localStorage.removeItem('eagle_cache_timestamp');
+      buildMainUI(State.authRes);
+      await loadAllData();
+      alert(
+        State.maintenanceMode
+          ? '🚨 メンテナンスモードを開始しました。'
+          : '🟢 通常稼働を再開しました。'
+      );
+    } else {
+      alert('エラーが発生しました: ' + res.error);
+    }
+  } catch (e) {
+    alert('通信エラーが発生しました。');
+  } finally {
+    const newBtn = document.getElementById('maintenanceBtn');
+    if (newBtn) newBtn.disabled = false;
+  }
+}
+
+// Modal Controls
+function openSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function openMemberHdcpModal(memberName) {
+  document.getElementById('memberHdcpModalTitle').textContent = `${memberName} さんの公式HDCP推移`;
+  const noDataEl = document.getElementById('memberHdcpNoData');
+  const canvasEl = document.getElementById('memberHdcpChart');
+
+  const targetNameNorm = memberName.replace(/\s+/g, '');
+  const history = State.allOfficialHdcpHistory.filter(r => r.name === targetNameNorm);
+  const valid = history.filter(r => r.hdcp !== '不明' && !isNaN(Number(r.hdcp)));
+
+  if (State.memberHdcpChartInstance) State.memberHdcpChartInstance.destroy();
+
+  if (valid.length === 0) {
+    canvasEl.classList.add('hidden');
+    noDataEl.classList.remove('hidden');
+  } else {
+    canvasEl.classList.remove('hidden');
+    noDataEl.classList.add('hidden');
+    const ctx = canvasEl.getContext('2d');
+    State.memberHdcpChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: valid.map(r => formatYearMonth(r.date)),
+        datasets: [
+          {
+            label: '公式HDCP',
+            data: valid.map(r => Number(r.hdcp)),
+            borderColor: 'rgb(147,51,234)',
+            backgroundColor: 'rgba(147,51,234,0.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: 'rgb(147,51,234)',
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: { y: { reverse: true } },
+      },
+    });
+  }
+  document.getElementById('memberHdcpModal').classList.remove('hidden');
+}
+
+function closeMemberHdcpModal() {
+  document.getElementById('memberHdcpModal').classList.add('hidden');
+}
+
+function openMemberCompeModal(memberName) {
+  document.getElementById('memberCompeModalTitle').textContent = `${memberName} さんの順位推移`;
+  const noDataEl = document.getElementById('memberCompeNoData');
+  const canvasEl = document.getElementById('memberCompeChart');
+
+  const history = State.allScoreHistory
+    .filter(r => r['名前'] === memberName && !isNaN(Number(r['順位'])))
+    .sort((a, b) => new Date(a['日付']) - new Date(b['日付']));
+
+  if (State.memberCompeChartInstance) State.memberCompeChartInstance.destroy();
+
+  if (history.length === 0) {
+    canvasEl.classList.add('hidden');
+    noDataEl.classList.remove('hidden');
+  } else {
+    canvasEl.classList.remove('hidden');
+    noDataEl.classList.add('hidden');
+    const ctx = canvasEl.getContext('2d');
+    State.memberCompeChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: history.map(r => formatYearMonth(r['日付'])),
+        datasets: [
+          {
+            label: '順位',
+            data: history.map(r => Number(r['順位'])),
+            borderColor: '#059669',
+            backgroundColor: 'rgba(5,150,105,0.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#059669',
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: { y: { reverse: true, ticks: { stepSize: 1 } } },
+      },
+    });
+  }
+  document.getElementById('memberCompeModal').classList.remove('hidden');
+}
+
+function closeMemberCompeModal() {
+  document.getElementById('memberCompeModal').classList.add('hidden');
+}
+function openTermsModal() {
+  document.getElementById('termsModal').classList.remove('hidden');
+}
+function closeTermsModal() {
+  document.getElementById('termsModal').classList.add('hidden');
+}
+function openForgotPwModal() {
+  document.getElementById('forgotPwModal').classList.remove('hidden');
+}
+function closeForgotPwModal() {
+  document.getElementById('forgotPwModal').classList.add('hidden');
+}
+function openChangePwModal() {
+  document.getElementById('myCurrentPw').value = '';
+  document.getElementById('myNewPw').value = '';
+  document.getElementById('myChangePwStatus').textContent = '';
+  closeSettingsModal();
+  document.getElementById('changePwModal').classList.remove('hidden');
+}
+function closeChangePwModal() {
+  document.getElementById('changePwModal').classList.add('hidden');
+}
+
+// Escapeキーで開いているモーダルを一括クローズ
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    [
+      'settingsModal',
+      'memberHdcpModal',
+      'memberCompeModal',
+      'termsModal',
+      'forgotPwModal',
+      'changePwModal',
+    ].forEach(id => {
+      document.getElementById(id)?.classList.add('hidden');
+    });
+  }
+});
+
+// ==========================================
+// INITIALIZATION (自動ログイン処理)
+// ==========================================
+document.addEventListener('DOMContentLoaded', async () => {
+  const yearEl = document.getElementById('loginCopyrightYear');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+  const autoLoginStr = localStorage.getItem('eagle_auto_login');
+  const userProfileStr = localStorage.getItem('eagle_user_profile');
+
+  if (autoLoginStr) {
+    try {
+      const { id, hashedPw } = JSON.parse(autoLoginStr);
+
+      if (userProfileStr) {
+        // パターンA：プロフィール記憶あり（0秒で画面を描画）
+        const userProfile = JSON.parse(userProfileStr);
+        State.loginId = id;
+
+        // GASを待たずに即座にセッションを開始して画面を描画
+        initSession(userProfile);
+
+        // ローダーを即座に消す（待ち時間ゼロ）
+        const loader = document.getElementById('appLoader');
+        if (loader) loader.style.display = 'none';
+
+        // 裏側でこっそりGASと通信し、セッションの有効性を確認 (リトライ2回でコールドスタートを吸収)
+        callGasApi('checkLogin', { id, password: hashedPw }, 2)
+          .then(res => {
             if (res.success) {
-              State.loginId = id;
+              // プロフィールが更新されているかもしれないのでローカルを最新化
               localStorage.setItem('eagle_user_profile', JSON.stringify(res));
-              initSession(res); 
-              
-              if (btn) btn.disabled = false;
-              const loader = document.getElementById('appLoader');
-              if (loader) {
-                loader.classList.add('opacity-0');
-                setTimeout(() => { loader.style.display = 'none'; }, 300);
+              // もし管理者が裏でメンテナンスモードに入れた場合は画面に反映
+              if (res.maintenanceMode !== State.maintenanceMode) {
+                State.maintenanceMode = res.maintenanceMode;
+                buildMainUI(res);
               }
             } else {
+              // サーバーが明示的に認証拒否した場合のみログアウト（パスワード変更など）
+              console.warn('[イーグル会] バックグラウンド認証失敗:', res.error);
               localStorage.removeItem('eagle_auto_login');
-              if (btn) btn.disabled = false;
-              if (err) {
-                err.textContent = res.error || 'セッションが切れました。再度ログインしてください。';
-                err.classList.remove('hidden');
-              }
-              document.getElementById('appLoader').style.display = 'none';
+              localStorage.removeItem('eagle_user_profile');
+              alert(res.error || 'セッションが切れました。再度ログインしてください。');
+              window.location.reload();
             }
+          })
+          .catch(e => {
+            // ネットワークエラー・タイムアウト・GAS過負荷は通信失敗として静かに無視する
+            console.warn('[イーグル会] バックグラウンド認証の通信エラー（無視）:', e.message);
+          });
+      } else {
+        // パターンB：プロフィール記憶なし（従来通り待機）
+        const err = document.getElementById('loginError');
+        const btn = document.getElementById('loginBtn');
+        if (btn) btn.disabled = true;
+
+        const res = await callGasApi('checkLogin', { id, password: hashedPw }, 0);
+
+        if (res.success) {
+          State.loginId = id;
+          localStorage.setItem('eagle_user_profile', JSON.stringify(res));
+          initSession(res);
+
+          if (btn) btn.disabled = false;
+          const loader = document.getElementById('appLoader');
+          if (loader) {
+            loader.classList.add('opacity-0');
+            setTimeout(() => {
+              loader.style.display = 'none';
+            }, 300);
           }
-        } catch (e) {
-          console.error('自動ログイン初期化エラー', e);
+        } else {
           localStorage.removeItem('eagle_auto_login');
-          localStorage.removeItem('eagle_user_profile');
+          if (btn) btn.disabled = false;
+          if (err) {
+            err.textContent = res.error || 'セッションが切れました。再度ログインしてください。';
+            err.classList.remove('hidden');
+          }
           document.getElementById('appLoader').style.display = 'none';
         }
       }
-    });
-  
+    } catch (e) {
+      console.error('自動ログイン初期化エラー', e);
+      localStorage.removeItem('eagle_auto_login');
+      localStorage.removeItem('eagle_user_profile');
+      document.getElementById('appLoader').style.display = 'none';
+    }
+  }
+});
   </script>
 
 <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeSettingsModal()">
