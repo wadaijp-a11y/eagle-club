@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>イーグル会</title>
 
+  <!-- 横向き等での意図しないブラウザ独自の自動文字拡大を抑制（OSのユーザー補助設定による拡大は対象外、ピンチズームにも影響しない） -->
+  <style>
+    html {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+  </style>
+
   <meta name="description" content="イーグル会メンバー専用サイト">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text x=%2250%%22 y=%2250%%22 style=%22dominant-baseline:central;text-anchor:middle;font-size:90px;%22>⛳️</text></svg>">
@@ -1130,7 +1139,7 @@ function renderScoresByDate() {
         return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
           <td class="py-3 text-center whitespace-nowrap ${rankStyle(rank)} text-xs">${rankBadge(rank)}</td>
           <td class="py-3 font-bold ${isMe ? 'text-brand-700' : 'text-slate-800'}">
-            <button type="button" data-name="${escapeHtml(row['名前'])}" onclick="openMemberCompeModal(this.dataset.name)" class="hover:text-brand-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
+            <button type="button" data-name="${escapeHtml(row['名前'])}" onclick="openMemberCompeModal(this.dataset.name)" class="hover:text-brand-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[30vw]">
               ${escapeHtml(row['名前'])}
             </button>
           </td>
@@ -1245,7 +1254,7 @@ function renderRankingContent() {
           return `<tr class="border-b border-slate-100 ${isMe ? 'bg-purple-50/40' : ''} text-sm">
               <td class="py-3 text-center text-xs ${rankStyle(rank)}">${rankBadge(rank)}</td>
               <td class="py-3 font-bold ${isMe ? 'text-purple-700' : 'text-slate-800'}">
-                <button type="button" data-name="${escapeHtml(m.name)}" onclick="openMemberHdcpModal(this.dataset.name)" class="hover:text-purple-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
+                <button type="button" data-name="${escapeHtml(m.name)}" onclick="openMemberHdcpModal(this.dataset.name)" class="hover:text-purple-600 transition-colors focus:outline-none block w-full text-left truncate max-w-[30vw]">
                   ${escapeHtml(m.name)}
                 </button>
               </td>
@@ -1281,7 +1290,7 @@ function renderRankingContent() {
           return `<tr class="border-b border-slate-100 ${isMe ? 'bg-brand-50/50' : ''} text-sm">
             <td class="py-3 text-center text-xs ${rankStyle(rank)}">${rankBadge(rank)}</td>
             <td class="py-3 font-bold ${isMe ? 'text-brand-700' : 'text-slate-800'}">
-              <span class="block w-full text-left truncate max-w-[80px] sm:max-w-[120px]">
+              <span class="block w-full text-left truncate max-w-[30vw]">
                 ${escapeHtml(m.name)}
               </span>
             </td>
