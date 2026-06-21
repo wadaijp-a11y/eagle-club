@@ -579,7 +579,7 @@ function buildMyDashboardCard(res) {
             
             <div class="bg-white rounded-lg p-3 border border-purple-50 shadow-sm">
               <p class="text-xs font-bold text-purple-800 mb-2 text-center pointer-events-none">公式HDCPの推移</p>
-              <div class="py-1 pointer-events-none"><canvas id="officialHdcpChart"></canvas></div>
+              <div class="h-48 py-1 pointer-events-none"><canvas id="officialHdcpChart"></canvas></div>
               
               <div class="max-h-32 overflow-x-auto overflow-y-auto mt-3 -mx-1 px-1 cursor-default" onclick="event.stopPropagation()">
                 <table class="w-full text-left border-collapse text-xs">
@@ -660,7 +660,7 @@ function buildMyRecordCard() {
             </div>
           </div>
           <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
-          <div id="scoreChartContainer" class="py-2"><canvas id="myChart"></canvas></div>
+          <div id="scoreChartContainer" class="h-48 py-2"><canvas id="myChart"></canvas></div>
           <div id="scoreTableContainer" class="hidden max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1 mt-2">
             <table class="w-full text-left border-collapse text-sm">
               <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
@@ -1072,6 +1072,7 @@ async function loadOfficialHdcpHistory() {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
           scales: { y: { reverse: true } },
         },
@@ -1445,7 +1446,7 @@ const Versus = {
 
     container.innerHTML = `
           ${vsHeader}
-          <div class="py-1"><canvas id="versusChart"></canvas></div>
+          <div class="h-48 py-1"><canvas id="versusChart"></canvas></div>
           <div class="max-h-60 overflow-x-auto overflow-y-auto mt-4 -mx-1 px-1">
             <table class="w-full text-left border-collapse text-sm">
               <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
@@ -1493,6 +1494,7 @@ const Versus = {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             display: true,
@@ -1547,6 +1549,7 @@ function loadMyChart(history) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
       scales: { y: { reverse: true } },
     },
@@ -2315,7 +2318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <h3 id="memberHdcpModalTitle" class="font-bold text-slate-800 text-sm"></h3>
           <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
         </div>
-        <div class="py-1 min-h-[150px] relative">
+        <div class="py-1 h-48 relative">
           <canvas id="memberHdcpChart"></canvas>
           <p id="memberHdcpNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-slate-400">データがありません</p>
         </div>
@@ -2330,7 +2333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <h3 id="memberCompeModalTitle" class="font-bold text-slate-800 text-sm"></h3>
           <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
         </div>
-        <div class="py-1 min-h-[150px] relative">
+        <div class="py-1 h-48 relative">
           <canvas id="memberCompeChart"></canvas>
           <p id="memberCompeNoData" class="hidden absolute inset-0 flex items-center justify-center text-xs text-slate-400">データがありません</p>
         </div>
