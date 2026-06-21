@@ -12,6 +12,16 @@
       -ms-text-size-adjust: 100%;
       text-size-adjust: 100%;
     }
+
+    /* 公式HDCPカードが「タップして展開できる」ことに気づきやすくするための、控えめな上下の揺れ */
+    @keyframes hdcp-hint-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(3px); }
+    }
+    .hdcp-hint-bounce {
+      display: inline-block;
+      animation: hdcp-hint-bounce 1.6s ease-in-out infinite;
+    }
   </style>
 
   <meta name="description" content="イーグル会メンバー専用サイト">
@@ -557,7 +567,7 @@ function buildMyDashboardCard(res) {
               </div>
             </div>
 
-            <button type="button" onclick="toggleOfficialHdcpHistory()" class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-between text-center hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-300 relative w-full h-full">
+            <button type="button" onclick="toggleOfficialHdcpHistory()" class="bg-slate-50 rounded-xl p-3 border-2 border-purple-200 flex flex-col justify-between text-center hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-300 relative w-full h-full">
               <div class="w-full">
                 <p class="text-xs text-slate-500 font-bold mb-1">倶楽部公式 HDCP</p>
                 <p class="text-3xl font-black text-purple-600" id="officialHdcpDisplay">${escapeHtml(String(res.officialHdcp || '-'))}</p>
@@ -566,7 +576,10 @@ function buildMyDashboardCard(res) {
                 <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px] w-full"></div>
               </div>
               <div class="mt-2 text-xs font-bold text-purple-600 w-full flex justify-center items-center gap-1 opacity-80">
-                詳細・推移 <svg id="officialHdcpToggleIcon" class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                詳細・推移
+                <span class="hdcp-hint-bounce">
+                  <svg id="officialHdcpToggleIcon" class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </span>
               </div>
             </button>
           </div>
