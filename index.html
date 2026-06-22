@@ -173,6 +173,22 @@ function formatYearMonth(dateStr) {
   return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
 }
 
+// データキャッシュのタイムスタンプ(ミリ秒)を「6/20 18:30」のような表示用文字列に変換
+function formatUpdateTime(timestamp) {
+  const d = new Date(Number(timestamp));
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// 今表示しているデータがいつ取得されたものかを、ヘッダー下に小さく表示する
+function renderLastUpdated() {
+  const el = document.getElementById('lastUpdatedDisplay');
+  if (!el) return;
+  const ts = localStorage.getItem('eagle_cache_timestamp');
+  el.textContent = ts ? `最終更新: ${formatUpdateTime(ts)}` : '';
+}
+
 // 画面下部に短いメッセージを一定時間だけ表示して自動的に消す軽量トースト
 function showToast(message) {
   // 短時間に連続で呼ばれた場合に複数枚重なって表示されないよう、
@@ -420,6 +436,8 @@ async function onLogin(event) {
 }
 
 async function onLogout(btnElement) {
+  if (!confirm('ログアウトしますか？')) return;
+
   let originalHtml = '';
   if (btnElement) {
     originalHtml = btnElement.innerHTML;
@@ -531,13 +549,16 @@ function buildHeader(res) {
               </h2>
             </div>
           </div>
-          <div class="flex gap-2 shrink-0">
-            <button type="button" onclick="onUserManualSync(this)" aria-label="データを最新に更新" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-brand-600 hover:bg-brand-50 transition-colors">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            </button>
-            <button type="button" onclick="openSettingsModal()" aria-label="設定メニューを開く" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            </button>
+          <div class="flex flex-col items-end gap-1 shrink-0">
+            <div class="flex gap-2">
+              <button type="button" onclick="onUserManualSync(this)" aria-label="データを最新に更新" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-brand-600 hover:bg-brand-50 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+              <button type="button" onclick="openSettingsModal()" aria-label="設定メニューを開く" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </button>
+            </div>
+            <p id="lastUpdatedDisplay" class="text-[10px] text-slate-400 pr-1"></p>
           </div>
         </header>
       `;
@@ -952,6 +973,7 @@ async function loadAllData() {
     setupRanking();
     Versus.setup();
     renderDashboardSummary();
+    renderLastUpdated();
 
     if (history && history.length > 0) {
       const myHistory = history
