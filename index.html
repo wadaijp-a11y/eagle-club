@@ -487,6 +487,7 @@ function buildMainUI(res) {
   const main = document.getElementById('mainSection');
 
   main.innerHTML = `
+        ${isAdmin && State.maintenanceMode ? buildMaintenanceBanner() : ''}
         ${buildHeader(res)}
         ${buildScheduleCard(res)}
         ${buildMyDashboardCard(res)}
@@ -500,6 +501,21 @@ function buildMainUI(res) {
   CourseHdcp.render();
   setupScheduleDisplay(res);
   if (isAdmin) renderSyncOfficialHdcpCard();
+}
+
+// 管理者がメンテナンスモードに入れたまま管理者メニューを閉じても見落とさないよう、常時表示する警告バナー
+function buildMaintenanceBanner() {
+  return `
+        <div class="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-4 text-white shadow-md flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="text-2xl shrink-0">🚨</span>
+            <p class="text-xs font-bold leading-snug min-w-0">
+              メンテナンスモード中です
+              <span class="block text-[10px] font-normal opacity-90 mt-0.5">一般メンバーはログインできません</span>
+            </p>
+          </div>
+          <button type="button" onclick="onToggleMaintenance(this)" class="shrink-0 bg-white/20 hover:bg-white/30 transition-colors text-white text-xs font-bold px-3 py-2 rounded-lg shadow-sm whitespace-nowrap">解除する</button>
+        </div>`;
 }
 function buildHeader(res) {
   return `
@@ -1388,6 +1404,7 @@ const Versus = {
       .join('');
     sel.classList.remove('hidden');
     if (closest) sel.value = closest;
+    this.autoOpponent = closest; // 自動選定された相手を記憶し、デフォルト表示中かどうかの判定に使う
     this.render();
   },
 
@@ -1435,6 +1452,11 @@ const Versus = {
             </div>
             <div class="text-center w-1/3 flex flex-col items-center">
               <span class="text-xs font-black text-slate-300 italic mb-1.5">VS</span>
+              ${
+                opName === this.autoOpponent
+                  ? `<span class="text-[10px] text-slate-400 leading-tight mb-1">🎯 HDCPが近い相手</span>`
+                  : ''
+              }
               ${
                 versusData.length > 0
                   ? `<span class="text-xs font-black px-2.5 py-1 rounded bg-white shadow-sm text-slate-700 whitespace-nowrap border border-slate-100">
@@ -2061,6 +2083,7 @@ async function onToggleMaintenance(btnElement) {
     : '通常稼働に戻します。\n一般メンバーのログインが可能になります。よろしいですか？';
   if (!confirm(confirmMsg)) return;
 
+  const originalHtml = btnElement.innerHTML;
   btnElement.disabled = true;
   btnElement.innerHTML = `${SPINNER_SVG}切替中...`;
 
@@ -2083,8 +2106,14 @@ async function onToggleMaintenance(btnElement) {
   } catch (e) {
     alert('通信エラーが発生しました。');
   } finally {
-    const newBtn = document.getElementById('maintenanceBtn');
-    if (newBtn) newBtn.disabled = false;
+    // 成功時はbuildMainUIの再描画でボタン自体が作り直されるため、
+    // ここでは失敗時に元のボタン表示へ戻すことだけを担う
+    // (管理者メニュー内・常時バナーのどちらから呼ばれても正しく動くよう、
+    //  固定IDではなく渡されたボタン自身を対象にする)
+    if (document.body.contains(btnElement)) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = originalHtml;
+    }
   }
 }
 
