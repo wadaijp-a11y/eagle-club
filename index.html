@@ -173,6 +173,24 @@ function formatYearMonth(dateStr) {
   return `${String(d.getFullYear()).slice(-2)}年${d.getMonth() + 1}月`;
 }
 
+// 画面下部に短いメッセージを一定時間だけ表示して自動的に消す軽量トースト
+function showToast(message) {
+  // 短時間に連続で呼ばれた場合に複数枚重なって表示されないよう、
+  // 表示中のトーストがあれば先に取り除く
+  document.querySelectorAll('.app-toast').forEach(el => el.remove());
+
+  const toast = document.createElement('div');
+  toast.className =
+    'app-toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-800 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.remove('opacity-0'));
+  setTimeout(() => {
+    toast.classList.add('opacity-0');
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
 // ==========================================
 // セッション自動復旧（多重実行防止ロック付き）
 // ==========================================
@@ -491,7 +509,7 @@ function buildHeader(res) {
               🏌️
             </div>
             <div class="overflow-hidden">
-              <p class="text-[11px] text-brand-600 font-black tracking-widest mb-0.5">イーグル会 MEMBER</p>
+              <p class="text-xs text-brand-600 font-black tracking-widest mb-0.5">イーグル会 MEMBER</p>
               <h2 class="text-lg font-black text-slate-800 tracking-wide leading-tight truncate">
                 ${escapeHtml(res.name)} <span class="text-xs text-slate-500 font-normal ml-0.5">さん</span>
               </h2>
@@ -558,7 +576,7 @@ function buildMyDashboardCard(res) {
               <div>
                 <p class="text-xs text-slate-500 font-bold mb-1">イーグル会 HDCP</p>
                 <p class="text-3xl font-black text-brand-600">${escapeHtml(String(res.eagleHdcp || '-'))}</p>
-                <p class="text-[11px] text-slate-400 mt-1">更新: ${escapeHtml(res.eagleUpdateDate || '')}</p>
+                <p class="text-xs text-slate-400 mt-1">更新: ${escapeHtml(res.eagleUpdateDate || '')}</p>
               </div>
               <div class="mt-2">
                 <span class="inline-block bg-white border border-brand-200 text-brand-600 text-xs font-bold px-2 py-1 rounded shadow-sm w-full">
@@ -571,7 +589,7 @@ function buildMyDashboardCard(res) {
               <div class="w-full">
                 <p class="text-xs text-slate-500 font-bold mb-1">倶楽部公式 HDCP</p>
                 <p class="text-3xl font-black text-purple-600" id="officialHdcpDisplay">${escapeHtml(String(res.officialHdcp || '-'))}</p>
-                <p class="text-[11px] text-slate-400 mt-1">更新: ${escapeHtml(res.officialUpdateDate || '')}</p>
+                <p class="text-xs text-slate-400 mt-1">更新: ${escapeHtml(res.officialUpdateDate || '')}</p>
                 <!-- メイン画面用のコンパクト表示（既存維持） -->
                 <div id="courseHdcpContainer" class="flex flex-wrap gap-1 mt-1 justify-center min-h-[20px] w-full"></div>
               </div>
@@ -627,9 +645,9 @@ function buildCompeResultCard() {
           <div class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
             <table class="w-full text-left border-collapse text-sm">
               <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+                <tr class="border-b border-slate-200 text-slate-500 text-xs">
                   <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
-                  <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-[11px] font-normal font-sans">📈</span></th>
+                  <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
                   <th scope="col" class="py-2 text-right font-bold">GROSS</th>
                   <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
                 </tr>
@@ -668,8 +686,8 @@ function buildMyRecordCard() {
               <h3 class="font-black text-slate-800 text-lg">マイレコード</h3>
             </div>
             <div class="flex p-1 bg-slate-50 rounded-lg border border-slate-200">
-              <button type="button" id="btnChart" onclick="toggleScoreView('chart')" class="text-[11px] px-3 py-1 rounded-md font-bold transition-all bg-white shadow-sm text-slate-800">グラフ</button>
-              <button type="button" id="btnTable" onclick="toggleScoreView('table')" class="text-[11px] px-3 py-1 rounded-md font-bold transition-all text-slate-500 hover:text-slate-800">リスト</button>
+              <button type="button" id="btnChart" onclick="toggleScoreView('chart')" class="text-xs px-3 py-1 rounded-md font-bold transition-all bg-white shadow-sm text-slate-800">グラフ</button>
+              <button type="button" id="btnTable" onclick="toggleScoreView('table')" class="text-xs px-3 py-1 rounded-md font-bold transition-all text-slate-500 hover:text-slate-800">リスト</button>
             </div>
           </div>
           <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
@@ -677,7 +695,7 @@ function buildMyRecordCard() {
           <div id="scoreTableContainer" class="hidden max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1 mt-2">
             <table class="w-full text-left border-collapse text-sm">
               <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+                <tr class="border-b border-slate-200 text-slate-500 text-xs">
                   <th scope="col" class="py-2 font-bold">日付</th>
                   <th scope="col" class="py-2 text-right font-bold">順位</th>
                   <th scope="col" class="py-2 text-right font-bold">GROSS</th>
@@ -722,7 +740,7 @@ function buildAdminSection() {
               <h4 class="font-bold text-slate-800 mb-2 text-xs">📷 成績表アップロード</h4>
               <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-slate-600 w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
               <button type="button" onclick="onUpload()" id="uploadBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">画像を解析して登録</button>
-              <p id="uploadStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
+              <p id="uploadStatus" class="mt-2 text-xs font-semibold text-center"></p>
             </div>
             
             <div class="bg-white border border-slate-200 rounded-xl p-4">
@@ -732,14 +750,14 @@ function buildAdminSection() {
                 <input type="text" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
               </div>
               <button type="button" onclick="onResetPassword()" id="resetPasswordBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">リセット実行</button>
-              <p id="resetPasswordStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
+              <p id="resetPasswordStatus" class="mt-2 text-xs font-semibold text-center"></p>
             </div>
             
             <div class="bg-white border border-slate-200 rounded-xl p-4">
               <h4 class="font-bold text-slate-800 mb-2 text-xs">🔄 強制データ同期</h4>
               <p class="text-xs text-slate-500 mb-3 leading-relaxed">スプレッドシートを直接修正した際など、サーバーと端末のキャッシュを破棄して最新データを読み込みます。</p>
               <button type="button" onclick="onForceSync()" id="forceSyncBtn" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">キャッシュ破棄＆同期</button>
-              <p id="forceSyncStatus" class="mt-2 text-[11px] font-semibold text-center"></p>
+              <p id="forceSyncStatus" class="mt-2 text-xs font-semibold text-center"></p>
             </div>
 
             <div class="bg-white border border-slate-200 rounded-xl p-4 transition-colors">
@@ -933,9 +951,11 @@ async function loadAllData() {
     } else {
       loadMyChart([]);
     }
+    return true;
   } catch (e) {
     console.error(e);
     showErrorAndRetry();
+    return false;
   }
 }
 
@@ -1252,7 +1272,7 @@ function renderRankingContent() {
 
   if (State.currentRankingTab === 'official') {
     header.innerHTML = `
-          <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+          <tr class="border-b border-slate-200 text-slate-500 text-xs">
             <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
             <th scope="col" class="py-2 font-bold">名前</th>
             <th scope="col" class="py-2 text-right font-bold">公式HD</th>
@@ -1280,7 +1300,7 @@ function renderRankingContent() {
       `<tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データがありません</td></tr>`;
   } else {
     header.innerHTML = `
-          <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+          <tr class="border-b border-slate-200 text-slate-500 text-xs">
             <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
             <th scope="col" class="py-2 font-bold">名前</th>
             <th scope="col" class="py-2 text-right font-bold">平均NET</th>
@@ -1411,7 +1431,7 @@ const Versus = {
             <div class="text-center w-1/3">
               <p class="text-xs text-slate-400 font-bold mb-1">あなた</p>
               <p class="text-sm font-black text-brand-600 truncate">${escapeHtml(myName)}</p>
-              <p class="text-[11px] text-slate-400 mt-0.5">HDCP: ${escapeHtml(String(State.myOfficialHdcp))}</p>
+              <p class="text-xs text-slate-400 mt-0.5">HDCP: ${escapeHtml(String(State.myOfficialHdcp))}</p>
             </div>
             <div class="text-center w-1/3 flex flex-col items-center">
               <span class="text-xs font-black text-slate-300 italic mb-1.5">VS</span>
@@ -1426,7 +1446,7 @@ const Versus = {
             <div class="text-center w-1/3">
               <p class="text-xs text-slate-400 font-bold mb-1">ライバル</p>
               <p class="text-sm font-black text-slate-700 truncate">${escapeHtml(opName)}</p>
-              <p class="text-[11px] text-slate-400 mt-0.5">HDCP: ${escapeHtml(String(opHdcp))}</p>
+              <p class="text-xs text-slate-400 mt-0.5">HDCP: ${escapeHtml(String(opHdcp))}</p>
             </div>
           </div>`;
 
@@ -1463,7 +1483,7 @@ const Versus = {
           <div class="max-h-60 overflow-x-auto overflow-y-auto mt-4 -mx-1 px-1">
             <table class="w-full text-left border-collapse text-sm">
               <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr class="border-b border-slate-200 text-slate-500 text-[11px]">
+                <tr class="border-b border-slate-200 text-slate-500 text-xs">
                   <th scope="col" class="py-2 font-bold">日付</th>
                   <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
                   <th scope="col" class="py-2 text-center font-bold text-slate-600">相手</th>
@@ -1596,9 +1616,9 @@ function toggleScoreView(view) {
   document.getElementById('scoreChartContainer').classList.toggle('hidden', !isChart);
   document.getElementById('scoreTableContainer').classList.toggle('hidden', isChart);
   document.getElementById('btnChart').className =
-    `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
+    `text-xs px-3 py-1 rounded-md font-bold transition-all ${isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
   document.getElementById('btnTable').className =
-    `text-[11px] px-3 py-1 rounded-md font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
+    `text-xs px-3 py-1 rounded-md font-bold transition-all ${!isChart ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-800'}`;
 
   // グラフ表示タブに切り替えた際、インスタンスがあれば明示的にリサイズ
   if (isChart && State.myChartInstance) {
@@ -1656,7 +1676,7 @@ function renderDashboardSummary() {
       : '';
     bestScoreHtml = `
           <span class="text-2xl font-black text-amber-500">${bestGross}</span>
-          ${dateStr ? `<span class="text-[11px] text-slate-400 font-medium -mt-1">${dateStr}</span>` : ''}
+          ${dateStr ? `<span class="text-xs text-slate-400 font-medium -mt-1">${dateStr}</span>` : ''}
         `;
   }
 
@@ -1714,7 +1734,7 @@ function renderDashboardSummary() {
             <span class="text-sm font-bold flex items-baseline text-slate-700">
               <span class="text-brand-600 text-lg leading-none font-black">${myCompes}</span><span class="text-xs text-slate-400 ml-0.5">回</span> 
               <span class="text-slate-300 mx-1.5 text-xs font-normal">/</span> 
-              <span class="text-[11px] text-slate-500">${totalCompes}回開催</span>
+              <span class="text-xs text-slate-500">${totalCompes}回開催</span>
             </span>
           </div>
         </div>
@@ -1733,8 +1753,11 @@ async function onUserManualSync(btnElement) {
     localStorage.removeItem('eagle_data_cache');
     localStorage.removeItem('eagle_cache_timestamp');
 
-    // データの再取得（内部エラー時は loadAllData 内で showErrorAndRetry() が呼ばれる）
-    await loadAllData();
+    // データの再取得（内部エラー時は loadAllData 内で showErrorAndRetry() が呼ばれ、falseが返る）
+    const success = await loadAllData();
+    if (success) {
+      showToast('最新の情報に更新しました');
+    }
   } catch (e) {
     console.error('手動更新エラー', e);
     // ネイティブダイアログ(alert)を削除し、一貫したUI処理へフォールバック
@@ -1871,7 +1894,7 @@ function renderSyncOfficialHdcpCard() {
           <p class="text-xs text-slate-500 mb-3 leading-relaxed">バックグラウンドで解析を実行中です。他の操作を行っても処理は継続されます。</p>
           <div class="bg-purple-50 rounded p-3 text-center border border-purple-100">
             <div class="text-purple-600 font-bold text-xs mb-1">${SPINNER_SVG} 処理中... <span id="syncTimerDisp">0</span>秒経過</div>
-            <p class="text-[11px] text-purple-400">※最大5分かかります</p>
+            <p class="text-xs text-purple-400">※最大5分かかります</p>
           </div>`;
     return;
   }
@@ -1881,7 +1904,7 @@ function renderSyncOfficialHdcpCard() {
     const msg = isError ? State.syncOfficialHdcpResult.error : State.syncOfficialHdcpResult.message;
     const color = isError ? 'text-red-500' : 'text-brand-600';
     container.innerHTML = `
-          <p class="text-[11px] font-bold ${color} mb-3 text-center">${msg}</p>
+          <p class="text-xs font-bold ${color} mb-3 text-center">${msg}</p>
           <button type="button" onclick="resetSyncOfficialHdcpCard()" class="w-full bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">戻る</button>`;
     return;
   }
@@ -1889,7 +1912,7 @@ function renderSyncOfficialHdcpCard() {
   if (State.officialHdcpFilesPending) {
     if (State.officialHdcpFilesPending.length === 0) {
       container.innerHTML = `
-            <p class="text-[11px] font-bold text-amber-600 mb-3 text-center">対象フォルダにPDFファイルがありません。</p>
+            <p class="text-xs font-bold text-amber-600 mb-3 text-center">対象フォルダにPDFファイルがありません。</p>
             <button type="button" onclick="resetSyncOfficialHdcpCard()" class="w-full bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">戻る</button>`;
     } else {
       const fileListHtml = State.officialHdcpFilesPending
