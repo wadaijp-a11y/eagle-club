@@ -26,5 +26,7 @@ jobs:
         env:
           CLASP_TOKEN: ${{ secrets.CLASP_TOKEN }}
         run: |
-          echo "$CLASP_TOKEN" > ~/.clasprc.json
-          npx @google/clasp push -f
+              cat << 'EOF' > ~/.clasprc.json
+              ${{ secrets.CLASP_TOKEN }}
+              EOF
+              npx @google/clasp push -f
