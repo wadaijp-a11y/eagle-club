@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-- name: Check Token Format
+      - name: Check Token Format
         env:
           CLASP_TOKEN: ${{ secrets.CLASP_TOKEN }}
         run: |
