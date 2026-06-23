@@ -15,7 +15,23 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
+- name: Check Token Format
+        env:
+          CLASP_TOKEN: ${{ secrets.CLASP_TOKEN }}
+        run: |
+          node -e "
+          const t = process.env.CLASP_TOKEN;
+          if (!t) { console.log('❌ トークンが空です（登録されていません）'); process.exit(1); }
+          console.log('文字数:', t.length);
+          try {
+            JSON.parse(t);
+            console.log('✅ トークンは完璧なJSON形式です！改行エラーの可能性が高いです。');
+          } catch(e) {
+            console.log('❌ 余計な文字が混ざっています！');
+            console.log('先頭5文字:', t.slice(0,5).split('').join(' '));
+            console.log('末尾5文字:', t.slice(-5).split('').join(' '));
+          }
+          "
       - name: Install Dependencies
         run: npm install
 
