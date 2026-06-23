@@ -38,11 +38,31 @@ jobs:
       - name: Run ESLint (Syntax Check)
         run: npm run lint
 
-      - name: Deploy to GAS via Clasp
+     - name: Auto-fix Token & Deploy
         env:
           CLASP_TOKEN: ${{ secrets.CLASP_TOKEN }}
         run: |
-              cat << 'EOF' > ~/.clasprc.json
-              ${{ secrets.CLASP_TOKEN }}
-              EOF
-              npx @google/clasp push -f
+          node -e "
+          const fs = require('fs');
+          const t = process.env.CLASP_TOKEN || '';
+          const start = t.indexOf('{');
+          const end = t.lastIndexOf('}');
+          
+          if (start === -1 || end === -1) {
+            console.log('❌ トークン内に { または } が見つかりません。完全にコピーをミスしているため、後でPCから再登録が必要です。');
+            process.exit(1);
+          }
+          
+          // { から } までを抽出（ゴミ文字の排除）
+          const cleanToken = t.substring(start, end + 1);
+          
+          try {
+            JSON.parse(cleanToken);
+            fs.writeFileSync(process.env.HOME + '/.clasprc.json', cleanToken);
+            console.log('✅ 自動修復成功！余計な文字を削ぎ落としてGASの鍵をセットしました。');
+          } catch(e) {
+            console.log('❌ 修復を試みましたが、中身の構造自体が壊れています: ' + e.message);
+            process.exit(1);
+          }
+          "
+          npx @google/clasp push -f
