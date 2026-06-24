@@ -80,43 +80,68 @@ function writeAccessLog(name, event, result, note) {
 }
 
 /** ログイン失敗カウント管理（ユーザー単位 + グローバル2段構え） */
-function checkAndIncrementFailCount(id) {
+/** ログインロック状態の確認のみ（カウントの加算は行わない） */
+function checkLoginLock(id) {
+  const cache = CacheService.getScriptCache();
+  if (cache.get('login_lock_global')) {
+    throw new Error(
+      'システムへの異常なアクセスを検知したため、一時的にログインを制限しています。10分後に再試行してください。'
+    );
+  }
+  if (cache.get(`login_lock_${id}`)) {
+    throw new Error('アカウントが一時ロックされています。10分後に再試行してください。');
+  }
+}
+
+/**
+ * ログイン失敗カウントの加算（ユーザー単位 + グローバル2段構え）。
+ * パスワード確認後、不一致が確定した場合にのみ呼び出すこと。
+ * 正しいパスワードでの連続アクセス（リロード連打等）でカウントが
+ * 加算されてしまわないよう、checkLoginLockとは意図的に分離している。
+ * 上限に達してロックした場合はそのメッセージを返し、それ以外はnullを返す。
+ */
+function incrementFailCount(id) {
   const cache = CacheService.getScriptCache();
   const globalLockKey = 'login_lock_global';
   const globalCountKey = 'login_fail_global';
   const userLockKey = `login_lock_${id}`;
   const userCountKey = `login_fail_${id}`;
 
-  // ロックチェック
-  if (cache.get(globalLockKey)) {
-    throw new Error(
-      'システムへの異常なアクセスを検知したため、一時的にログインを制限しています。10分後に再試行してください。'
-    );
-  }
-  if (cache.get(userLockKey)) {
-    throw new Error('アカウントが一時ロックされています。10分後に再試行してください。');
-  }
-
-  // カウントアップ
   const userCount = Number(cache.get(userCountKey) || 0) + 1;
   const globalCount = Number(cache.get(globalCountKey) || 0) + 1;
 
   if (globalCount >= GLOBAL_FAIL_LIMIT) {
     cache.put(globalLockKey, '1', LOGIN_LOCK_SECONDS);
     cache.remove(globalCountKey);
-    throw new Error(
-      'システムへの異常なアクセスを検知したため、一時的にログインを制限しています。10分後に再試行してください。'
-    );
+    return 'システムへの異常なアクセスを検知したため、一時的にログインを制限しています。10分後に再試行してください。';
   }
 
   if (userCount >= LOGIN_FAIL_LIMIT) {
     cache.put(userLockKey, '1', LOGIN_LOCK_SECONDS);
     cache.remove(userCountKey);
-    throw new Error('ログイン試行回数が上限を超えました。10分後に再試行してください。');
+    return 'ログイン試行回数が上限を超えました。10分後に再試行してください。';
   }
 
   cache.put(userCountKey, String(userCount), LOGIN_LOCK_SECONDS);
   cache.put(globalCountKey, String(globalCount), LOGIN_LOCK_SECONDS);
+  return null;
+}
+
+/** 管理者による手動でのログインロック解除（緊急解除用）。システム全体のロックは常に解除し、targetIdが指定されていればその利用者個人のロックも解除する。 */
+function clearLoginLockout(targetId) {
+  const cache = CacheService.getScriptCache();
+  cache.remove('login_fail_global');
+  cache.remove('login_lock_global');
+
+  let message = 'システム全体のログインロックを解除しました。';
+  if (targetId) {
+    cache.remove(`login_fail_${targetId}`);
+    cache.remove(`login_lock_${targetId}`);
+    message = `${targetId} さんと、システム全体のログインロックを解除しました。`;
+  }
+
+  writeAccessLog(targetId || 'SYSTEM', 'LOGIN', 'UNLOCKED', '管理者による手動解除');
+  return { success: true, message };
 }
 
 function clearFailCount(id) {
@@ -173,6 +198,7 @@ const ADMIN_ACTIONS = {
   clearSystemCache: req => forceClearCache(),
   toggleMaintenance: req => toggleMaintenanceMode(req.state),
   checkOfficialHdcpFiles: () => checkOfficialHdcpFiles(),
+  clearLoginLockout: req => clearLoginLockout(req.targetId),
   syncOfficialHdcp: () => {
     processOfficialHandicapPDF();
     return { success: true, message: '公式HDCP同期が完了しました。最新データを読み込みました。' };
@@ -311,7 +337,7 @@ function getCommonDashboardData() {
 
 function checkLogin(id, password) {
   try {
-    checkAndIncrementFailCount(id);
+    checkLoginLock(id);
   } catch (lockErr) {
     const isGlobal = lockErr.message.includes('システムへ');
     writeAccessLog(id, 'LOGIN', 'LOCKED', isGlobal ? 'システム全体ロック' : '試行回数上限');
@@ -389,6 +415,15 @@ function checkLogin(id, password) {
       futureSchedules: dashboard.futureSchedules,
       maintenanceMode: isMaintenance,
     };
+  }
+
+  // ここに到達するのはパスワードが一致しなかった場合のみ。
+  // 正しいパスワードでの連続アクセスでは加算されない。
+  const lockMessage = incrementFailCount(id);
+  if (lockMessage) {
+    const isGlobal = lockMessage.includes('システムへ');
+    writeAccessLog(id, 'LOGIN', 'LOCKED', isGlobal ? 'システム全体ロック' : '試行回数上限');
+    return { success: false, error: lockMessage };
   }
 
   const cache = CacheService.getScriptCache();
