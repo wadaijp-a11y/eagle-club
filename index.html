@@ -420,7 +420,11 @@ async function onLogin(event) {
 
   try {
     const hashedPw = await hashPassword(pw);
-    const res = await callGasApi('checkLogin', { id, password: hashedPw });
+    // 手動ログインはユーザーが画面を見て待っている状態のため、
+    // 既定値(リトライ3回・15秒)より早く結果を返す。
+    // リトライは0ではなく1回残し、GASのコールドスタート等による
+    // 一度だけの遅延では失敗扱いにならないようにしている。
+    const res = await callGasApi('checkLogin', { id, password: hashedPw }, 1, 10000);
 
     if (res.success) {
       State.loginId = id;
@@ -798,6 +802,16 @@ function buildAdminSection() {
                 <button type="submit" id="resetPasswordBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">リセット実行</button>
               </form>
               <p id="resetPasswordStatus" class="mt-2 text-xs font-semibold text-center"></p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <h4 class="font-bold text-slate-800 mb-2 text-xs">🔓 ログインロック解除</h4>
+              <p class="text-xs text-slate-500 mb-3 leading-relaxed">リロード連打などで「認証中...」が続く・ログインできなくなった場合に使用します。システム全体のロックは常に解除され、IDを入力すればその方個人のロックも併せて解除します。</p>
+              <form onsubmit="event.preventDefault(); onClearLoginLockout();">
+                <input type="text" id="unlockTargetId" placeholder="対象ログインID(空欄も可)" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                <button type="submit" id="unlockBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">ロック解除を実行</button>
+              </form>
+              <p id="unlockStatus" class="mt-2 text-xs font-semibold text-center"></p>
             </div>
             
             <div class="bg-white border border-slate-200 rounded-xl p-4">
@@ -2076,6 +2090,28 @@ async function onResetPassword() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'リセット実行';
+  }
+}
+
+async function onClearLoginLockout() {
+  const targetId = document.getElementById('unlockTargetId').value.trim();
+  const statusText = document.getElementById('unlockStatus');
+  const btn = document.getElementById('unlockBtn');
+
+  btn.disabled = true;
+  btn.textContent = '処理中...';
+  statusText.textContent = '';
+  try {
+    const res = await callGasApi('clearLoginLockout', { targetId });
+    statusText.textContent = res.success ? res.message : `エラー: ${res.error}`;
+    statusText.className = `mt-2 text-xs font-semibold ${res.success ? 'text-brand-600' : 'text-red-500'}`;
+    if (res.success) document.getElementById('unlockTargetId').value = '';
+  } catch {
+    statusText.textContent = '通信エラーが発生しました。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'ロック解除を実行';
   }
 }
 
