@@ -90,13 +90,18 @@
       <form id="loginForm" onsubmit="onLogin(event)" novalidate class="space-y-5">
         <div>
           <label for="loginId" class="block text-slate-700 text-sm font-bold mb-1.5">ログインID</label>
-          <input type="text" id="loginId" autocomplete="username"
+          <input type="text" id="loginId" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
             class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
         </div>
         <div>
           <label for="loginPw" class="block text-slate-700 text-sm font-bold mb-1.5">パスワード</label>
-          <input type="password" id="loginPw" autocomplete="current-password"
-            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+          <div class="relative">
+            <input type="password" id="loginPw" autocomplete="current-password"
+              class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+            <button type="button" onclick="togglePasswordVisibility(this)" aria-label="パスワードを表示する" class="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+          </div>
         </div>    
         <div class="text-right">
           <button type="button" onclick="openForgotPwModal()" class="text-[11px] text-slate-500 hover:text-slate-700 underline focus:outline-none">
@@ -131,6 +136,20 @@ const SPINNER_SVG = `
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
     `;
+
+// パスワード表示/非表示トグルボタンのアイコン（目・目に斜線）
+const EYE_ICON = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`;
+const EYE_OFF_ICON = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"></path></svg>`;
+
+// パスワード入力欄のtypeを password/text で切り替える（ボタンの直前のinputが対象）
+function togglePasswordVisibility(btn) {
+  const input = btn.previousElementSibling;
+  if (!input) return;
+  const willShow = input.type === 'password';
+  input.type = willShow ? 'text' : 'password';
+  btn.innerHTML = willShow ? EYE_OFF_ICON : EYE_ICON;
+  btn.setAttribute('aria-label', willShow ? 'パスワードを隠す' : 'パスワードを表示する');
+}
 
 // ==========================================
 // STATE
@@ -213,6 +232,47 @@ function showToast(message) {
     toast.classList.add('opacity-0');
     setTimeout(() => toast.remove(), 300);
   }, 2000);
+}
+
+// 縦スクロールできる表の下端に、まだ続きがある時だけフェードを表示する。
+// 「下まで見たつもりでまだ数px残っている」ことに気づきにくく、表の中で
+// スクロールが閉じ込められたように感じる問題を、視覚的に知らせて緩和する。
+function setupScrollFade(scrollId, fadeId) {
+  const scrollEl = document.getElementById(scrollId);
+  const fadeEl = document.getElementById(fadeId);
+  if (!scrollEl || !fadeEl) return;
+
+  const update = () => {
+    const hasMore = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight > 2;
+    fadeEl.classList.toggle('opacity-0', !hasMore);
+  };
+
+  scrollEl.addEventListener('scroll', update);
+  // タブ切替・データ更新等で表の中身（高さ）が変わった時にも追従させる
+  const content = scrollEl.querySelector('table') || scrollEl.firstElementChild;
+  if (content) new ResizeObserver(update).observe(content);
+  update();
+}
+
+// モーダル表示中に背面（メイン画面）が一緒にスクロールしてしまわないようロックする。
+// 個々のopen/close関数で固定的にon/offするのではなく、実際にDOM上で
+// 表示中のモーダルが1つでもあるかを毎回確認して判定する。
+// （Escapeキーでの一括クローズなど、個別のclose関数を経由しない閉じ方にも
+//  対応するため。固定的なon/off方式だとそちらでロックが解除されず残ってしまう）
+const ALL_MODAL_IDS = [
+  'settingsModal',
+  'memberHdcpModal',
+  'memberCompeModal',
+  'termsModal',
+  'forgotPwModal',
+  'changePwModal',
+  'logoutConfirmModal',
+];
+function refreshBodyScrollLock() {
+  const anyModalOpen = ALL_MODAL_IDS.some(
+    id => !document.getElementById(id)?.classList.contains('hidden')
+  );
+  document.body.style.overflow = anyModalOpen ? 'hidden' : '';
 }
 
 // ==========================================
@@ -367,7 +427,19 @@ async function callGasApi(
       document.getElementById('loginId').value = '';
       window.scrollTo(0, 0);
 
-      alert(result.error || 'セッションが切れました。再度ログインしてください。');
+      // ブラウザ標準のalert()（Androidではサイトのドメインが表示され、Webサイト感が出てしまう）
+      // を避け、ログイン画面の赤いエラー欄に自然な形で表示する
+      const errEl = document.getElementById('loginError');
+      if (errEl) {
+        // システム内部の事情を表す文言は、メンバー向けに分かりやすい言い回しへ変換する
+        let displayError = result.error || 'セッションが切れました。再度ログインしてください。';
+        if (displayError === '自動ログイン情報がありません。') {
+          displayError = 'ログインの有効期限が切れました。再度ログインしてください。';
+        }
+        errEl.textContent = displayError;
+        errEl.classList.remove('hidden');
+      }
+
       throw new Error('Force Logout');
     }
 
@@ -452,11 +524,13 @@ async function onLogin(event) {
 function openLogoutModal() {
   closeSettingsModal(); // 後ろの設定メニューを閉じてスッキリさせる
   document.getElementById('logoutConfirmModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 
 // ログアウト確認モーダルを閉じる
 function closeLogoutModal() {
   document.getElementById('logoutConfirmModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 
 // 実際のログアウト処理を実行する
@@ -549,6 +623,12 @@ function buildMainUI(res) {
   CourseHdcp.render();
   setupScheduleDisplay(res);
   if (isAdmin) renderSyncOfficialHdcpCard();
+
+  // 二重スクロール対策のフェード初期化（versusの表は再描画ごとにrender()側で初期化する）
+  setupScrollFade('officialHdcpScroll', 'officialHdcpFade');
+  setupScrollFade('compeResultScroll', 'compeResultFade');
+  setupScrollFade('rankingTableScroll', 'rankingTableFade');
+  setupScrollFade('myScoreTableScroll', 'myScoreTableFade');
 }
 
 // 管理者がメンテナンスモードに入れたまま管理者メニューを閉じても見落とさないよう、常時表示する警告バナー
@@ -581,10 +661,10 @@ function buildHeader(res) {
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             <div class="flex gap-2">
-              <button type="button" onclick="onUserManualSync(this)" aria-label="データを最新に更新" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-brand-600 hover:bg-brand-50 transition-colors">
+              <button type="button" onclick="onUserManualSync(this)" aria-label="データを最新に更新" class="w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-brand-600 hover:bg-brand-50 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
               </button>
-              <button type="button" onclick="openSettingsModal()" aria-label="設定メニューを開く" class="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
+              <button type="button" onclick="openSettingsModal()" aria-label="設定メニューを開く" class="w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
               </button>
             </div>
@@ -679,10 +759,13 @@ function buildMyDashboardCard(res) {
               <p class="text-xs font-bold text-purple-800 mb-2 text-center pointer-events-none">公式HDCPの推移</p>
               <div class="h-48 py-1 pointer-events-none"><canvas id="officialHdcpChart"></canvas></div>
               
-              <div class="max-h-32 overflow-x-auto overflow-y-auto mt-3 -mx-1 px-1 cursor-default" onclick="event.stopPropagation()">
-                <table class="w-full text-left border-collapse text-xs">
-                  <tbody id="officialHdcpTableBody"></tbody>
-                </table>
+              <div class="relative">
+                <div id="officialHdcpScroll" class="max-h-32 overflow-x-auto overflow-y-auto mt-3 -mx-1 px-1 cursor-default" onclick="event.stopPropagation()">
+                  <table class="w-full text-left border-collapse text-xs">
+                    <tbody id="officialHdcpTableBody"></tbody>
+                  </table>
+                </div>
+                <div id="officialHdcpFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
               </div>
             </div>
             
@@ -709,18 +792,21 @@ function buildCompeResultCard() {
               class="text-xs border border-slate-200 rounded-lg p-1.5 font-bold text-slate-600 bg-slate-50 focus:outline-none focus:border-brand-400 hidden">
             </select>
           </div>
-          <div class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr class="border-b border-slate-200 text-slate-500 text-xs">
-                  <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
-                  <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
-                  <th scope="col" class="py-2 text-right font-bold">GROSS</th>
-                  <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
-                </tr>
-              </thead>
-              <tbody id="scoreContainer"></tbody>
-            </table>
+          <div class="relative">
+            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                  <tr class="border-b border-slate-200 text-slate-500 text-xs">
+                    <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
+                    <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
+                    <th scope="col" class="py-2 text-right font-bold">GROSS</th>
+                    <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
+                  </tr>
+                </thead>
+                <tbody id="scoreContainer"></tbody>
+              </table>
+            </div>
+            <div id="compeResultFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -733,13 +819,16 @@ function buildRankingCard() {
             <h3 class="font-black text-slate-800 text-lg">メンバーランキング</h3>
           </div>
           <div class="flex p-1 bg-slate-50 rounded-xl border border-slate-200 mb-4 gap-1" id="rankingTabsContainer"></div>
-          <div class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead id="rankingTableHeader" class="sticky top-0 bg-white/95 backdrop-blur z-10"></thead>
-              <tbody id="rankingTableBody">
-                <tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</td></tr>
-              </tbody>
-            </table>
+          <div class="relative">
+            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead id="rankingTableHeader" class="sticky top-0 bg-white/95 backdrop-blur z-10"></thead>
+                <tbody id="rankingTableBody">
+                  <tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="rankingTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -759,18 +848,21 @@ function buildMyRecordCard() {
           </div>
           <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
           <div id="scoreChartContainer" class="h-48 py-2"><canvas id="myChart"></canvas></div>
-          <div id="scoreTableContainer" class="hidden max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1 mt-2">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr class="border-b border-slate-200 text-slate-500 text-xs">
-                  <th scope="col" class="py-2 font-bold">日付</th>
-                  <th scope="col" class="py-2 text-right font-bold">順位</th>
-                  <th scope="col" class="py-2 text-right font-bold">GROSS</th>
-                  <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
-                </tr>
-              </thead>
-              <tbody id="myScoreTableBody"></tbody>
-            </table>
+          <div id="scoreTableContainer" class="hidden relative mt-2">
+            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                  <tr class="border-b border-slate-200 text-slate-500 text-xs">
+                    <th scope="col" class="py-2 font-bold">日付</th>
+                    <th scope="col" class="py-2 text-right font-bold">順位</th>
+                    <th scope="col" class="py-2 text-right font-bold">GROSS</th>
+                    <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
+                  </tr>
+                </thead>
+                <tbody id="myScoreTableBody"></tbody>
+              </table>
+            </div>
+            <div id="myScoreTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -814,8 +906,8 @@ function buildAdminSection() {
               <h4 class="font-bold text-slate-800 mb-2 text-xs">🔑 パスワードリセット</h4>
               <form onsubmit="event.preventDefault(); onResetPassword();">
                 <div class="space-y-2 mb-3">
-                  <input type="text" id="resetTargetId" placeholder="対象ログインID" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
-                  <input type="text" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                  <input type="text" id="resetTargetId" placeholder="対象ログインID" autocapitalize="none" autocorrect="off" spellcheck="false" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                  <input type="text" id="resetNewPassword" placeholder="新しいパスワード(8文字以上)" autocapitalize="none" autocorrect="off" spellcheck="false" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
                 </div>
                 <button type="submit" id="resetPasswordBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">リセット実行</button>
               </form>
@@ -826,7 +918,7 @@ function buildAdminSection() {
               <h4 class="font-bold text-slate-800 mb-2 text-xs">🔓 ログインロック解除</h4>
               <p class="text-xs text-slate-500 mb-3 leading-relaxed">リロード連打などで「認証中...」が続く・ログインできなくなった場合に使用します。システム全体のロックは常に解除され、IDを入力すればその方個人のロックも併せて解除します。</p>
               <form onsubmit="event.preventDefault(); onClearLoginLockout();">
-                <input type="text" id="unlockTargetId" placeholder="対象ログインID(空欄も可)" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
+                <input type="text" id="unlockTargetId" placeholder="対象ログインID(空欄も可)" autocapitalize="none" autocorrect="off" spellcheck="false" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:border-slate-400">
                 <button type="submit" id="unlockBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">ロック解除を実行</button>
               </form>
               <p id="unlockStatus" class="mt-2 text-xs font-semibold text-center"></p>
@@ -1566,19 +1658,23 @@ const Versus = {
     container.innerHTML = `
           ${vsHeader}
           <div class="h-48 py-1"><canvas id="versusChart"></canvas></div>
-          <div class="max-h-60 overflow-x-auto overflow-y-auto mt-4 -mx-1 px-1">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr class="border-b border-slate-200 text-slate-500 text-xs">
-                  <th scope="col" class="py-2 font-bold">日付</th>
-                  <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
-                  <th scope="col" class="py-2 text-center font-bold text-slate-600">相手</th>
-                  <th scope="col" class="py-2 pr-4 text-right font-bold">結果</th>
-                </tr>
-              </thead>
-              <tbody>${tableRows}</tbody>
-            </table>
+          <div class="relative">
+            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto mt-4 -mx-1 px-1">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                  <tr class="border-b border-slate-200 text-slate-500 text-xs">
+                    <th scope="col" class="py-2 font-bold">日付</th>
+                    <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
+                    <th scope="col" class="py-2 text-center font-bold text-slate-600">相手</th>
+                    <th scope="col" class="py-2 pr-4 text-right font-bold">結果</th>
+                  </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+              </table>
+            </div>
+            <div id="versusTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>`;
+    setupScrollFade('versusTableScroll', 'versusTableFade');
 
     const recent = versusData.slice(-10);
     const ctx = document.getElementById('versusChart').getContext('2d');
@@ -2207,9 +2303,11 @@ async function onToggleMaintenance(btnElement) {
 // Modal Controls
 function openSettingsModal() {
   document.getElementById('settingsModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 
 function openMemberHdcpModal(memberName) {
@@ -2256,10 +2354,12 @@ function openMemberHdcpModal(memberName) {
     });
   }
   document.getElementById('memberHdcpModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 
 function closeMemberHdcpModal() {
   document.getElementById('memberHdcpModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 
 function openMemberCompeModal(memberName) {
@@ -2306,22 +2406,28 @@ function openMemberCompeModal(memberName) {
     });
   }
   document.getElementById('memberCompeModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 
 function closeMemberCompeModal() {
   document.getElementById('memberCompeModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 function openTermsModal() {
   document.getElementById('termsModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 function closeTermsModal() {
   document.getElementById('termsModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 function openForgotPwModal() {
   document.getElementById('forgotPwModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 function closeForgotPwModal() {
   document.getElementById('forgotPwModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 function openChangePwModal() {
   document.getElementById('myCurrentPw').value = '';
@@ -2329,25 +2435,20 @@ function openChangePwModal() {
   document.getElementById('myChangePwStatus').textContent = '';
   closeSettingsModal();
   document.getElementById('changePwModal').classList.remove('hidden');
+  refreshBodyScrollLock();
 }
 function closeChangePwModal() {
   document.getElementById('changePwModal').classList.add('hidden');
+  refreshBodyScrollLock();
 }
 
 // Escapeキーで開いているモーダルを一括クローズ
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    [
-      'settingsModal',
-      'memberHdcpModal',
-      'memberCompeModal',
-      'termsModal',
-      'forgotPwModal',
-      'changePwModal',
-      'logoutConfirmModal',
-    ].forEach(id => {
+    ALL_MODAL_IDS.forEach(id => {
       document.getElementById(id)?.classList.add('hidden');
     });
+    refreshBodyScrollLock();
   }
 });
 
@@ -2392,8 +2493,24 @@ document.addEventListener('DOMContentLoaded', async () => {
               console.warn('[イーグル会] バックグラウンド認証失敗:', res.error);
               localStorage.removeItem('eagle_auto_login');
               localStorage.removeItem('eagle_user_profile');
-              alert(res.error || 'セッションが切れました。再度ログインしてください。');
-              window.location.reload();
+              State.authToken = null;
+              State.currentUser = null;
+              State.authRes = null;
+
+              // alert()+リロードではなく、forceLogout時と同様にその場でログイン画面へ
+              // 遷移し、赤いエラー欄に表示する（画面全体のリロードによる一瞬の白画面も防げる）
+              document.getElementById('mainSection').innerHTML = '';
+              document.getElementById('mainSection').classList.add('hidden');
+              document.getElementById('loginSection').classList.remove('hidden');
+              document.getElementById('loginId').value = '';
+              window.scrollTo(0, 0);
+
+              const errEl = document.getElementById('loginError');
+              if (errEl) {
+                errEl.textContent =
+                  res.error || 'セッションが切れました。再度ログインしてください。';
+                errEl.classList.remove('hidden');
+              }
             }
           })
           .catch(e => {
@@ -2446,7 +2563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onclick="event.stopPropagation()">
         <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 class="font-bold text-slate-700 text-sm">設定・メニュー</h3>
-          <button type="button" onclick="closeSettingsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors">&times;</button>
+          <button type="button" onclick="closeSettingsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-xl font-bold leading-none">&times;</button>
         </div>
         <div class="p-2">
           <button type="button" onclick="openChangePwModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
@@ -2469,7 +2586,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
           <h3 id="memberHdcpModalTitle" class="font-bold text-slate-800 text-sm"></h3>
-          <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
+          <button type="button" onclick="closeMemberHdcpModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-xl font-bold leading-none">&times;</button>
         </div>
         <div class="py-1 h-48 relative">
           <canvas id="memberHdcpChart"></canvas>
@@ -2484,7 +2601,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
           <h3 id="memberCompeModalTitle" class="font-bold text-slate-800 text-sm"></h3>
-          <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
+          <button type="button" onclick="closeMemberCompeModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-xl font-bold leading-none">&times;</button>
         </div>
         <div class="py-1 h-48 relative">
           <canvas id="memberCompeChart"></canvas>
@@ -2502,7 +2619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <!-- モーダルヘッダー -->
         <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-5 shrink-0">
           <h3 class="font-black text-slate-800 text-lg">利用ルール・免責事項</h3>
-          <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none">&times;</button>
+          <button type="button" onclick="closeTermsModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-2xl font-bold leading-none">&times;</button>
         </div>
         
         <!-- モーダルコンテンツ（スクロール領域） -->
@@ -2573,16 +2690,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
           <h3 class="font-black text-slate-800 text-base">🔑 パスワードの変更</h3>
-          <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">&times;</button>
+          <button type="button" onclick="closeChangePwModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-xl font-bold leading-none">&times;</button>
         </div>
         <form onsubmit="event.preventDefault(); onChangeMyPassword();" class="space-y-4">
           <div>
             <label for="myCurrentPw" class="block text-xs font-bold text-slate-700 mb-1.5">現在のパスワード</label>
-            <input type="password" id="myCurrentPw" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+            <div class="relative">
+              <input type="password" id="myCurrentPw" class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+              <button type="button" onclick="togglePasswordVisibility(this)" aria-label="パスワードを表示する" class="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </button>
+            </div>
           </div>
           <div>
             <label for="myNewPw" class="block text-xs font-bold text-slate-700 mb-1.5">新しいパスワード <span class="text-slate-400 font-normal">(8文字以上)</span></label>
-            <input type="password" id="myNewPw" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+            <div class="relative">
+              <input type="password" id="myNewPw" class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+              <button type="button" onclick="togglePasswordVisibility(this)" aria-label="パスワードを表示する" class="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </button>
+            </div>
           </div>
           <button type="submit" id="myChangePwBtn" class="w-full mt-2 bg-brand-600 text-white text-sm font-bold p-3.5 rounded-xl hover:bg-brand-700 transition-colors shadow-sm">
             パスワードを変更
