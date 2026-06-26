@@ -700,12 +700,17 @@ function buildScheduleCard(res) {
               <button type="button" onclick="toggleFutureSchedules()" class="text-xs font-bold flex items-center gap-1.5 opacity-90 hover:opacity-100 transition-opacity focus:outline-none w-full">
                 <span>今後の予定を見る</span>
                 <span class="bg-white/20 px-2 py-1 rounded-full text-xs" id="futureScheduleCount">0</span>
-                <span class="ml-auto">▾</span>
+                <span class="ml-auto transition-transform duration-200" id="futureScheduleToggleIcon">▾</span>
               </button>
             </div>
             
-            <div id="futureSchedulesSection" class="hidden mt-4 max-h-48 overflow-y-auto pr-1">
-              <div id="futureSchedulesList" class="space-y-2.5"></div>
+            <div id="futureSchedulesSection" class="hidden mt-4 cursor-pointer" onclick="toggleFutureSchedules()">
+              <div class="max-h-48 overflow-y-auto pr-1" onclick="event.stopPropagation()">
+                <div id="futureSchedulesList" class="space-y-2.5"></div>
+              </div>
+              <div class="text-center mt-2">
+                <span class="text-[10px] font-bold text-white/70 tracking-wide">▲ タップして閉じる</span>
+              </div>
             </div>
           </div>
         </div>`;
@@ -760,12 +765,12 @@ function buildMyDashboardCard(res) {
               <div class="h-48 py-1 pointer-events-none"><canvas id="officialHdcpChart"></canvas></div>
               
               <div class="relative">
-                <div id="officialHdcpScroll" class="max-h-32 overflow-x-auto overflow-y-auto mt-3 -mx-1 px-1 cursor-default" onclick="event.stopPropagation()">
+                <div id="officialHdcpScroll" class="max-h-32 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2 mt-3 cursor-default" onclick="event.stopPropagation()">
                   <table class="w-full text-left border-collapse text-xs">
                     <tbody id="officialHdcpTableBody"></tbody>
                   </table>
                 </div>
-                <div id="officialHdcpFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+                <div id="officialHdcpFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
               </div>
             </div>
             
@@ -793,9 +798,9 @@ function buildCompeResultCard() {
             </select>
           </div>
           <div class="relative">
-            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
+            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                <thead class="sticky top-0 bg-slate-50/95 backdrop-blur z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
                     <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
                     <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
@@ -806,7 +811,7 @@ function buildCompeResultCard() {
                 <tbody id="scoreContainer"></tbody>
               </table>
             </div>
-            <div id="compeResultFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="compeResultFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -820,15 +825,15 @@ function buildRankingCard() {
           </div>
           <div class="flex p-1 bg-slate-50 rounded-xl border border-slate-200 mb-4 gap-1" id="rankingTabsContainer"></div>
           <div class="relative">
-            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
+            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead id="rankingTableHeader" class="sticky top-0 bg-white/95 backdrop-blur z-10"></thead>
+                <thead id="rankingTableHeader" class="sticky top-0 bg-slate-50/95 backdrop-blur z-10"></thead>
                 <tbody id="rankingTableBody">
                   <tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</td></tr>
                 </tbody>
               </table>
             </div>
-            <div id="rankingTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="rankingTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -849,9 +854,9 @@ function buildMyRecordCard() {
           <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
           <div id="scoreChartContainer" class="h-48 py-2"><canvas id="myChart"></canvas></div>
           <div id="scoreTableContainer" class="hidden relative mt-2">
-            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto -mx-1 px-1">
+            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                <thead class="sticky top-0 bg-slate-50/95 backdrop-blur z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
                     <th scope="col" class="py-2 font-bold">日付</th>
                     <th scope="col" class="py-2 text-right font-bold">順位</th>
@@ -862,7 +867,7 @@ function buildMyRecordCard() {
                 <tbody id="myScoreTableBody"></tbody>
               </table>
             </div>
-            <div id="myScoreTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="myScoreTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -1029,7 +1034,12 @@ function setupScheduleDisplay(res) {
 }
 
 function toggleFutureSchedules() {
-  document.getElementById('futureSchedulesSection').classList.toggle('hidden');
+  const section = document.getElementById('futureSchedulesSection');
+  const icon = document.getElementById('futureScheduleToggleIcon');
+  section.classList.toggle('hidden');
+  if (icon) {
+    icon.style.transform = section.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+  }
 }
 
 function showSkeletons() {
@@ -1659,9 +1669,9 @@ const Versus = {
           ${vsHeader}
           <div class="h-48 py-1"><canvas id="versusChart"></canvas></div>
           <div class="relative">
-            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto mt-4 -mx-1 px-1">
+            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2 mt-4">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-white/95 backdrop-blur z-10">
+                <thead class="sticky top-0 bg-slate-50/95 backdrop-blur z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
                     <th scope="col" class="py-2 font-bold">日付</th>
                     <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
@@ -1672,7 +1682,7 @@ const Versus = {
                 <tbody>${tableRows}</tbody>
               </table>
             </div>
-            <div id="versusTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="versusTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>`;
     setupScrollFade('versusTableScroll', 'versusTableFade');
 
@@ -2696,7 +2706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div>
             <label for="myCurrentPw" class="block text-xs font-bold text-slate-700 mb-1.5">現在のパスワード</label>
             <div class="relative">
-              <input type="password" id="myCurrentPw" class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+              <input type="password" id="myCurrentPw" autocomplete="current-password" class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
               <button type="button" onclick="togglePasswordVisibility(this)" aria-label="パスワードを表示する" class="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
               </button>
@@ -2705,7 +2715,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div>
             <label for="myNewPw" class="block text-xs font-bold text-slate-700 mb-1.5">新しいパスワード <span class="text-slate-400 font-normal">(8文字以上)</span></label>
             <div class="relative">
-              <input type="password" id="myNewPw" class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
+              <input type="password" id="myNewPw" autocomplete="new-password" class="w-full p-3 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition-colors">
               <button type="button" onclick="togglePasswordVisibility(this)" aria-label="パスワードを表示する" class="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
               </button>
