@@ -765,12 +765,12 @@ function buildMyDashboardCard(res) {
               <div class="h-48 py-1 pointer-events-none"><canvas id="officialHdcpChart"></canvas></div>
               
               <div class="relative">
-                <div id="officialHdcpScroll" class="max-h-32 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2 mt-3 cursor-default" onclick="event.stopPropagation()">
+                <div id="officialHdcpScroll" class="max-h-32 overflow-x-auto overflow-y-auto bg-slate-100 rounded-lg p-2 mt-3 cursor-default" onclick="event.stopPropagation()">
                   <table class="w-full text-left border-collapse text-xs">
                     <tbody id="officialHdcpTableBody"></tbody>
                   </table>
                 </div>
-                <div id="officialHdcpFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+                <div id="officialHdcpFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-100 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
               </div>
             </div>
             
@@ -798,9 +798,9 @@ function buildCompeResultCard() {
             </select>
           </div>
           <div class="relative">
-            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2">
+            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-100 rounded-lg px-2 pb-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-slate-50 z-10">
+                <thead class="sticky top-0 bg-slate-100 z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
                     <th scope="col" class="pt-3 pb-2 text-center font-bold w-12">順位</th>
                     <th scope="col" class="pt-3 pb-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
@@ -811,7 +811,7 @@ function buildCompeResultCard() {
                 <tbody id="scoreContainer"></tbody>
               </table>
             </div>
-            <div id="compeResultFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="compeResultFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-100 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -825,15 +825,15 @@ function buildRankingCard() {
           </div>
           <div class="flex p-1 bg-slate-50 rounded-xl border border-slate-200 mb-4 gap-1" id="rankingTabsContainer"></div>
           <div class="relative">
-            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2">
+            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-100 rounded-lg px-2 pb-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead id="rankingTableHeader" class="sticky top-0 bg-slate-50 z-10"></thead>
+                <thead id="rankingTableHeader" class="sticky top-0 bg-slate-100 z-10"></thead>
                 <tbody id="rankingTableBody">
                   <tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</td></tr>
                 </tbody>
               </table>
             </div>
-            <div id="rankingTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="rankingTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-100 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -854,9 +854,9 @@ function buildMyRecordCard() {
           <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
           <div id="scoreChartContainer" class="h-48 py-2"><canvas id="myChart"></canvas></div>
           <div id="scoreTableContainer" class="hidden relative mt-2">
-            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2">
+            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-100 rounded-lg px-2 pb-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-slate-50 z-10">
+                <thead class="sticky top-0 bg-slate-100 z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
                     <th scope="col" class="pt-3 pb-2 font-bold">日付</th>
                     <th scope="col" class="pt-3 pb-2 text-right font-bold">順位</th>
@@ -867,7 +867,7 @@ function buildMyRecordCard() {
                 <tbody id="myScoreTableBody"></tbody>
               </table>
             </div>
-            <div id="myScoreTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="myScoreTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-100 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>
         </div>`;
 }
@@ -1669,9 +1669,9 @@ const Versus = {
           ${vsHeader}
           <div class="h-48 py-1"><canvas id="versusChart"></canvas></div>
           <div class="relative">
-            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2 mt-4">
+            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-100 rounded-lg px-2 pb-2 mt-4">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-slate-50 z-10">
+                <thead class="sticky top-0 bg-slate-100 z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
                     <th scope="col" class="pt-3 pb-2 font-bold">日付</th>
                     <th scope="col" class="pt-3 pb-2 text-center font-bold text-brand-600">あなた</th>
@@ -1682,7 +1682,7 @@ const Versus = {
                 <tbody>${tableRows}</tbody>
               </table>
             </div>
-            <div id="versusTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
+            <div id="versusTableFade" class="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-slate-100 to-transparent pointer-events-none transition-opacity duration-150 opacity-0 z-20"></div>
           </div>`;
     setupScrollFade('versusTableScroll', 'versusTableFade');
 
