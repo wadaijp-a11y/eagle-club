@@ -447,48 +447,66 @@ async function onLogin(event) {
   }
 }
 
-async function onLogout(btnElement) {
-  if (!confirm('ログアウトしますか？')) return;
+// ログアウト確認モーダルを開く（Android Chromeのconfirm()が出すURL表示を避けるため、
+// ブラウザ標準のconfirm()ではなく自前のモーダルで確認する）
+function openLogoutModal() {
+  closeSettingsModal(); // 後ろの設定メニューを閉じてスッキリさせる
+  document.getElementById('logoutConfirmModal').classList.remove('hidden');
+}
 
+// ログアウト確認モーダルを閉じる
+function closeLogoutModal() {
+  document.getElementById('logoutConfirmModal').classList.add('hidden');
+}
+
+// 実際のログアウト処理を実行する
+async function executeLogout() {
+  const btn = document.getElementById('executeLogoutBtn');
   let originalHtml = '';
-  if (btnElement) {
-    originalHtml = btnElement.innerHTML;
-    btnElement.disabled = true;
-    btnElement.innerHTML = `${SPINNER_SVG}処理中...`;
-  }
+  try {
+    if (btn) {
+      originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `${SPINNER_SVG}処理中...`;
+    }
 
-  // サーバーのログアウト処理は裏で投げっぱなしにする
-  callGasApi('logout').catch(() => {});
+    // サーバーのログアウト処理は裏で投げっぱなしにする
+    callGasApi('logout').catch(() => {});
 
-  State.authToken = null;
-  State.currentUser = null;
-  State.authRes = null;
-  localStorage.removeItem('eagle_data_cache');
-  localStorage.removeItem('eagle_cache_timestamp');
-  localStorage.removeItem('eagle_auto_login');
-  localStorage.removeItem('eagle_user_profile');
-  closeSettingsModal();
-  document.getElementById('mainSection').innerHTML = '';
-  document.getElementById('mainSection').classList.add('hidden');
-  document.getElementById('loginSection').classList.remove('hidden');
+    State.authToken = null;
+    State.currentUser = null;
+    State.authRes = null;
+    localStorage.removeItem('eagle_data_cache');
+    localStorage.removeItem('eagle_cache_timestamp');
+    localStorage.removeItem('eagle_auto_login');
+    localStorage.removeItem('eagle_user_profile');
 
-  // ログイン画面の完全リセット
-  document.getElementById('loginId').value = '';
-  document.getElementById('loginPw').value = '';
-  document.getElementById('loginError').classList.add('hidden');
+    closeLogoutModal();
+    closeSettingsModal();
 
-  const mainLoginBtn = document.getElementById('loginBtn');
-  if (mainLoginBtn) {
-    mainLoginBtn.disabled = false;
-    mainLoginBtn.textContent = 'ログイン';
-  }
+    document.getElementById('mainSection').innerHTML = '';
+    document.getElementById('mainSection').classList.add('hidden');
+    document.getElementById('loginSection').classList.remove('hidden');
 
-  window.scrollTo(0, 0);
+    // ログイン画面の完全リセット
+    document.getElementById('loginId').value = '';
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginError').classList.add('hidden');
 
-  // メニューのログアウトボタンを元の状態に戻す
-  if (btnElement && document.body.contains(btnElement)) {
-    btnElement.disabled = false;
-    btnElement.innerHTML = originalHtml;
+    const mainLoginBtn = document.getElementById('loginBtn');
+    if (mainLoginBtn) {
+      mainLoginBtn.disabled = false;
+      mainLoginBtn.textContent = 'ログイン';
+    }
+
+    window.scrollTo(0, 0);
+  } finally {
+    // ログイン画面への遷移後もモーダル内のボタン自体は残るため、
+    // 念のため常に元の表示へ戻しておく
+    if (btn && document.body.contains(btn)) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
   }
 }
 
@@ -947,7 +965,7 @@ function showErrorAndRetry() {
 
 function retryLoadAllData() {
   if (!State.authRes || !State.authToken) {
-    onLogout();
+    executeLogout();
     return;
   }
   buildMainUI(State.authRes);
@@ -2326,6 +2344,7 @@ document.addEventListener('keydown', e => {
       'termsModal',
       'forgotPwModal',
       'changePwModal',
+      'logoutConfirmModal',
     ].forEach(id => {
       document.getElementById(id)?.classList.add('hidden');
     });
@@ -2437,7 +2456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="text-lg">📜</span> 免責事項・利用のルール
           </button>
           <div class="h-px bg-slate-100 my-2 mx-4"></div>
-          <button type="button" onclick="onLogout(this)" class="w-full text-left px-4 py-3 hover:bg-red-50 rounded-xl transition-colors font-bold text-red-600 text-sm flex items-center gap-3">
+          <button type="button" onclick="openLogoutModal()" class="w-full text-left px-4 py-3 hover:bg-red-50 rounded-xl transition-colors font-bold text-red-600 text-sm flex items-center gap-3">
             <span class="text-lg">🚪</span> ログアウト
           </button>
         </div>
@@ -2570,6 +2589,22 @@ document.addEventListener('DOMContentLoaded', async () => {
           </button>
           <p id="myChangePwStatus" class="text-center"></p>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="logoutConfirmModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeLogoutModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" onclick="event.stopPropagation()">
+        <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🚪</div>
+        <h3 class="font-black text-slate-800 text-lg mb-2">ログアウトしますか？</h3>
+        <p class="text-[13px] text-slate-600 leading-relaxed mb-6">
+          再度ご利用になるには、ログインIDとパスワードが必要になります。
+        </p>
+        <div class="flex gap-3">
+          <button type="button" onclick="closeLogoutModal()" class="flex-1 bg-slate-100 text-slate-700 p-3 rounded-xl font-bold hover:bg-slate-200 transition-colors shadow-sm">キャンセル</button>
+          <button type="button" id="executeLogoutBtn" onclick="executeLogout()" class="flex-1 bg-red-600 text-white p-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-sm">ログアウト</button>
+        </div>
       </div>
     </div>
   </div>
