@@ -798,14 +798,14 @@ function buildCompeResultCard() {
             </select>
           </div>
           <div class="relative">
-            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2">
+            <div id="compeResultScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-slate-50/95 backdrop-blur z-10">
+                <thead class="sticky top-0 bg-slate-50 z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
-                    <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
-                    <th scope="col" class="py-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
-                    <th scope="col" class="py-2 text-right font-bold">GROSS</th>
-                    <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
+                    <th scope="col" class="pt-3 pb-2 text-center font-bold w-12">順位</th>
+                    <th scope="col" class="pt-3 pb-2 text-left font-bold">名前 <span class="text-xs font-normal font-sans">📈</span></th>
+                    <th scope="col" class="pt-3 pb-2 text-right font-bold">GROSS</th>
+                    <th scope="col" class="pt-3 pb-2 pr-4 text-right font-bold">NET</th>
                   </tr>
                 </thead>
                 <tbody id="scoreContainer"></tbody>
@@ -825,9 +825,9 @@ function buildRankingCard() {
           </div>
           <div class="flex p-1 bg-slate-50 rounded-xl border border-slate-200 mb-4 gap-1" id="rankingTabsContainer"></div>
           <div class="relative">
-            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2">
+            <div id="rankingTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead id="rankingTableHeader" class="sticky top-0 bg-slate-50/95 backdrop-blur z-10"></thead>
+                <thead id="rankingTableHeader" class="sticky top-0 bg-slate-50 z-10"></thead>
                 <tbody id="rankingTableBody">
                   <tr><td colspan="4" class="text-center py-6 text-slate-400 text-xs">データを読み込んでいます...</td></tr>
                 </tbody>
@@ -854,14 +854,14 @@ function buildMyRecordCard() {
           <div id="myScoreEmpty" class="hidden text-center text-sm text-slate-400 py-8">スコアデータがありません</div>
           <div id="scoreChartContainer" class="h-48 py-2"><canvas id="myChart"></canvas></div>
           <div id="scoreTableContainer" class="hidden relative mt-2">
-            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2">
+            <div id="myScoreTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-slate-50/95 backdrop-blur z-10">
+                <thead class="sticky top-0 bg-slate-50 z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
-                    <th scope="col" class="py-2 font-bold">日付</th>
-                    <th scope="col" class="py-2 text-right font-bold">順位</th>
-                    <th scope="col" class="py-2 text-right font-bold">GROSS</th>
-                    <th scope="col" class="py-2 pr-4 text-right font-bold">NET</th>
+                    <th scope="col" class="pt-3 pb-2 font-bold">日付</th>
+                    <th scope="col" class="pt-3 pb-2 text-right font-bold">順位</th>
+                    <th scope="col" class="pt-3 pb-2 text-right font-bold">GROSS</th>
+                    <th scope="col" class="pt-3 pb-2 pr-4 text-right font-bold">NET</th>
                   </tr>
                 </thead>
                 <tbody id="myScoreTableBody"></tbody>
@@ -1455,10 +1455,10 @@ function renderRankingContent() {
   if (State.currentRankingTab === 'official') {
     header.innerHTML = `
           <tr class="border-b border-slate-200 text-slate-500 text-xs">
-            <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
-            <th scope="col" class="py-2 font-bold">名前</th>
-            <th scope="col" class="py-2 text-right font-bold">公式HD</th>
-            <th scope="col" class="py-2 pr-4 text-right font-bold text-xs">イ会HD</th>
+            <th scope="col" class="pt-3 pb-2 text-center font-bold w-12">順位</th>
+            <th scope="col" class="pt-3 pb-2 font-bold">名前</th>
+            <th scope="col" class="pt-3 pb-2 text-right font-bold">公式HD</th>
+            <th scope="col" class="pt-3 pb-2 pr-4 text-right font-bold text-xs">イ会HD</th>
           </tr>`;
 
     tbody.innerHTML =
@@ -1483,10 +1483,10 @@ function renderRankingContent() {
   } else {
     header.innerHTML = `
           <tr class="border-b border-slate-200 text-slate-500 text-xs">
-            <th scope="col" class="py-2 text-center font-bold w-12">順位</th>
-            <th scope="col" class="py-2 font-bold">名前</th>
-            <th scope="col" class="py-2 text-right font-bold">平均NET</th>
-            <th scope="col" class="py-2 pr-4 text-right font-bold text-xs">参戦</th>
+            <th scope="col" class="pt-3 pb-2 text-center font-bold w-12">順位</th>
+            <th scope="col" class="pt-3 pb-2 font-bold">名前</th>
+            <th scope="col" class="pt-3 pb-2 text-right font-bold">平均NET</th>
+            <th scope="col" class="pt-3 pb-2 pr-4 text-right font-bold text-xs">参戦</th>
           </tr>`;
 
     const scoresObj = State.rankingByTerm[State.currentRankingTab] || {};
@@ -1669,14 +1669,14 @@ const Versus = {
           ${vsHeader}
           <div class="h-48 py-1"><canvas id="versusChart"></canvas></div>
           <div class="relative">
-            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg p-2 mt-4">
+            <div id="versusTableScroll" class="max-h-60 overflow-x-auto overflow-y-auto bg-slate-50 rounded-lg px-2 pb-2 mt-4">
               <table class="w-full text-left border-collapse text-sm">
-                <thead class="sticky top-0 bg-slate-50/95 backdrop-blur z-10">
+                <thead class="sticky top-0 bg-slate-50 z-10">
                   <tr class="border-b border-slate-200 text-slate-500 text-xs">
-                    <th scope="col" class="py-2 font-bold">日付</th>
-                    <th scope="col" class="py-2 text-center font-bold text-brand-600">あなた</th>
-                    <th scope="col" class="py-2 text-center font-bold text-slate-600">相手</th>
-                    <th scope="col" class="py-2 pr-4 text-right font-bold">結果</th>
+                    <th scope="col" class="pt-3 pb-2 font-bold">日付</th>
+                    <th scope="col" class="pt-3 pb-2 text-center font-bold text-brand-600">あなた</th>
+                    <th scope="col" class="pt-3 pb-2 text-center font-bold text-slate-600">相手</th>
+                    <th scope="col" class="pt-3 pb-2 pr-4 text-right font-bold">結果</th>
                   </tr>
                 </thead>
                 <tbody>${tableRows}</tbody>
