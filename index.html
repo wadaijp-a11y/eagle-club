@@ -2447,6 +2447,14 @@ function homeGuideStep(num, text) {
 // まずブラウザで開き直してもらう案内を優先して出す。
 // （Twitter/Slack/Discord等、通常ブラウザと全く同じ表記になるアプリ内ブラウザは
 //  技術的に判別できないため、その場合は通常の手順を表示するフォールバックとなる）
+// 既にホーム画面のアイコンから起動している（スタンドアロン表示）かどうかを判定する。
+// iOSは navigator.standalone、その他は display-mode メディアクエリで判定する。
+function isRunningStandalone() {
+  return (
+    window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches
+  );
+}
+
 function renderAddToHomeGuide() {
   const ua = navigator.userAgent || '';
   const isLine = /Line/i.test(ua);
@@ -2528,6 +2536,12 @@ document.addEventListener('keydown', e => {
 document.addEventListener('DOMContentLoaded', async () => {
   const yearEl = document.getElementById('loginCopyrightYear');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // 既にホーム画面から起動している場合、追加方法の案内自体が不要なので隠す
+  if (isRunningStandalone()) {
+    document.getElementById('addToHomeMenuItem')?.classList.add('hidden');
+  }
+
   const autoLoginStr = localStorage.getItem('eagle_auto_login');
   const userProfileStr = localStorage.getItem('eagle_user_profile');
 
@@ -2642,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <button type="button" onclick="openTermsModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
             <span class="text-lg">📜</span> 免責事項・利用のルール
           </button>
-          <button type="button" onclick="openAddToHomeModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
+          <button type="button" id="addToHomeMenuItem" onclick="openAddToHomeModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
             <span class="text-lg">📲</span> ホーム画面に追加する方法
           </button>
           <div class="h-px bg-slate-100 my-2 mx-4"></div>
