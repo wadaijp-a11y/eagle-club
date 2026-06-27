@@ -264,6 +264,7 @@ const ALL_MODAL_IDS = [
   'memberHdcpModal',
   'memberCompeModal',
   'termsModal',
+  'addToHomeModal',
   'forgotPwModal',
   'changePwModal',
   'logoutConfirmModal',
@@ -2431,6 +2432,65 @@ function closeTermsModal() {
   document.getElementById('termsModal').classList.add('hidden');
   refreshBodyScrollLock();
 }
+
+// 「ステップN: 説明文」という見た目の1行を作る小さなヘルパー
+function homeGuideStep(num, text) {
+  return `
+    <li class="flex gap-3 items-start">
+      <span class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 font-black text-sm flex items-center justify-center shrink-0">${num}</span>
+      <span class="pt-0.5 leading-relaxed">${text}</span>
+    </li>`;
+}
+
+// 端末・ブラウザに応じて「ホーム画面に追加する方法」の案内文を切り替える。
+// LINEのアプリ内ブラウザでは「ホーム画面に追加」自体が使えないことが多いため、
+// まずブラウザで開き直してもらう案内を優先して出す。
+// （Twitter/Slack/Discord等、通常ブラウザと全く同じ表記になるアプリ内ブラウザは
+//  技術的に判別できないため、その場合は通常の手順を表示するフォールバックとなる）
+function renderAddToHomeGuide() {
+  const ua = navigator.userAgent || '';
+  const isLine = /Line/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+
+  if (isLine) {
+    return `
+      <p class="mb-4 leading-relaxed">LINEの中で開いている状態だと、ホーム画面に追加できません。まずブラウザで開き直してください。</p>
+      <ol class="space-y-3">
+        ${homeGuideStep(1, '画面右上または右下にある「⋯」のようなメニューのボタンをタップ')}
+        ${homeGuideStep(2, '出てきた一覧から「他のブラウザで開く」「Safariで開く」のような項目を選ぶ')}
+        ${homeGuideStep(3, 'ブラウザで開いたら、もう一度この「ホーム画面に追加する方法」を開いてください')}
+      </ol>`;
+  }
+  if (isIOS) {
+    return `
+      <ol class="space-y-3">
+        ${homeGuideStep(1, '画面下部にある「共有」アイコン（四角から上に矢印が出ているマーク）をタップ')}
+        ${homeGuideStep(2, '一覧の中から「ホーム画面に追加」を選ぶ')}
+        ${homeGuideStep(3, '右上の「追加」をタップすると完了です')}
+      </ol>`;
+  }
+  if (isAndroid) {
+    return `
+      <ol class="space-y-3">
+        ${homeGuideStep(1, '画面右上にある「⋮」（縦に3つの点）のメニューをタップ')}
+        ${homeGuideStep(2, '「ホーム画面に追加」または「アプリをインストール」を選ぶ')}
+        ${homeGuideStep(3, '確認画面が出たら「追加」または「インストール」をタップすると完了です')}
+      </ol>`;
+  }
+  return `<p class="leading-relaxed">ブラウザのメニューから「ホーム画面に追加」または「インストール」という項目をお探しください。見当たらない場合は、Safari（iPhone）またはChrome（Android）で開いた状態でお試しください。</p>`;
+}
+
+function openAddToHomeModal() {
+  document.getElementById('addToHomeContent').innerHTML = renderAddToHomeGuide();
+  document.getElementById('addToHomeModal').classList.remove('hidden');
+  refreshBodyScrollLock();
+}
+function closeAddToHomeModal() {
+  document.getElementById('addToHomeModal').classList.add('hidden');
+  refreshBodyScrollLock();
+}
+
 function openForgotPwModal() {
   document.getElementById('forgotPwModal').classList.remove('hidden');
   refreshBodyScrollLock();
@@ -2582,6 +2642,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           <button type="button" onclick="openTermsModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
             <span class="text-lg">📜</span> 免責事項・利用のルール
           </button>
+          <button type="button" onclick="openAddToHomeModal()" class="w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors font-bold text-slate-700 text-sm flex items-center gap-3">
+            <span class="text-lg">📲</span> ホーム画面に追加する方法
+          </button>
           <div class="h-px bg-slate-100 my-2 mx-4"></div>
           <button type="button" onclick="openLogoutModal()" class="w-full text-left px-4 py-3 hover:bg-red-50 rounded-xl transition-colors font-bold text-red-600 text-sm flex items-center gap-3">
             <span class="text-lg">🚪</span> ログアウト
@@ -2677,6 +2740,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           <button type="button" onclick="closeTermsModal()" class="w-full bg-slate-100 text-slate-700 p-3 rounded-xl font-bold hover:bg-slate-200 transition-colors shadow-sm">確認して閉じる</button>
         </div>
         
+      </div>
+    </div>
+  </div>
+
+  <div id="addToHomeModal" class="fixed inset-0 bg-slate-900/50 hidden z-50 transition-opacity backdrop-blur-sm" onclick="closeAddToHomeModal()">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+          <h3 class="font-black text-slate-800 text-base">📲 ホーム画面に追加する方法</h3>
+          <button type="button" onclick="closeAddToHomeModal()" aria-label="閉じる" class="text-slate-400 hover:text-slate-700 w-11 h-11 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-xl font-bold leading-none">&times;</button>
+        </div>
+        <div id="addToHomeContent" class="text-sm text-slate-700"></div>
       </div>
     </div>
   </div>
