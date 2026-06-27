@@ -178,6 +178,8 @@ const State = {
   isSyncingOfficialHdcp: false,
   syncOfficialHdcpResult: null,
   officialHdcpFilesPending: null,
+  officialHdcpPreviewRows: null, // 解析済み・確定前の公式HDCPデータ(管理者が編集可能)
+  scoreUploadPreview: null, // 解析済み・確定前の成績表データ(管理者が編集可能)
   syncStartTime: null,
   // セッション再認証の多重実行を防ぐロック（performReAuthが使用）
   reAuthPromise: null,
@@ -623,7 +625,10 @@ function buildMainUI(res) {
       `;
   CourseHdcp.render();
   setupScheduleDisplay(res);
-  if (isAdmin) renderSyncOfficialHdcpCard();
+  if (isAdmin) {
+    renderSyncOfficialHdcpCard();
+    renderScoreUploadCard();
+  }
 
   // 二重スクロール対策のフェード初期化（versusの表は再描画ごとにrender()側で初期化する）
   setupScrollFade('officialHdcpScroll', 'officialHdcpFade');
@@ -903,9 +908,7 @@ function buildAdminSection() {
           <div id="adminMenuContent" class="hidden p-5 space-y-5 bg-slate-50">
             <div class="bg-white border border-slate-200 rounded-xl p-4">
               <h4 class="font-bold text-slate-800 mb-2 text-xs">📷 成績表アップロード</h4>
-              <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-slate-600 w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
-              <button type="button" onclick="onUpload()" id="uploadBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">画像を解析して登録</button>
-              <p id="uploadStatus" class="mt-2 text-xs font-semibold text-center"></p>
+              <div id="scoreUploadCardInner"></div>
             </div>
             
             <div class="bg-white border border-slate-200 rounded-xl p-4">
@@ -2017,7 +2020,94 @@ async function onChangeMyPassword() {
 // ACTION HANDLERS（管理者操作）
 // ==========================================
 
-async function onUpload() {
+// 成績表アップロードカードの表示を、状態に応じて切り替える
+function renderScoreUploadCard() {
+  const container = document.getElementById('scoreUploadCardInner');
+  if (!container) return;
+
+  if (State.scoreUploadPreview) {
+    const rows = State.scoreUploadPreview;
+    container.innerHTML = `
+          <p class="text-xs text-slate-600 font-bold mb-2">${rows.length}件読み取りました。内容を確認・修正してから登録してください。</p>
+          <div class="space-y-2 mb-3 max-h-80 overflow-y-auto -mx-1 px-1" id="scorePreviewList">
+            ${rows.map((r, i) => scoreRowEditorHtml(r, i)).join('')}
+          </div>
+          <button type="button" onclick="addScoreRow()" class="w-full text-xs font-bold text-brand-600 border border-dashed border-brand-300 rounded-lg p-2 mb-3 hover:bg-brand-50 transition-colors">＋ 行を追加する</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="cancelScoreUpload()" class="w-1/3 bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">やめる</button>
+            <button type="button" onclick="onConfirmScoreData()" id="confirmScoreBtn" class="w-2/3 bg-brand-600 hover:bg-brand-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">この内容で登録する</button>
+          </div>
+          <p id="confirmScoreStatus" class="mt-2 text-xs font-semibold text-center"></p>`;
+    return;
+  }
+
+  container.innerHTML = `
+        <input type="file" id="imageFile" accept="image/*" class="mb-3 text-xs text-slate-600 w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+        <button type="button" onclick="onParseScoreImage()" id="uploadBtn" class="w-full bg-slate-800 text-white text-xs font-bold p-2.5 rounded-lg shadow-sm hover:bg-slate-900 transition-colors">画像を解析する</button>
+        <p id="uploadStatus" class="mt-2 text-xs font-semibold text-center"></p>`;
+}
+
+// 成績表1行分の編集UI（日付・名前は文字入力、それ以外は数値入力）
+function scoreRowEditorHtml(r, i) {
+  const field = (key, ph, type = 'text') =>
+    `<input data-row="${i}" data-field="${key}" type="${type}" value="${escapeHtml(String(r[key] ?? ''))}" placeholder="${ph}" class="w-full text-xs p-1.5 border border-slate-200 rounded focus:outline-none focus:border-brand-400">`;
+  return `
+        <div class="border border-slate-200 rounded-lg p-2.5 bg-white">
+          <div class="flex gap-1.5 mb-1.5">
+            <div class="flex-1">${field('日付', '日付(YYYY/MM/DD)')}</div>
+            <div class="flex-1">${field('名前', '名前')}</div>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 mb-1.5">
+            <div><label class="text-[10px] text-slate-400">順位</label>${field('順位', '', 'number')}</div>
+            <div><label class="text-[10px] text-slate-400">OUT</label>${field('OUT', '', 'number')}</div>
+            <div><label class="text-[10px] text-slate-400">IN</label>${field('IN', '', 'number')}</div>
+            <div><label class="text-[10px] text-slate-400">GROSS</label>${field('GROSS', '', 'number')}</div>
+            <div><label class="text-[10px] text-slate-400">HDCP</label>${field('HDCP', '', 'number')}</div>
+            <div><label class="text-[10px] text-slate-400">NET</label>${field('NET', '', 'number')}</div>
+          </div>
+          <button type="button" onclick="removeScoreRow(${i})" class="text-red-500 text-[10px] font-bold hover:underline">🗑 この行を削除</button>
+        </div>`;
+}
+
+// 編集中の入力内容をState.scoreUploadPreviewへ反映する
+// (行の追加・削除で再描画する前に、他の行の編集内容を失わないようにするため)
+function syncScorePreviewFromDOM() {
+  if (!State.scoreUploadPreview) return;
+  document.querySelectorAll('#scorePreviewList [data-row]').forEach(el => {
+    const idx = Number(el.dataset.row);
+    const field = el.dataset.field;
+    if (State.scoreUploadPreview[idx]) State.scoreUploadPreview[idx][field] = el.value;
+  });
+}
+
+function addScoreRow() {
+  syncScorePreviewFromDOM();
+  State.scoreUploadPreview.push({
+    日付: '',
+    順位: '',
+    名前: '',
+    OUT: '',
+    IN: '',
+    GROSS: '',
+    HDCP: '',
+    NET: '',
+  });
+  renderScoreUploadCard();
+}
+
+function removeScoreRow(i) {
+  syncScorePreviewFromDOM();
+  State.scoreUploadPreview.splice(i, 1);
+  renderScoreUploadCard();
+}
+
+function cancelScoreUpload() {
+  State.scoreUploadPreview = null;
+  renderScoreUploadCard();
+}
+
+// 画像をGeminiで解析する（まだ確定登録しない）
+async function onParseScoreImage() {
   const fileInput = document.getElementById('imageFile');
   const statusText = document.getElementById('uploadStatus');
   const btn = document.getElementById('uploadBtn');
@@ -2034,7 +2124,7 @@ async function onUpload() {
   reader.onloadend = async () => {
     try {
       const res = await callGasApi(
-        'uploadAndProcessImage',
+        'parseScoreImage',
         {
           base64Data: reader.result.split(',')[1],
           mimeType: fileInput.files[0].type,
@@ -2042,21 +2132,50 @@ async function onUpload() {
         0,
         300000
       );
-      statusText.textContent = res.success
-        ? `成功！ ${res.count}件のデータを登録しました。`
-        : `エラー: ${res.error}`;
       if (res.success) {
-        localStorage.removeItem('eagle_data_cache');
-        localStorage.removeItem('eagle_cache_timestamp');
-        loadAllData();
+        State.scoreUploadPreview = res.data;
+        renderScoreUploadCard();
+      } else {
+        statusText.textContent = `エラー: ${res.error}`;
+        btn.disabled = false;
       }
     } catch {
       statusText.textContent = '通信エラーが発生しました。';
-    } finally {
       btn.disabled = false;
     }
   };
   reader.readAsDataURL(fileInput.files[0]);
+}
+
+// 確認・修正済みの成績表データを確定登録する
+async function onConfirmScoreData() {
+  syncScorePreviewFromDOM();
+  const statusText = document.getElementById('confirmScoreStatus');
+  const btn = document.getElementById('confirmScoreBtn');
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}登録中...`;
+
+  try {
+    const res = await callGasApi('confirmScoreData', { rows: State.scoreUploadPreview }, 1, 30000);
+    if (res.success) {
+      State.scoreUploadPreview = null;
+      localStorage.removeItem('eagle_data_cache');
+      localStorage.removeItem('eagle_cache_timestamp');
+      renderScoreUploadCard();
+      await loadAllData();
+      showToast(`${res.count}件のデータを登録しました`);
+    } else {
+      statusText.textContent = `エラー: ${res.error}`;
+      statusText.className = 'mt-2 text-xs font-semibold text-red-500 text-center';
+      btn.disabled = false;
+      btn.innerHTML = 'この内容で登録する';
+    }
+  } catch {
+    statusText.textContent = '通信エラーが発生しました。';
+    statusText.className = 'mt-2 text-xs font-semibold text-red-500 text-center';
+    btn.disabled = false;
+    btn.innerHTML = 'この内容で登録する';
+  }
 }
 
 // 公式HDCP同期（Drive上のPDFをGeminiで解析して反映する）
@@ -2102,6 +2221,22 @@ function renderSyncOfficialHdcpCard() {
     return;
   }
 
+  if (State.officialHdcpPreviewRows) {
+    const rows = State.officialHdcpPreviewRows;
+    container.innerHTML = `
+          <p class="text-xs text-slate-600 font-bold mb-2">${rows.length}件読み取りました。内容を確認・修正してから確定してください。</p>
+          <p class="text-[10px] text-slate-400 mb-2">前回の値との差が2.0以上の場合は赤字で強調表示しています。</p>
+          <div class="space-y-2 mb-3 max-h-80 overflow-y-auto -mx-1 px-1" id="hdcpPreviewList">
+            ${rows.map((r, i) => hdcpRowEditorHtml(r, i)).join('')}
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="cancelOfficialHdcpSync()" class="w-1/3 bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">やめる</button>
+            <button type="button" onclick="onConfirmOfficialHdcpData()" id="confirmHdcpBtn" class="w-2/3 bg-purple-600 hover:bg-purple-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">この内容で確定する</button>
+          </div>
+          <p id="confirmHdcpStatus" class="mt-2 text-xs font-semibold text-center"></p>`;
+    return;
+  }
+
   if (State.officialHdcpFilesPending) {
     if (State.officialHdcpFilesPending.length === 0) {
       container.innerHTML = `
@@ -2115,11 +2250,11 @@ function renderSyncOfficialHdcpCard() {
         )
         .join('');
       container.innerHTML = `
-            <p class="text-xs text-slate-600 font-bold mb-2">以下のファイルを検出しました。同月データは上書きされます。同期を実行しますか？</p>
+            <p class="text-xs text-slate-600 font-bold mb-2">以下のファイルを検出しました。解析しますか？</p>
             <div class="mb-3 max-h-24 overflow-y-auto">${fileListHtml}</div>
             <div class="flex gap-2">
               <button type="button" onclick="resetSyncOfficialHdcpCard()" class="w-1/3 bg-slate-200 hover:bg-slate-300 transition-colors text-slate-700 text-xs font-bold p-2.5 rounded-lg shadow-sm">やめる</button>
-              <button type="button" onclick="startSyncOfficialHdcp()" class="w-2/3 bg-purple-600 hover:bg-purple-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">同期を実行する</button>
+              <button type="button" onclick="startSyncOfficialHdcp()" class="w-2/3 bg-purple-600 hover:bg-purple-700 transition-colors text-white text-xs font-bold p-2.5 rounded-lg shadow-sm">解析する</button>
             </div>`;
     }
     return;
@@ -2131,9 +2266,50 @@ function renderSyncOfficialHdcpCard() {
       `;
 }
 
+// 公式HDCP1名分の確認・編集UI。前回の値との差が2.0以上なら赤字で強調する
+function hdcpRowEditorHtml(r, i) {
+  const prev = r.prevValue;
+  const cur = Number(r.value);
+  const hasPrev = prev !== null && prev !== undefined && !isNaN(Number(prev));
+  const diff = hasPrev && !isNaN(cur) ? Math.abs(cur - Number(prev)) : null;
+  const highlight = diff !== null && diff >= 2;
+  return `
+        <div class="border ${highlight ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'} rounded-lg p-2.5">
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-xs font-bold ${highlight ? 'text-red-600' : 'text-slate-700'}">${escapeHtml(String(r.name))}</span>
+            ${highlight ? `<span class="text-[10px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">⚠ 前回差 ${diff.toFixed(1)}</span>` : ''}
+          </div>
+          <div class="grid grid-cols-2 gap-2 items-end">
+            <div>
+              <label class="text-[10px] text-slate-400">今回の読み取り値</label>
+              <input data-row="${i}" data-field="value" type="text" value="${escapeHtml(String(r.value))}" class="w-full text-sm font-bold p-1.5 border ${highlight ? 'border-red-300' : 'border-slate-200'} rounded focus:outline-none focus:border-purple-400">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400">前回（参考）</label>
+              <p class="text-sm text-slate-400 p-1.5">${hasPrev ? escapeHtml(String(prev)) : 'ー'}</p>
+            </div>
+          </div>
+        </div>`;
+}
+
+// 編集中の入力内容をState.officialHdcpPreviewRowsへ反映する
+function syncHdcpPreviewFromDOM() {
+  if (!State.officialHdcpPreviewRows) return;
+  document.querySelectorAll('#hdcpPreviewList [data-row]').forEach(el => {
+    const idx = Number(el.dataset.row);
+    if (State.officialHdcpPreviewRows[idx]) State.officialHdcpPreviewRows[idx].value = el.value;
+  });
+}
+
 function resetSyncOfficialHdcpCard() {
   State.officialHdcpFilesPending = null;
+  State.officialHdcpPreviewRows = null;
   State.syncOfficialHdcpResult = null;
+  renderSyncOfficialHdcpCard();
+}
+
+function cancelOfficialHdcpSync() {
+  State.officialHdcpPreviewRows = null;
   renderSyncOfficialHdcpCard();
 }
 
@@ -2155,21 +2331,23 @@ async function onCheckOfficialHdcpFiles(btnElement) {
   }
 }
 
+// PDFを解析するだけで、まだシートには書き込まない（次は確認・修正画面へ）
 function startSyncOfficialHdcp() {
   State.isSyncingOfficialHdcp = true;
   renderSyncOfficialHdcpCard();
   startSyncTimer();
 
   // 非同期でバックグラウンド実行。この処理だけタイムアウトを5分(300,000ms)に設定。
-  callGasApi('syncOfficialHdcp', {}, 0, 300000)
-    .then(async res => {
+  callGasApi('parseOfficialHandicapPDFs', {}, 0, 300000)
+    .then(res => {
       stopSyncTimer();
       State.isSyncingOfficialHdcp = false;
       if (res.success) {
-        State.syncOfficialHdcpResult = { message: res.message };
-        localStorage.removeItem('eagle_data_cache');
-        localStorage.removeItem('eagle_cache_timestamp');
-        await loadAllData();
+        if (res.rows.length === 0) {
+          State.syncOfficialHdcpResult = { error: 'データを読み取れませんでした。' };
+        } else {
+          State.officialHdcpPreviewRows = res.rows;
+        }
       } else {
         State.syncOfficialHdcpResult = { error: res.error };
       }
@@ -2183,6 +2361,40 @@ function startSyncOfficialHdcp() {
       };
       renderSyncOfficialHdcpCard();
     });
+}
+
+// 確認・修正済みの公式HDCPデータを確定登録する
+async function onConfirmOfficialHdcpData() {
+  syncHdcpPreviewFromDOM();
+  const statusText = document.getElementById('confirmHdcpStatus');
+  const btn = document.getElementById('confirmHdcpBtn');
+  btn.disabled = true;
+  btn.innerHTML = `${SPINNER_SVG}確定中...`;
+
+  try {
+    const res = await callGasApi(
+      'confirmOfficialHdcpData',
+      { rows: State.officialHdcpPreviewRows },
+      0,
+      60000
+    );
+    State.officialHdcpPreviewRows = null;
+    if (res.success) {
+      State.syncOfficialHdcpResult = { message: res.message };
+      localStorage.removeItem('eagle_data_cache');
+      localStorage.removeItem('eagle_cache_timestamp');
+      await loadAllData();
+    } else {
+      State.syncOfficialHdcpResult = { error: res.error };
+    }
+    renderSyncOfficialHdcpCard();
+  } catch {
+    State.officialHdcpPreviewRows = null;
+    State.syncOfficialHdcpResult = { error: '通信エラーが発生しました。' };
+    renderSyncOfficialHdcpCard();
+  } finally {
+    if (statusText) statusText.textContent = '';
+  }
 }
 
 async function onResetPassword() {
